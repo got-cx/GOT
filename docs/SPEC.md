@@ -1,40 +1,159 @@
 # GOT — Global Onchain Transfers
 
-## Unified System Implementation Specification v0.1
+## Final Unified System Implementation Specification v0.2
 
 **System:** GOT  
 **Expansion:** Global Onchain Transfers  
 **Canonical domain:** `got.cx`  
-**System version:** `0.1`  
-**Protocol identifier:** `keccak256("GOT_PROTOCOL_V0_1")`  
+**System version:** `0.2`  
+**Protocol identifier:** `keccak256("GOT_PROTOCOL_V0_2")`  
 **Primary launch network:** Base  
 **Primary launch asset:** canonical USDC  
 **Primary account layer:** Base Account  
 **Target protocol networks:** Ethereum and EVM-compatible networks supporting `CREATE2`  
-**Status:** Implementation specification; pre-audit  
-**Date:** 2026-07-30  
+**Status:** Final implementation specification; pre-audit  
+**Date:** 2026-07-31  
+
+---
+
+# Executive Summary
+
+GOT is an open system for global onchain transfers.
+
+The system combines:
+
+```text
+deterministic intent addresses
+    counterfactual ERC20 transfer addresses derived from immutable configuration
+
+GOTName
+    optional reusable names and verified identifiers
+
+GOTSubscription
+    optional recurring-transfer periphery built around account spend permissions
+
+got.cx
+    one user-facing product and developer platform built on GOT Protocol
+
+GOT infrastructure
+    indexing, execution, scheduling, verification, webhooks and notifications
+```
+
+The deterministic intent address is the protocol’s core primitive. An application can calculate the address before deployment, publish it as a transfer destination, and receive the configured ERC20 at that address while no contract code exists. The canonical implementation can later be deployed and the complete configured-token balance settled atomically.
+
+GOT Protocol is neutral infrastructure. It does not require applications to use `got.cx`, a particular business model, or a mandatory protocol fee.
+
+Version 0.2 makes the following decisions normative:
+
+1. `feeBps` MAY be zero.
+2. A zero-fee intent is valid and processes the complete configured-token balance to the effective owner.
+3. A positive fee is optional and is split transparently among the protocol treasury, partner and executor.
+4. Positive fees continue to use cumulative, split-invariant accounting on gross processed value.
+5. Applications that want a recipient to receive an exact invoice amount SHOULD quote the required gross payer amount above that invoice amount.
+6. A zero-fee intent does not guarantee economically motivated third-party execution. The payer, owner, application, account abstraction layer or sponsor must cover gas.
+7. `got.cx` is only one consumer of GOT Protocol. Its preferred business model is fixed SaaS subscriptions with no additional transfer-volume fee.
+8. Third-party integrators MAY configure their own immutable onchain fee through `feeBps` and receive transparent partner rewards.
+9. `got.cx` usage limits apply only to hosted software and infrastructure, never to permissionless onchain protocol usage or transfer value.
+10. GOT’s own paid SaaS plans SHOULD use `GOTSubscription` onchain as production dogfooding, without requiring subscription revenue sharing with integrators.
+
+The primary product promise is:
+
+> **Send stablecoins to an account, transfer link or name through one deterministic onchain transfer system.**
+
+The recommended brand line is:
+
+> **Send it. GOT it.**
+
+---
+
+# Table of Contents
+
+1. Canonical Definition  
+2. Terminology  
+3. Repository Architecture  
+4. Goals  
+5. Non-Goals  
+6. Normative Language  
+7. System Architecture  
+8. Component Boundaries  
+9. Protocol Constants  
+10. Intent Configuration  
+11. Configuration Validation  
+12. Immutable Argument Encoding  
+13. Configuration Hash and Deterministic Address  
+14. Generic Owner Resolver  
+15. Effective Owner Resolution  
+16. Unresolved Ownership  
+17. Factory Interface and Behavior  
+18. Intent Interface  
+19. Mutable Storage  
+20. Authorization  
+21. Resolver Liveness and Competition  
+22. Fee Policy  
+23. Cumulative Fee Accounting  
+24. Exact Recipient Quotes  
+25. Processing Algorithm  
+26. Recovery  
+27. Core Events  
+28. Core Errors  
+29. Core Security Invariants  
+30. Required Core Tests  
+31. GOTName Overview  
+32. Name Keys and Namespaces  
+33. Public and Private Identifier Modes  
+34. Claim Verifier Security  
+35. Claim Authorization  
+36. Name Transfer  
+37. GOTName Interface, Events and Errors  
+38. GOTName Invariants and Tests  
+39. GOTSubscription Overview  
+40. Spend Permission Model  
+41. Subscription Binding  
+42. Subscription Execution  
+43. Subscription Cancellation and Failure  
+44. GOTSubscription Events, Invariants and Tests  
+45. got.cx Product Role  
+46. got.cx Business Model  
+47. Hosted SaaS Limits  
+48. Base Account Integration  
+49. Transfer and Invoice Experience  
+50. Transfer Link Routing  
+51. Named Transfer and Claim Experience  
+52. Subscription Product Experience  
+53. Partner and Integrator Model  
+54. Developer Platform  
+55. API Conventions  
+56. Data Model  
+57. Transfer State Model  
+58. Invoice State Model  
+59. Subscription State Model  
+60. Indexing and Finality  
+61. Resolver Infrastructure  
+62. Subscription Scheduler  
+63. Name Verification Infrastructure  
+64. Webhooks  
+65. Notifications  
+66. Observability and Operations  
+67. Privacy  
+68. Threat Model  
+69. Independent Audit Scope  
+70. Deployment Profile  
+71. Canonical Multichain Deployment  
+72. Versioning and Migration  
+73. Release Artifacts  
+74. Implementation Plan  
+75. Complete Implementation Checklist  
+76. Reference Solidity  
+77. External Standards and Dependencies  
+78. Canonical Statements  
+79. v0.2 Change Log  
+80. Final Decisions  
 
 ---
 
 # 1. Canonical Definition
 
-GOT is an open system for global onchain transfers.
-
-It combines:
-
-```text
-GOTIntent
-    deterministic counterfactual payment addresses
-
-GOTName
-    optional reusable names and verified identifiers
-
-got.cx interface
-    human and developer payment experience
-
-GOT infrastructure
-    indexing, resolution, execution, scheduling, claims and webhooks
-```
+GOT is an open-source system and ecosystem for global onchain transfers.
 
 Canonical terminology:
 
@@ -43,43 +162,85 @@ GOT
     the complete open-source system and ecosystem
 
 GOT Protocol
-    the onchain contracts and protocol rules
+    the onchain contracts, interfaces and protocol rules
 
-GOTIntent
-    the standalone deterministic intent-address primitive
+deterministic intent address
+    the standalone counterfactual transfer primitive
 
 intent address
-    the deterministic counterfactual address created from an IntentConfig
+    shorthand for a deterministic intent address after first definition
+
+GOTIntent
+    the canonical Solidity implementation contract for an intent address
+
+GOTFactory
+    the stateless canonical factory that previews, deploys and executes intents
 
 GOTName
-    the optional name service that maps a reusable nameKey to an account
+    the optional name service mapping an opaque reusable nameKey to an account
+
+GOTSubscription
+    optional periphery for recurring transfers through account spend permissions
 
 got.cx
-    the canonical user interface, API, SDK and product surface
+    a canonical product, interface, API and SDK built on GOT Protocol
 
 resolver
-    an account or contract authorized to process a GOTIntent
+    an account or contract authorized to process an intent address
+
+executor
+    the actual account receiving the execution allocation for one processing call
+
+partner
+    the immutable integration, distribution or application reward address
 
 owner source
-    the immutable direct account or owner resolver committed to an intent address
+    the immutable direct account or owner resolver committed to an intent
 
 effective owner
     the current account authorized to settle and receive owner proceeds
+
+gross processed value
+    the configured-token balance processed by the contract before fee allocation
+
+owner proceeds
+    gross processed value minus the total fee delta
+
+recipient target amount
+    an application-level net amount that a merchant or recipient expects to receive
 ```
 
-The primary product promise is:
+Public specifications and product language MUST call the primitive a **deterministic intent address** or **intent address**. `GOTIntent` MAY remain the Solidity contract name.
 
-> **Send stablecoins to an account, payment link or name through one deterministic onchain transfer system.**
-
-Recommended brand line:
-
-> **Send it. GOT it.**
+The canonical term is **transfer**, not payment, throughout GOT protocol, APIs, events, IDs, receipts, links and data models. The word “payment” MAY appear when quoting external standards or unavoidable third-party terminology.
 
 ---
 
-# 2. Repository Architecture
+# 2. Terminology
 
-The canonical public repository SHOULD use this structure:
+The protocol distinguishes protocol facts from application interpretations.
+
+```text
+Protocol fact
+    token balance, intent address, configuration, totalProcessed, fee allocation,
+    effective owner, executor and emitted events
+
+Application interpretation
+    invoice, order, customer, subscription plan, due date, fulfillment,
+    transfer request, transfer link, social identity and accounting status
+```
+
+An intent address is not itself an invoice, subscription or customer record.
+
+`amount` in `IntentConfig` is an expected gross transfer amount used by applications and recurring-transfer bindings. It is not a processing cap and does not prevent partial, repeated, late or excess transfers.
+
+When an application displays a net invoice amount and `feeBps > 0`, it SHOULD compute and display a separate gross payer quote so that the expected owner proceeds equal the invoice amount.
+
+---
+
+# 3. Repository Architecture
+
+The canonical public repository SHOULD use:
 
 ```text
 got/
@@ -115,7 +276,8 @@ got/
 │       │   ├── IGOTName.sol
 │       │   └── test/
 │       ├── subscriptions/
-│       │   ├── GOTSubscriptionCollector.sol
+│       │   ├── GOTSubscription.sol
+│       │   ├── IGOTSubscription.sol
 │       │   └── test/
 │       ├── resolvers/
 │       ├── routers/
@@ -135,11 +297,6 @@ got/
 │   │   ├── resolution-api/
 │   │   ├── claim-signer/
 │   │   └── verifiers/
-│   │       ├── email/
-│   │       ├── phone/
-│   │       ├── x/
-│   │       ├── telegram/
-│   │       └── ens/
 │   ├── webhooks/
 │   ├── notifications/
 │   ├── monitoring/
@@ -152,7 +309,7 @@ got/
     └── test-vectors/
 ```
 
-Required dependency direction:
+Dependency direction:
 
 ```text
 protocol/core
@@ -165,78 +322,82 @@ interface
     MAY depend on protocol ABIs, SDK packages and API schemas
 
 infra
-    MAY depend on protocol ABIs, periphery ABIs and shared packages
+    MAY depend on protocol and periphery ABIs and shared packages
 ```
 
 ---
 
-# 3. System Goals
+# 4. Goals
 
-GOT v0.1 MUST provide:
+GOT v0.2 MUST provide:
 
-- deterministic payment addresses before contract deployment;
+- deterministic intent addresses before deployment;
 - direct ERC20 transfers to undeployed intent addresses;
-- standalone intent addresses that work without names;
+- direct ownership without requiring names;
 - optional reusable names and verified identifiers;
 - immutable intent configuration;
-- isolated accounting for each payment intent;
+- one-slot mutable accounting per deployed intent;
 - cumulative split-invariant fee accounting;
+- valid zero-fee intents;
+- optional transparent partner and executor rewards;
 - direct owner settlement;
 - open or restricted resolver execution;
-- immutable partner attribution;
-- counterfactual payment from wallets, smart accounts and exchanges;
-- payment-before-onboarding for named recipients;
-- one-time name claim that resolves all intents sharing the same name key;
-- account migration controlled by the current name owner;
+- counterfactual transfers from wallets, smart accounts and exchanges;
+- transfer-before-onboarding for named recipients;
+- one-time first claim of a reusable name key;
+- name migration controlled by the current name owner;
 - Base Account onboarding without a custom GOT wallet;
-- exact revocable periodic stablecoin charges;
-- invoices, receipts, payment links and subscriptions;
+- recurring transfers through revocable Spend Permissions;
+- invoices, receipts, transfer links, subscriptions and developer integrations;
 - chain-aware indexing, finality handling and reorg recovery;
 - signed webhooks and idempotent fulfillment;
-- a Base-first product while keeping the core multichain-capable;
+- a Base-first reference product while keeping protocol core multichain-capable;
 - no custody of user funds by the GOT backend;
-- no protocol administrator, pause or upgradeability in canonical core contracts.
+- no protocol administrator, pause or upgradeability in canonical core contracts;
+- application freedom to monetize with subscriptions, positive onchain fees, both or neither.
 
 ---
 
-# 4. Non-Goals
+# 5. Non-Goals
 
-GOT v0.1 MUST NOT require or implement:
+GOT v0.2 MUST NOT require or implement:
 
 - a protocol token;
 - a DAO;
 - a custom seed-phrase wallet;
 - backend custody of recipient funds;
-- an onchain invoice database;
-- onchain storage of email addresses, phone numbers or social handles;
-- onchain OAuth tokens;
+- a mandatory protocol fee;
+- mandatory use of `got.cx`;
+- a mandatory subscription-revenue-sharing program;
+- an onchain invoice or customer database;
+- raw email, phone or social identifiers in core contracts;
+- OAuth tokens or login assertions onchain;
 - mutable intent token, amount, fee, partner or resolver configuration;
-- upgradeable GOTIntent proxies;
+- upgradeable intent proxies;
 - a core protocol registry;
-- protocol-enforced refunds;
-- protocol-enforced disputes or chargebacks;
-- protocol-enforced product fulfillment;
-- generic arbitrary calls from GOTIntent;
-- configured-token withdrawal that bypasses canonical accounting;
+- protocol-enforced refunds, disputes, chargebacks or fulfillment;
+- generic arbitrary calls from an intent address;
+- configured-token recovery that bypasses canonical fee accounting;
 - cross-chain state synchronization;
 - automatic reassignment of claimed names when an external identifier changes control;
-- fiat custody or banking services.
+- fiat custody, card acquiring or banking services;
+- guaranteed profitable execution for every zero-fee intent.
 
 Applications MAY implement additional business logic above the protocol.
 
 ---
 
-# 5. Normative Language
+# 6. Normative Language
 
-The words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative.
+The words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY** and **OPTIONAL** are normative.
 
-Conceptual Solidity is informative unless surrounding text explicitly defines required behavior.
+Conceptual Solidity is informative unless the surrounding text explicitly defines required behavior.
 
-The final release commit, compiler configuration, immutable-argument layout, proxy bytecode, deployment salts, interface identifiers, code hashes and deterministic address test vectors become normative release artifacts.
+The final source commit, compiler configuration, immutable-argument layout, proxy bytecode, deployment salts, interface identifiers, code hashes and deterministic address test vectors become normative release artifacts.
 
 ---
 
-# 6. System Architecture
+# 7. System Architecture
 
 ```text
 User, merchant, application or agent
@@ -261,51 +422,47 @@ GOTIntent
         | owner resolution
         | atomic token distribution
         v
-owner + treasury + partner + executor
+effective owner + treasury + partner + executor
 ```
 
 Direct ownership:
 
 ```text
-IntentConfig.ownerSource = Base Account / Safe / EOA / contract
-IntentConfig.ownerKey    = 0
-
-GOTIntent.owner()
-    = ownerSource
+ownerSource = Base Account / Safe / EOA / contract
+ownerKey    = 0
+owner()     = ownerSource
 ```
 
 Named ownership:
 
 ```text
-IntentConfig.ownerSource = GOTName
-IntentConfig.ownerKey    = reusable nameKey
-
-GOTIntent.owner()
-    = GOTName.resolveOwner(intent, nameKey)
+ownerSource = GOTName
+ownerKey    = reusable nameKey
+owner()     = GOTName.resolveOwner(intentAddress, nameKey)
 ```
 
-Before a name is claimed:
+Before claim:
 
 ```text
-GOTName.resolveOwner(...) = address(0)
-settlement                 = unavailable
-funds                      = remain at the intent address
+owner()    = address(0)
+settlement = unavailable
+funds      = remain at the intent address
 ```
 
-After a name is claimed:
+After claim:
 
 ```text
-GOTName.resolveOwner(...) = recipient account
-settlement                 = available
+owner()    = claimed account
+settlement = available
 ```
 
-One name claim resolves all existing and future intents using the same `nameKey`.
+One name claim resolves every existing and future intent using the same `nameKey`.
 
 ---
 
-# 7. Component Boundaries
+# 8. Component Boundaries
 
-## 7.1 Protocol core
+## 8.1 Protocol core
 
 Required contracts:
 
@@ -316,12 +473,12 @@ Required generic interface:
 
 3. `IGOTOwnerResolver`
 
-The core defines:
+Core responsibilities:
 
 - deterministic address derivation;
-- immutable intent configuration;
+- immutable configuration;
 - counterfactual token receipt;
-- owner resolution;
+- effective-owner resolution;
 - resolver authorization;
 - cumulative fee accounting;
 - settlement;
@@ -329,94 +486,36 @@ The core defines:
 - canonical deployment rules;
 - security invariants.
 
-The core does not know about names, email, phone, X, Telegram, OAuth, invoices, subscriptions, Base Account, APIs or webhooks.
+The core does not know about names, email, phone, X, Telegram, OAuth, invoices, subscriptions, Base Account, APIs, plan pricing, Supabase, Vercel or webhooks.
 
-## 7.2 Protocol periphery
+## 8.2 Protocol periphery
 
-Initial periphery contracts:
+Initial periphery:
 
 1. `GOTName`
-2. `GOTSubscriptionCollector`
+2. `GOTSubscription`
 
-Optional future periphery MAY include:
+Future periphery MAY include batch settlement, resolver routers, multicall helpers, gas-sponsorship helpers, organization resolvers, ENS resolvers and payroll resolvers.
 
-- batch settlement;
-- resolver routers;
-- multicall helpers;
-- gas sponsorship helpers;
-- merchant team ownership resolvers;
-- ENS ownership resolvers;
-- payroll resolvers;
-- organization membership resolvers.
+## 8.3 Interface
 
-## 7.3 Interface
+The interface includes `got.cx`, transfer links, claim links, account connection, dashboard, invoices, subscriptions, names, SDKs, API keys, receipts, exports and webhook settings.
 
-The interface includes:
+## 8.4 Infrastructure
 
-- `got.cx` web application;
-- payment and claim links;
-- Base Account connection;
-- merchant dashboard;
-- invoice and subscription UX;
-- name search and claim UX;
-- REST API;
-- TypeScript SDK;
-- receipts and exports;
-- webhook management.
-
-## 7.4 Infrastructure
-
-The infrastructure includes:
-
-- chain indexer;
-- resolver worker;
-- subscription scheduler;
-- keeper workers;
-- name resolution API;
-- identity-verification adapters;
-- EIP-712 claim signer;
-- webhook dispatcher;
-- notification workers;
-- monitoring and alerting;
-- deterministic deployment tooling.
+Infrastructure includes the indexer, resolver workers, subscription scheduler, name-verification adapters, claim signer, webhook dispatcher, notification workers, monitoring and deterministic deployment tooling.
 
 ---
 
 # Part I — GOT Protocol Core
 
-# 8. GOTIntent Overview
+# 9. Protocol Constants
 
-`GOTIntent` is a deterministic counterfactual ERC20 payment primitive.
-
-An application can calculate an intent address before deployment and publish it as a payment destination. The configured ERC20 may be transferred to that address while it has no code. A valid caller later deploys the canonical minimal proxy through `GOTFactory` and processes the complete configured-token balance atomically.
-
-Required properties:
-
-- deterministic `CREATE2` address;
-- minimal proxy with immutable arguments;
-- no deployment required before payment;
-- one mutable storage slot;
-- immutable configuration;
-- cumulative gross processed accounting;
-- split-invariant fees;
-- effective-owner sovereignty;
-- optional owner resolution;
-- open or restricted resolver;
-- complete-balance processing;
-- configured-token protection;
-- no admin or upgradeability.
-
-`GOTIntent` MUST work with a direct owner and no name service.
-
----
-
-# 9. GOT Protocol Constants
-
-The core implementation MUST expose:
+The implementation MUST expose:
 
 ```solidity
 bytes32 public constant PROTOCOL_VERSION =
-    keccak256("GOT_PROTOCOL_V0_1");
+    keccak256("GOT_PROTOCOL_V0_2");
 
 uint16 public constant IMMUTABLE_ARGS_LENGTH = 226;
 
@@ -428,8 +527,6 @@ uint16 public immutable EXECUTION_SHARE_BPS;
 uint16 public immutable PARTNER_SHARE_BPS;
 ```
 
-The exact gas limits MUST be confirmed with adversarial tests before release. Changing normative limits after release requires a new protocol version.
-
 `GOTFactory` immutable configuration:
 
 ```solidity
@@ -440,7 +537,7 @@ uint16 public immutable PARTNER_SHARE_BPS;
 uint16 public immutable MAX_FEE_BPS;
 ```
 
-Required constructor validation:
+Constructor validation:
 
 ```solidity
 IMPLEMENTATION != address(0);
@@ -453,10 +550,14 @@ PARTNER_SHARE_BPS > 0;
 PARTNER_SHARE_BPS < 10_000;
 
 MAX_FEE_BPS > 0;
-MAX_FEE_BPS <= 10_000;
+MAX_FEE_BPS < 10_000;
 ```
 
-The factory has zero mutable storage. Solidity immutables embedded in bytecode are permitted.
+`MAX_FEE_BPS` SHOULD be materially below 10,000 in the canonical release.
+
+The factory MUST have zero mutable storage. Solidity immutables embedded in bytecode are permitted.
+
+Changing protocol constants, fee allocation order, immutable layout or normative resolver gas limits requires a new protocol version.
 
 ---
 
@@ -478,7 +579,7 @@ struct IntentConfig {
 }
 ```
 
-Every field is immutable and committed to the deterministic intent address.
+Every field is immutable and committed to the deterministic address.
 
 ## 10.1 `intentId`
 
@@ -489,144 +590,89 @@ Recommended namespacing:
 ```solidity
 bytes32 intentId = keccak256(
     abi.encode(
-        keccak256("GOT_APPLICATION_INTENT_V1"),
+        keccak256("GOT_APPLICATION_INTENT_V2"),
         applicationId,
         recordId
     )
 );
 ```
 
-Examples:
+`intentId`, `transferRequestId`, `transferId` and `transferLinkId` are different identifiers.
 
-```solidity
-bytes32 invoiceIntentId = keccak256(
-    abi.encode(
-        keccak256("GOT_INVOICE_INTENT_V1"),
-        merchantId,
-        invoiceId
-    )
-);
+Canonical processed-transfer identity:
+
+```text
+chainId + intentAddress + transactionHash + logIndex
 ```
 
-```solidity
-bytes32 transferIntentId = keccak256(
-    abi.encode(
-        keccak256("GOT_TRANSFER_INTENT_V1"),
-        senderRecordId,
-        transferId
-    )
-);
-```
+Infrastructure SHOULD derive:
 
 ```solidity
-bytes32 subscriptionIntentId = keccak256(
+bytes32 transferId = keccak256(
     abi.encode(
-        keccak256("GOT_SUBSCRIPTION_INTENT_V1"),
-        merchantId,
-        subscriptionId
+        chainId,
+        intentAddress,
+        transactionHash,
+        logIndex
     )
 );
 ```
 
 ## 10.2 `ownerSource`
 
-The immutable source of effective ownership.
-
-Direct mode:
+Immutable direct owner or owner resolver.
 
 ```text
-ownerSource = recipient account
-ownerKey    = 0
-```
+Direct mode:
+    ownerSource = account
+    ownerKey    = 0
 
 Resolver mode:
-
-```text
-ownerSource = contract implementing IGOTOwnerResolver
-ownerKey    = nonzero resolver-specific key
-```
-
-Requirements:
-
-```solidity
-ownerSource != address(0);
+    ownerSource = IGOTOwnerResolver contract
+    ownerKey    = nonzero resolver key
 ```
 
 ## 10.3 `ownerKey`
 
-The immutable key interpreted by `ownerSource`.
-
-```text
-bytes32(0)
-    direct-owner mode
-
-nonzero
-    owner-resolver mode
-```
-
-The zero value is reserved and MUST NOT be interpreted by a resolver.
-
-This explicit mode flag prevents accidental resolver-interface collisions with direct smart accounts.
+`bytes32(0)` is reserved for direct mode. A nonzero key activates resolver mode.
 
 ## 10.4 `token`
 
-The configured ERC20 token.
+Configured ERC20. The generic protocol has no token registry.
 
-The generic protocol has no token registry. Applications SHOULD allowlist exact-transfer, non-rebasing ERC20s.
-
-Initial GOT product policy:
-
-```text
-Base Mainnet: canonical USDC only
-Base Sepolia: approved test USDC only
-```
+Applications SHOULD allowlist exact-transfer, non-rebasing tokens. The initial got.cx profile supports canonical Base USDC.
 
 ## 10.5 `partner`
 
-Optional immutable recipient of a share of the non-execution protocol fee.
+Optional immutable recipient of the partner allocation.
 
-Use cases:
+The partner may represent an application, integration, commerce platform, wallet, developer, distribution partner or referral source.
 
-- application;
-- integration;
-- referral;
-- developer;
-- commerce platform;
-- wallet;
-- distribution partner.
-
-`address(0)` disables partner rewards for the intent.
+`address(0)` disables partner allocation. The amount that would otherwise be allocated to a partner remains with the treasury under the canonical split.
 
 ## 10.6 `authorizedResolver`
 
 ```text
 address(0)
-    any valid resolver may process the intent
+    open resolver execution
 
 nonzero
     only the configured resolver may use the resolver path
 ```
 
-The effective owner may always use `settle()` independently.
+The effective owner may always settle.
 
 ## 10.7 `amount`
 
-Expected gross payment amount in token base units.
+Expected gross transfer amount in token base units.
 
-It does not cap processing. Partial payments, repeated payments, late payments and overpayments remain processable.
+It is application metadata committed to the address. It does not cap processing.
+
+Applications MAY separately store a recipient target amount and SHOULD quote a gross payer amount when positive fees apply.
 
 ## 10.8 `initialDeadline`
 
-Application-level time reference.
-
-The core MUST NOT block processing because a deadline has passed.
-
-Possible application interpretations:
-
-- invoice due date;
-- subscription start;
-- access expiration reference;
-- expected delivery time.
+Application-level time reference. The core MUST NOT reject settlement because this timestamp passed.
 
 ## 10.9 `period`
 
@@ -638,17 +684,23 @@ Possible application interpretations:
     recurring application semantics
 ```
 
-The core does not authorize recurring withdrawals. It only records incoming configured-token processing.
+The core does not itself authorize recurring withdrawals.
 
 ## 10.10 `feeBps`
 
-Total protocol fee applied to cumulative gross processed value.
+Total fee applied to cumulative gross processed value.
+
+```text
+0
+    zero-fee intent; all processed configured token goes to effective owner
+
+> 0
+    positive fee; cumulative fee is split among executor, partner and treasury
+```
 
 ## 10.11 `metadataHash`
 
-Commitment to canonical offchain metadata.
-
-Personal data, access tokens, secrets and raw external identifiers MUST NOT be included.
+Commitment to canonical offchain metadata. It MUST NOT reveal secrets or protected personal information.
 
 ---
 
@@ -660,9 +712,14 @@ Personal data, access tokens, secrets and raw external identifiers MUST NOT be i
 config.ownerSource != address(0);
 config.token != address(0);
 config.amount > 0;
-config.feeBps > 0;
 config.feeBps <= MAX_FEE_BPS;
 config.period == 0 || config.initialDeadline != 0;
+```
+
+Version 0.2 intentionally does not require:
+
+```solidity
+config.feeBps > 0
 ```
 
 Mode validation:
@@ -670,14 +727,12 @@ Mode validation:
 ```solidity
 if (config.ownerKey == bytes32(0)) {
     // Direct mode.
-    // ownerSource may be an EOA, Safe, smart account or contract.
 } else {
     // Resolver mode.
-    // Preview remains possible without external calls.
 }
 ```
 
-After deriving the intent address:
+After deriving the address:
 
 ```solidity
 config.ownerSource != intentAddress;
@@ -689,26 +744,17 @@ config.authorizedResolver == address(0) ||
 TREASURY != intentAddress;
 ```
 
-`deployAndExecute` MUST additionally require:
+`deployAndExecute` MUST additionally require that the configured token has deployed code.
 
-```solidity
-config.token.code.length > 0;
-```
+Preview MUST remain possible without external calls and before an owner resolver is deployed or available.
 
-When `ownerKey != 0`, execution MUST fail closed unless `ownerSource`:
-
-- has deployed code;
-- supports `IGOTOwnerResolver` through ERC-165;
-- returns exactly 32 bytes from `resolveOwner`;
-- returns a valid effective owner or zero as unresolved.
-
-The factory MUST NOT require direct owner accounts to have code.
+When `ownerKey != 0`, execution MUST fail closed unless `ownerSource` supports the required interface and returns valid data.
 
 ---
 
 # 12. Immutable Argument Encoding
 
-The canonical immutable layout is 226 bytes:
+The canonical immutable layout remains 226 bytes:
 
 | Offset | Size | Field |
 |---:|---:|---|
@@ -752,9 +798,7 @@ original calldata
 || uint16_be(226)
 ```
 
-The implementation MUST validate the immutable-argument suffix before reading offsets.
-
-The final proxy creation code, runtime code, suffix convention and bytecode hashes become normative release artifacts.
+The implementation MUST validate the immutable suffix before reading fields.
 
 ---
 
@@ -791,7 +835,7 @@ bytes32 salt = keccak256(
 );
 ```
 
-Canonical address:
+Canonical address follows EIP-1014:
 
 ```solidity
 address intentAddress = address(
@@ -810,11 +854,9 @@ address intentAddress = address(
 );
 ```
 
-`chainId` is excluded from address derivation.
+`chainId` is excluded.
 
-The same canonical factory, implementation, proxy bytecode and exact configuration SHOULD produce the same hexadecimal intent address across supported EVM chains.
-
-Balances, owner-resolver mappings and execution state remain chain-local.
+The same canonical deployments and exact configuration SHOULD produce the same hexadecimal intent address across supported EVM chains. State remains chain-local.
 
 ---
 
@@ -829,20 +871,9 @@ interface IGOTOwnerResolver is IERC165 {
 }
 ```
 
-The interface is generic and belongs to protocol core.
+Possible implementations include `GOTName`, ENS ownership, organization membership, payroll recipients, merchant-team ownership and delayed recovery.
 
-Possible implementations:
-
-- `GOTName`;
-- ENS ownership resolver;
-- organization membership resolver;
-- payroll recipient resolver;
-- merchant team resolver;
-- delayed recovery resolver.
-
-`GOTIntent` performs one-hop resolution only.
-
-A returned account is treated as final even when that account also implements `IGOTOwnerResolver`.
+Resolution is one hop. A returned account is final even when it implements the same interface.
 
 ---
 
@@ -858,196 +889,33 @@ function owner()
     returns (address effectiveOwner);
 ```
 
-Resolution algorithm:
+Algorithm:
 
-```text
-1. Read ownerSource and ownerKey from immutable arguments.
-2. If ownerKey is zero, return ownerSource directly.
-3. Require ownerSource to have code.
-4. Probe ERC-165 support for IGOTOwnerResolver with bounded gas.
-5. If unsupported, revert.
-6. Call resolveOwner(address(this), ownerKey) with bounded gas.
-7. If the call fails or returns malformed data, revert.
-8. If the result is zero, return zero as unresolved.
-9. Reject result equal to the intent address.
-10. Reject result equal to ownerSource.
-11. Return the resolved account.
-```
+1. Read `ownerSource` and `ownerKey`.
+2. Return `ownerSource` when `ownerKey == 0`.
+3. Require resolver code for nonzero key.
+4. Probe ERC-165 with bounded gas.
+5. Call `resolveOwner(address(this), ownerKey)` with bounded gas.
+6. Revert on failure or malformed return data.
+7. Return zero as unresolved.
+8. Reject the intent address and resolver contract itself as resolved owners.
+9. Return the resolved account.
 
-Conceptual implementation:
-
-```solidity
-function owner()
-    public
-    view
-    onlyProxy
-    returns (address effectiveOwner)
-{
-    address source = _getArgAddress(OWNER_SOURCE_OFFSET);
-    bytes32 key = _getArgBytes32(OWNER_KEY_OFFSET);
-
-    if (key == bytes32(0)) {
-        return source;
-    }
-
-    if (source.code.length == 0) {
-        revert OwnerResolverUnavailable();
-    }
-
-    if (!_supportsOwnerResolver(source)) {
-        revert InvalidOwnerResolver();
-    }
-
-    (bool ok, bytes memory data) = source.staticcall{
-        gas: OWNER_RESOLVER_GAS_LIMIT
-    }(
-        abi.encodeCall(
-            IGOTOwnerResolver.resolveOwner,
-            (address(this), key)
-        )
-    );
-
-    if (!ok || data.length != 32) {
-        revert OwnerResolutionFailed();
-    }
-
-    effectiveOwner = abi.decode(data, (address));
-
-    if (
-        effectiveOwner == address(this) ||
-        effectiveOwner == source
-    ) {
-        revert InvalidResolvedOwner();
-    }
-
-    // address(0) intentionally means unresolved.
-}
-```
-
-ERC-165 helper:
-
-```solidity
-function _supportsOwnerResolver(
-    address source
-) internal view returns (bool) {
-    (bool ok, bytes memory data) = source.staticcall{
-        gas: ERC165_GAS_LIMIT
-    }(
-        abi.encodeCall(
-            IERC165.supportsInterface,
-            (type(IGOTOwnerResolver).interfaceId)
-        )
-    );
-
-    if (!ok || data.length < 32) {
-        return false;
-    }
-
-    uint256 result;
-
-    assembly ("memory-safe") {
-        result := mload(add(data, 0x20))
-    }
-
-    return result == 1;
-}
-```
+Every state-changing owner-dependent operation MUST resolve exactly once and cache the result before token interactions.
 
 ---
 
 # 16. Unresolved Ownership
 
-When:
+When `owner() == address(0)`, the intent MAY exist, receive configured tokens, receive unsupported assets and become resolved later.
 
-```solidity
-owner() == address(0)
-```
+It MUST NOT settle, resolve, recover unsupported assets, transfer funds to the resolver contract or treat zero as permissionless ownership.
 
-the intent is unresolved.
-
-An unresolved intent MAY:
-
-- exist counterfactually;
-- receive configured tokens;
-- receive unsupported tokens;
-- receive native assets;
-- be indexed and displayed;
-- become resolved later.
-
-An unresolved intent MUST NOT:
-
-- settle configured tokens;
-- process through a resolver;
-- recover unsupported ERC20s;
-- recover native assets;
-- transfer funds to `ownerSource`;
-- treat zero as permissionless ownership.
-
-Owner-dependent operations MUST revert with:
-
-```solidity
-error OwnerUnresolved();
-```
-
-Funds remain at the deterministic intent address until the owner resolves.
+Owner-dependent calls MUST revert with `OwnerUnresolved()`.
 
 ---
 
-# 17. One Owner Read Per Operation
-
-Every state-changing owner-dependent operation MUST call `owner()` exactly once before token interactions and cache the result in memory.
-
-Conceptual owner settlement:
-
-```solidity
-function settle() external returns (...) {
-    address effectiveOwner = owner();
-
-    if (effectiveOwner == address(0)) {
-        revert OwnerUnresolved();
-    }
-
-    if (msg.sender != effectiveOwner) {
-        revert UnauthorizedOwner();
-    }
-
-    return _process(
-        msg.sender,
-        effectiveOwner
-    );
-}
-```
-
-Conceptual factory path:
-
-```solidity
-function executeFor(
-    address executor
-) external onlyFactory returns (...) {
-    address effectiveOwner = owner();
-
-    if (effectiveOwner == address(0)) {
-        revert OwnerUnresolved();
-    }
-
-    if (executor == effectiveOwner) {
-        _authorizeOwner(executor, effectiveOwner);
-    } else {
-        _authorizeResolver(executor);
-    }
-
-    return _process(
-        executor,
-        effectiveOwner
-    );
-}
-```
-
-`_process` MUST NOT resolve the owner again.
-
----
-
-# 18. GOTFactory Interface
+# 17. Factory Interface and Behavior
 
 ```solidity
 interface IGOTFactory {
@@ -1071,7 +939,17 @@ interface IGOTFactory {
 
     function previewAddress(
         IntentConfig calldata config
-    ) external view returns (address intentAddress);
+    ) external view returns (address);
+
+    function quoteOwnerAmount(
+        uint256 grossAmount,
+        uint16 feeBps
+    ) external pure returns (uint256);
+
+    function quoteGrossAmount(
+        uint256 recipientAmount,
+        uint16 feeBps
+    ) external pure returns (uint256);
 
     function deployAndExecute(
         IntentConfig calldata config
@@ -1086,28 +964,24 @@ interface IGOTFactory {
 }
 ```
 
-`GOTFactory` MUST:
+The factory MUST:
 
 - have zero mutable storage;
-- expose no administrator;
-- expose no pause;
-- expose no upgrade function;
+- expose no administrator, pause or upgrade;
 - validate configuration;
 - derive the canonical address;
-- deploy the canonical proxy only when code is absent;
+- deploy only when code is absent;
 - verify the actual deployment address;
-- emit `IntentDeployed` only once;
+- emit `IntentDeployed` once;
 - forward the actual external caller as executor;
-- atomically execute the first processing operation;
-- revert the deployment when first execution fails.
+- atomically execute the first processing call;
+- revert deployment when first execution fails.
 
-The factory MUST NOT compare `msg.sender` with raw `ownerSource` for owner authority.
-
-Owner authority is determined inside `GOTIntent` from the current effective owner.
+Owner authority is determined inside the intent from the effective owner, not by comparing the caller to raw `ownerSource`.
 
 ---
 
-# 19. GOTIntent Interface
+# 18. Intent Interface
 
 ```solidity
 interface IGOTIntent {
@@ -1143,54 +1017,28 @@ interface IGOTIntent {
         uint256 executionReward
     );
 
-    function owner()
-        external view returns (address);
+    function owner() external view returns (address);
+    function totalProcessed() external view returns (uint256);
 
-    function totalProcessed()
-        external view returns (uint256);
-
-    function intentId()
-        external view returns (bytes32);
-
-    function ownerSource()
-        external view returns (address);
-
-    function ownerKey()
-        external view returns (bytes32);
-
-    function token()
-        external view returns (address);
-
-    function partner()
-        external view returns (address);
-
-    function authorizedResolver()
-        external view returns (address);
-
-    function amount()
-        external view returns (uint128);
-
-    function initialDeadline()
-        external view returns (uint64);
-
-    function period()
-        external view returns (uint32);
-
-    function feeBps()
-        external view returns (uint16);
-
-    function metadataHash()
-        external view returns (bytes32);
-
-    function factory()
-        external view returns (address);
+    function intentId() external view returns (bytes32);
+    function ownerSource() external view returns (address);
+    function ownerKey() external view returns (bytes32);
+    function token() external view returns (address);
+    function partner() external view returns (address);
+    function authorizedResolver() external view returns (address);
+    function amount() external view returns (uint128);
+    function initialDeadline() external view returns (uint64);
+    function period() external view returns (uint32);
+    function feeBps() external view returns (uint16);
+    function metadataHash() external view returns (bytes32);
+    function factory() external view returns (address);
 
     function recoverERC20(
         address asset
-    ) external returns (uint256 recoveredAmount);
+    ) external returns (uint256);
 
     function recoverNative()
-        external returns (uint256 recoveredAmount);
+        external returns (uint256);
 }
 ```
 
@@ -1198,20 +1046,18 @@ No generic arbitrary-call function is permitted.
 
 ---
 
-# 20. Mutable Storage
+# 19. Mutable Storage
 
-Each deployed `GOTIntent` uses exactly one mutable storage slot:
+Each deployed intent uses exactly one mutable slot:
 
 ```solidity
 uint256 private packedState;
 ```
 
-Layout:
-
 | Bits | Meaning |
 |---|---|
 | `255` | execution lock |
-| `0–254` | cumulative `totalProcessed` |
+| `0–254` | cumulative gross `totalProcessed` |
 
 ```solidity
 uint256 internal constant LOCK_BIT =
@@ -1221,72 +1067,90 @@ uint256 internal constant TOTAL_MASK =
     LOCK_BIT - 1;
 ```
 
-Maximum cumulative gross processed value:
-
-```solidity
-type(uint255).max
-```
-
-No mutable owner, owner key, fee, token, resolver, partner, metadata, amount, deadline or period state is stored.
+No mutable owner, name, token, fee, partner, resolver, amount, period or metadata state is stored.
 
 ---
 
-# 21. Authorization
+# 20. Authorization
 
-## 21.1 Effective-owner settlement
+## 20.1 Owner settlement
 
-`settle()` MUST require:
+`settle()` requires a nonzero effective owner and `msg.sender == effectiveOwner`.
 
-```solidity
-address effectiveOwner = owner();
-effectiveOwner != address(0);
-msg.sender == effectiveOwner;
-```
+The owner can always settle independently of resolver policy.
 
-The effective owner can always settle independently of resolver policy.
+## 20.2 Open resolver
 
-## 21.2 Open resolver
+When `authorizedResolver == address(0)`, any valid nonzero account other than the intent may call `resolve()`.
 
-When:
+## 20.3 Restricted resolver
 
-```solidity
-authorizedResolver() == address(0)
-```
+When nonzero, only the configured resolver may call the resolver path.
 
-any valid nonzero account other than the intent itself may call `resolve()`.
+## 20.4 Factory execution
 
-## 21.3 Restricted resolver
-
-When:
-
-```solidity
-authorizedResolver() != address(0)
-```
-
-`resolve()` MUST require:
-
-```solidity
-msg.sender == authorizedResolver();
-```
-
-## 21.4 Factory execution
-
-`executeFor(executor)` MUST:
-
-- be callable only by the immutable factory;
-- reject zero executor;
-- reject the intent itself as executor;
-- resolve and cache the effective owner;
-- authorize the owner or resolver path;
-- pay execution reward to the actual executor.
+`executeFor(executor)` is callable only by the immutable factory. It rejects zero and self executors, resolves the owner once, authorizes owner or resolver execution and pays the execution allocation to the actual executor.
 
 ---
 
-# 22. Fee Model
+# 21. Resolver Liveness and Competition
 
-For prior cumulative gross value `T0` and newly observed configured-token balance `B`:
+A restricted resolver is a deliberate liveness dependency. If it is unavailable, the effective owner remains able to settle.
+
+Applications SHOULD use stable resolver contracts, Safe-controlled resolver accounts, multiple operators behind one address or open execution where liveness is more important than exclusivity.
+
+Open resolver transactions compete through normal transaction ordering. The first successful executor processes the complete available balance. Later competing transactions normally observe zero balance.
+
+A zero-fee intent provides no token-denominated execution allocation. No independent executor is required to execute an economically unprofitable call.
+
+Applications requiring guaranteed latency for zero-fee intents SHOULD use:
+
+- payer-executed atomic funding and settlement;
+- owner execution;
+- sponsored account-abstraction calls;
+- an application-operated resolver;
+- bundled or batched execution;
+- subscription revenue or another offchain business model to fund gas.
+
+---
+
+# 22. Fee Policy
+
+`feeBps` is optional protocol configuration.
 
 ```text
+feeBps = 0
+    ownerAmount = complete processed balance
+    treasuryFee = 0
+    partnerReward = 0
+    executionReward = 0
+
+feeBps > 0
+    complete processed balance is divided by cumulative fee rules
+```
+
+The protocol does not require a treasury contribution or partner reward when the fee is zero.
+
+The canonical positive-fee allocation order is:
+
+1. allocate execution share from total fee;
+2. calculate non-execution remainder;
+3. allocate partner share from non-execution remainder when a partner exists;
+4. send the residual to the treasury.
+
+The partner address and fee basis points are immutable per intent.
+
+`got.cx` MAY choose zero fees and fund its hosted execution from subscriptions. Another integrator MAY choose a positive fee and receive its partner allocation onchain.
+
+---
+
+# 23. Cumulative Fee Accounting
+
+Let:
+
+```text
+T0 = previous cumulative gross totalProcessed
+B  = complete configured-token balance observed
 T1 = T0 + B
 ```
 
@@ -1334,103 +1198,126 @@ totalFeeDelta   = F(T1) - F(T0)
 ownerAmount     = B - totalFeeDelta
 ```
 
-Required invariant:
+For `feeBps == 0`, every cumulative fee function returns zero.
+
+Per-execution invariant:
+
+```text
+B ==
+    ownerAmount +
+    treasuryFee +
+    partnerReward +
+    executionReward
+```
+
+Split invariance:
 
 ```text
 processing 10 transfers of 10 units
-    produces the same final cumulative allocations as
+    produces the same final cumulative allocation as
 processing 1 transfer of 100 units
 ```
 
-The fee result MUST NOT depend on:
-
-- payment partitioning;
-- execution frequency;
-- deployment timing;
-- resolver identity;
-- effective owner changes between operations.
+The result MUST NOT depend on funding partition, execution frequency, deployment timing, executor identity or effective-owner migration.
 
 ---
 
-# 23. Processing Algorithm
+# 24. Exact Recipient Quotes
+
+The core fee is mathematically charged on gross processed value. Applications MAY present it as an amount added on top of a recipient target.
+
+For desired recipient proceeds `N` and `feeBps = f`, `quoteGrossAmount(N, f)` MUST return the minimum gross amount `G` satisfying:
+
+```text
+G - floor(G × f / 10,000) == N
+```
+
+For `f == 0`:
+
+```text
+G = N
+```
+
+A safe implementation may start from:
+
+```text
+ceil(N × 10,000 / (10,000 - f))
+```
+
+and adjust by at most a small number of token base units until the equality holds.
+
+Example:
+
+```text
+Recipient target: 100.00 USDC
+Positive fee:      0.30%
+Gross payer quote: approximately 100.301 USDC
+Owner proceeds:    exactly 100.00 USDC
+```
+
+The interface MUST distinguish:
+
+```text
+invoice amount
+service / execution fee
+total to transfer
+```
+
+The protocol continues to process the complete balance. Underpayment produces partial owner proceeds. Overpayment produces additional owner proceeds and fee allocation; no configured-token value is stranded merely because it differs from the quoted amount.
+
+For recurring transfers that require an exact owner amount every period, the reference got.cx profile SHOULD use `feeBps == 0`. A third-party integration using positive fees MUST account for cumulative rounding in its recurring-transfer design.
+
+---
+
+# 25. Processing Algorithm
 
 Required order:
 
-```text
 1. Resolve effective owner exactly once.
-2. Revert when effective owner is zero.
+2. Revert when unresolved.
 3. Validate owner or resolver authority.
 4. Read packed state.
-5. Revert when execution lock is active.
-6. Set execution lock.
-7. Read complete configured-token balance.
-8. Revert when balance is zero.
+5. Revert when lock is active.
+6. Set lock.
+7. Read the complete configured-token balance.
+8. Revert when zero.
 9. Check cumulative overflow.
-10. Calculate cumulative allocation deltas.
+10. Calculate cumulative fee deltas.
 11. Store new cumulative total with lock active.
-12. Transfer treasury fee.
+12. Transfer treasury fee when nonzero.
 13. Transfer partner reward when nonzero.
-14. Transfer execution reward to executor.
+14. Transfer execution reward when nonzero.
 15. Transfer owner amount to cached effective owner.
 16. Verify final configured-token balance is zero.
-17. Clear execution lock.
-18. Emit PaymentProcessed.
+17. Clear lock.
+18. Emit `TransferProcessed`.
 19. Return exact values.
-```
 
-When the executor equals the effective owner, owner amount and execution reward MAY be aggregated into one token transfer while preserving separate accounting and event values.
+When the executor equals the owner, owner proceeds and execution reward MAY be combined into one token transfer while remaining separate in accounting and events.
 
-Any failure MUST revert the complete operation.
+Any failure reverts the complete operation.
 
 ---
 
-# 24. Unsupported Asset Recovery
+# 26. Recovery
 
-## 24.1 ERC20 recovery
+## 26.1 Unsupported ERC20
 
-```solidity
-function recoverERC20(
-    address asset
-) external returns (uint256 recoveredAmount);
-```
+Only the cached effective owner may recover an ERC20 other than the configured token.
 
-Required behavior:
+The configured token MUST NOT be recoverable outside canonical processing.
 
-```solidity
-address effectiveOwner = owner();
+## 26.2 Native asset
 
-if (effectiveOwner == address(0)) {
-    revert OwnerUnresolved();
-}
+Only the cached effective owner may recover the complete native balance.
 
-if (msg.sender != effectiveOwner) {
-    revert UnauthorizedOwner();
-}
-
-if (asset == address(0)) {
-    revert InvalidAsset();
-}
-
-if (asset == token()) {
-    revert ConfiguredTokenNotRecoverable();
-}
-```
-
-The complete unsupported-token balance is transferred to the cached effective owner.
-
-## 24.2 Native recovery
-
-The complete native balance is transferred to the cached effective owner.
-
-## 24.3 Unresolved intents
+## 26.3 Unresolved intent
 
 Recovery is unavailable while owner resolution returns zero.
 
 ---
 
-# 25. Core Events
-
-Factory event:
+# 27. Core Events
 
 ```solidity
 event IntentDeployed(
@@ -1438,12 +1325,8 @@ event IntentDeployed(
     address indexed intentAddress,
     address indexed executor
 );
-```
 
-Processing event:
-
-```solidity
-event PaymentProcessed(
+event TransferProcessed(
     address indexed executor,
     address indexed effectiveOwner,
     address indexed partner,
@@ -1454,11 +1337,7 @@ event PaymentProcessed(
     uint256 executionReward,
     uint256 totalProcessed
 );
-```
 
-Recovery events:
-
-```solidity
 event ERC20Recovered(
     address indexed asset,
     address indexed effectiveOwner,
@@ -1471,11 +1350,11 @@ event NativeRecovered(
 );
 ```
 
-Indexers MUST treat the emitted effective owner as authoritative for that processing operation.
+Indexers MUST treat the emitted effective owner as authoritative for that operation.
 
 ---
 
-# 26. Core Errors
+# 28. Core Errors
 
 ```solidity
 error DirectImplementationCall();
@@ -1502,283 +1381,289 @@ error NativeTransferFailed();
 
 ---
 
-# 27. Core Security Invariants
+# 29. Core Security Invariants
 
 **INV-1 — Deterministic identity**  
-The same canonical factory, implementation, proxy bytecode, protocol version and exact configuration produce the same address.
+Exact canonical inputs produce the same address.
 
 **INV-2 — Counterfactual safety**  
-A third party cannot deploy different code or different immutable arguments at the predicted canonical address.
+Different code or immutable arguments cannot occupy the predicted canonical address through the canonical factory.
 
-**INV-3 — Standalone direct ownership**  
-A direct intent with `ownerKey == 0` does not depend on `GOTName` or any external owner resolver.
+**INV-3 — Standalone ownership**  
+A direct intent has no GOTName dependency.
 
 **INV-4 — Explicit resolver mode**  
-Only a nonzero `ownerKey` activates owner-resolution logic.
+Only nonzero `ownerKey` activates resolver behavior.
 
-**INV-5 — No mutable ownership state**  
-`GOTIntent` stores no owner override, name mapping or claim state.
+**INV-5 — No mutable configuration**  
+Configuration never changes after address derivation.
 
-**INV-6 — Resolver correctness**  
-Resolver mode returns only the result of the configured owner resolver.
+**INV-6 — Unresolved safety**  
+Zero owner cannot receive settlement or recovery.
 
-**INV-7 — Unresolved safety**  
-A zero resolved owner cannot settle funds to zero or to `ownerSource`.
+**INV-7 — Fail closed**  
+Resolver failure reverts owner-dependent operations.
 
-**INV-8 — Fail closed**  
-Unavailable, unsupported, malformed or reverting owner resolution reverts owner-dependent operations.
+**INV-8 — One owner read**  
+Each state-changing operation uses one cached owner.
 
-**INV-9 — One owner read**  
-Every state-changing owner-dependent operation uses one cached effective owner.
+**INV-9 — Owner sovereignty**  
+The current owner can always settle.
 
-**INV-10 — Owner sovereignty**  
-The current effective owner can always settle independently of resolver policy.
+**INV-10 — Resolver isolation**  
+Resolver cannot alter owner or configuration.
 
-**INV-11 — Resolver isolation**  
-A resolver cannot modify configuration, effective ownership or owner allocation.
+**INV-11 — Zero-fee correctness**  
+When `feeBps == 0`, all fee outputs are zero and owner receives the complete balance.
 
-**INV-12 — Fee invariance**  
-Final cumulative allocations do not depend on payment partitioning.
+**INV-12 — Positive-fee invariance**  
+Cumulative allocations are partition independent.
 
-**INV-13 — Configured-token protection**  
-The configured token cannot be recovered outside canonical processing.
+**INV-13 — Partner transparency**  
+A partner reward can only go to the immutable partner.
 
-**INV-14 — Complete-balance processing**  
-A successful operation processes the complete observed configured-token balance.
+**INV-14 — Configured-token protection**  
+Configured token cannot bypass processing.
 
-**INV-15 — Atomic deployment**  
-Failed first processing reverts proxy deployment.
+**INV-15 — Complete-balance processing**  
+A successful operation clears the configured-token balance.
 
-**INV-16 — Reentrancy protection**  
-Nested processing cannot modify accounting.
+**INV-16 — Atomic deployment**  
+Failed first processing reverts deployment.
 
-**INV-17 — Dynamic-owner events**  
-Every processing event records the exact cached owner used for transfer.
+**INV-17 — Reentrancy safety**  
+Nested processing cannot corrupt accounting.
+
+**INV-18 — Dynamic-owner event correctness**  
+The event records the exact cached owner used.
 
 ---
 
-# 28. Required Core Tests
+# 30. Required Core Tests
 
 Tests MUST include:
 
-- direct EOA owner;
-- direct Safe owner;
-- undeployed counterfactual smart account;
-- deployed smart account;
-- direct owner contract that also exposes unrelated interfaces;
-- direct owner with zero owner key;
-- resolver mode with a valid owner resolver;
-- resolver mode with undeployed resolver;
-- resolver mode with unsupported ERC-165 response;
-- resolver returning a smart account;
-- resolver returning zero;
-- resolver reverting;
-- resolver returning malformed data;
-- resolver returning the intent itself;
-- resolver returning itself;
-- resolver attempting gas exhaustion;
-- owner settlement;
-- open resolver execution;
-- restricted resolver execution;
-- owner settlement despite restricted resolver;
-- resolver execution while unresolved reverting;
-- resolver execution after resolution succeeding;
-- owner mapping changed between transactions;
-- cached owner remaining stable during one operation;
-- payment before deployment;
-- payment after deployment;
-- partial payment;
-- overpayment;
-- repeated payment;
-- late payment;
-- cumulative rounding boundaries;
-- split invariance;
-- owner equals executor aggregation;
-- resolver competition;
-- recovery while unresolved;
-- recovery after resolution;
+- direct EOA, Safe and smart-account owners;
+- undeployed counterfactual smart-account address;
+- resolver owner before and after claim;
+- resolver returning zero, malformed data, self and resolver address;
+- bounded-gas failure;
+- zero-fee direct, open-resolver and restricted-resolver execution;
+- positive-fee execution with and without partner;
+- fee values at 0, 1, maximum and boundary rounding values;
+- split invariance under randomized funding partitions;
+- exact recipient quote properties;
+- partial, repeated, late and excess funding;
+- competing resolvers;
+- owner and resolver transaction competition;
+- first deployment and execution rollback;
+- unsupported token and native recovery;
 - configured-token recovery rejection;
-- hostile ERC20 behavior;
-- reentrancy;
-- one-slot storage invariant;
-- deterministic multichain vectors.
+- fee-on-transfer, rebasing, malicious and reentrant token behavior;
+- totalProcessed overflow boundary;
+- proxy suffix validation;
+- deterministic address vectors across supported chains.
 
----
-
-# Part II — Protocol Periphery
-
-# 29. GOTName Definition
-
-`GOTName` is the optional reusable name service for GOT.
-
-It maps an opaque `bytes32 nameKey` to an account:
+Fuzz properties MUST include:
 
 ```text
-nameKey → account
+owner + treasury + partner + executor == gross
+zero fee implies owner == gross
+all fee outputs are monotonic cumulatively
+partitioning does not change cumulative allocation
+quoteGrossAmount produces exact target owner proceeds for a fresh intent
 ```
 
-It provides:
-
-- first claim;
-- owner resolution;
-- account migration;
-- one name resolving multiple intents;
-- claim before intent deployment;
-- permanent protection against verifier overwrite after claim.
-
-`GOTName` does not hold transfer funds and does not execute settlement.
-
-`GOTIntent` remains fully functional without `GOTName`.
-
 ---
 
-# 30. GOTName Model
+# Part II — GOTName
 
-Named intent configuration:
+# 31. GOTName Overview
+
+`GOTName` is optional reusable ownership resolution.
+
+It maps:
 
 ```text
-ownerSource = GOTName contract
+bytes32 nameKey -> account
+```
+
+An intent configured with:
+
+```text
+ownerSource = GOTName
 ownerKey    = nameKey
 ```
 
-Before claim:
+resolves to the current account stored for that key.
 
-```text
-accountOf(nameKey) = address(0)
-owner()             = address(0)
-```
+The contract does not store raw names or provider identifiers.
 
-After claim:
+Required properties:
 
-```text
-accountOf(nameKey) = recipient account
-owner()             = recipient account
-```
-
-All intents sharing the same `nameKey` resolve together:
-
-```text
-Intent A ─┐
-Intent B ─┤
-Intent C ─┼── nameKey ── GOTName ── account
-Intent D ─┤
-Intent E ─┘
-```
-
-Claiming the key once resolves every existing and future intent using it.
+- immutable verifier;
+- one-time first claim;
+- support for EOA and ERC-1271 verifier signatures;
+- claim before intent deployment;
+- account migration by current owner;
+- no verifier overwrite;
+- no pause;
+- no upgradeability;
+- permanent ERC-165 support.
 
 ---
 
-# 31. GOTName Key Model
+# 32. Name Keys and Namespaces
 
-The onchain contract MUST receive only a `bytes32 nameKey`.
-
-It MUST NOT store or emit:
-
-- raw email;
-- raw phone number;
-- raw social handle;
-- OAuth token;
-- verification code;
-- provider access token;
-- personal profile data.
-
-Canonical logical key:
+Canonical public derivation:
 
 ```solidity
 bytes32 nameKey = keccak256(
     abi.encode(
-        keccak256("GOT_NAME_V1"),
+        keccak256("GOT_NAME_KEY_V1"),
         namespace,
-        identifier
+        normalizedIdentifier
     )
 );
 ```
 
-Where:
+Recommended namespace identifiers:
 
 ```text
-namespace
-    identifies the verification and canonicalization scheme
-
-identifier
-    is a namespace-defined bytes32 value
+got
+x
+telegram
+email
+phone
+ens
+github
+domain
+custom:<application-id>
 ```
 
-Recommended namespace constants:
+Normalization rules MUST be versioned, deterministic and published.
 
-```solidity
-bytes32 constant NAMESPACE_GOT =
-    keccak256("GOT");
-
-bytes32 constant NAMESPACE_EMAIL =
-    keccak256("EMAIL");
-
-bytes32 constant NAMESPACE_PHONE =
-    keccak256("PHONE_E164");
-
-bytes32 constant NAMESPACE_X =
-    keccak256("X_USER_ID");
-
-bytes32 constant NAMESPACE_TELEGRAM =
-    keccak256("TELEGRAM_USER_ID");
-
-bytes32 constant NAMESPACE_ENS =
-    keccak256("ENS");
-```
-
-## 31.1 Public GOT names
-
-A public native GOT name MAY use:
-
-```solidity
-identifier = keccak256(
-    bytes(normalizedPublicName)
-);
-```
-
-The normalization algorithm MUST be versioned and published.
-
-## 31.2 Sensitive external identifiers
-
-Email addresses and phone numbers MUST NOT be represented only by an unsalted public hash because likely values can be enumerated.
-
-For sensitive identifiers, infrastructure SHOULD issue an opaque identifier:
+Examples:
 
 ```text
-canonical private identifier
-    → protected resolution record
-    → opaque random or keyed identifier
-    → onchain nameKey
+got:@alice
+x:@vitalik
+telegram:@alice
+email:alice@example.com
+ens:alice.eth
 ```
 
-## 31.3 Reassigned external identifiers
-
-Phone numbers, emails and social accounts may change control.
-
-A claimed name MUST NOT automatically move when an external identifier is later reassigned.
-
-Infrastructure SHOULD use a lifecycle epoch or issue a new opaque identifier:
-
-```text
-same external string, lifecycle 1 → nameKey A
-same external string, lifecycle 2 → nameKey B
-```
-
-Old intents remain controlled by the original claimed account. New transfers use the current lifecycle key.
+Applications MUST NOT silently change normalization rules for an existing namespace version.
 
 ---
 
-# 32. GOTName Interface
+# 33. Public and Private Identifier Modes
+
+## 33.1 Public deterministic mode
+
+Appropriate for public handles and explicitly public GOT names.
+
+The identifier is normalized and deterministically hashed into `nameKey`.
+
+Because low-entropy identifiers may be dictionary attacked, this mode does not provide secrecy.
+
+## 33.2 Private opaque mode
+
+Appropriate when the route or identifier should not be publicly enumerable.
+
+The application generates a random opaque `identifierKey` and uses it as the onchain `nameKey`. The private identifier and verification evidence remain offchain.
+
+A private link SHOULD place the opaque key in a URL fragment so the browser receives it without sending it in the initial HTTP request:
+
+```text
+https://got.cx/#k=<base64url-encoded-key>
+```
+
+The fragment is not a secret from a person who already has the link, but it reduces passive server and referrer exposure.
+
+Applications MAY also use opaque path identifiers when server-side lookup is necessary.
+
+---
+
+# 34. Claim Verifier Security
+
+`GOTName` MUST use an immutable verifier address.
+
+The production verifier SHOULD be a Safe with a minimum 2-of-3 threshold.
+
+Recommended operational separation:
+
+1. verifier operator A validates ownership evidence and records an immutable audit record;
+2. verifier operator B independently validates the evidence and proposed account binding;
+3. the threshold Safe signature authorizes the EIP-712 claim;
+4. no single backend EOA can authorize a claim.
+
+Verification evidence MAY include:
+
+- email magic-link completion;
+- X OAuth or signed challenge;
+- Telegram validated login;
+- domain DNS or HTTP proof;
+- ENS ownership;
+- account-control signature from the destination account.
+
+The verifier MUST NOT be able to overwrite an already claimed key.
+
+---
+
+# 35. Claim Authorization
+
+```solidity
+struct Claim {
+    bytes32 nameKey;
+    address account;
+    uint48 deadline;
+}
+```
+
+EIP-712 type:
+
+```text
+Claim(bytes32 nameKey,address account,uint48 deadline)
+```
+
+Claim requirements:
+
+- nonzero `nameKey`;
+- nonzero account;
+- account not equal to `GOTName`;
+- unexpired deadline;
+- key not previously claimed;
+- valid immutable-verifier signature;
+- signature validation through `SignatureChecker` to support EOA and ERC-1271 verifiers.
+
+Claim submission MAY be sponsored. The submitting account does not need to equal the destination account because the verifier signature binds the account.
+
+---
+
+# 36. Name Transfer
+
+After claim, only the current mapped account may transfer the key to another valid account.
+
+```solidity
+function transfer(
+    bytes32 nameKey,
+    address newAccount
+) external;
+```
+
+The verifier cannot force migration.
+
+This supports user-controlled migration from an EOA to Base Account, Safe or another smart account.
+
+Applications SHOULD warn users that external identity ownership changes do not automatically change the onchain mapping.
+
+---
+
+# 37. GOTName Interface, Events and Errors
 
 ```solidity
 interface IGOTName is IGOTOwnerResolver {
-    struct Claim {
-        bytes32 nameKey;
-        address account;
-        uint48 deadline;
-    }
-
     function accountOf(
         bytes32 nameKey
     ) external view returns (address);
@@ -1794,178 +1679,6 @@ interface IGOTName is IGOTOwnerResolver {
     ) external;
 }
 ```
-
----
-
-# 33. GOTName Storage and Immutability
-
-Required storage:
-
-```solidity
-mapping(bytes32 nameKey => address account)
-    private _accountOf;
-```
-
-Verifier:
-
-```solidity
-address public immutable CLAIM_VERIFIER;
-```
-
-The recommended verifier is an immutable Safe address.
-
-The Safe may rotate its own signers without changing `GOTName`.
-
-`GOTName` MUST:
-
-- be non-upgradeable;
-- expose no pause;
-- expose no administrator mapping setter;
-- expose no function that overwrites a claimed name;
-- support EOA and ERC-1271 verifier signatures;
-- permanently support `IGOTOwnerResolver` through ERC-165.
-
----
-
-# 34. GOTName Claim
-
-Claim structure:
-
-```solidity
-struct Claim {
-    bytes32 nameKey;
-    address account;
-    uint48 deadline;
-}
-```
-
-EIP-712 type hash:
-
-```solidity
-bytes32 constant CLAIM_TYPEHASH = keccak256(
-    "Claim(bytes32 nameKey,address account,uint48 deadline)"
-);
-```
-
-Domain:
-
-```text
-name:               GOTName
-version:            1
-chainId:            current chain
-verifyingContract:  GOTName contract
-```
-
-The verifier signature MUST bind:
-
-- exact name key;
-- exact destination account;
-- deadline;
-- chain;
-- contract.
-
-Required checks:
-
-```solidity
-claimData.nameKey != bytes32(0);
-claimData.account != address(0);
-claimData.account != address(this);
-block.timestamp <= claimData.deadline;
-_accountOf[claimData.nameKey] == address(0);
-valid verifier signature;
-```
-
-Behavior:
-
-```solidity
-_accountOf[claimData.nameKey] =
-    claimData.account;
-```
-
-Anyone MAY submit a valid signed claim because the exact account is signature-bound.
-
-The claim MAY occur before any intent using the key is deployed.
-
----
-
-# 35. GOTName Resolution
-
-```solidity
-function resolveOwner(
-    address,
-    bytes32 ownerKey
-) external view returns (address) {
-    return _accountOf[ownerKey];
-}
-```
-
-The initial implementation may ignore the intent argument.
-
-Before claim, resolution returns zero.
-
-After claim, resolution returns the current mapped account.
-
----
-
-# 36. GOTName Transfer
-
-```solidity
-function transfer(
-    bytes32 nameKey,
-    address newAccount
-) external {
-    address current = _accountOf[nameKey];
-
-    if (current == address(0)) {
-        revert NameNotClaimed();
-    }
-
-    if (msg.sender != current) {
-        revert Unauthorized();
-    }
-
-    if (
-        newAccount == address(0) ||
-        newAccount == address(this)
-    ) {
-        revert InvalidAccount();
-    }
-
-    _accountOf[nameKey] = newAccount;
-
-    emit NameTransferred(
-        nameKey,
-        current,
-        newAccount
-    );
-}
-```
-
-Ownership boundary:
-
-```text
-Before claim:
-    the verifier authorizes the first account
-
-After claim:
-    only the current mapped account may transfer the name
-```
-
-The verifier MUST NOT be able to overwrite a nonzero mapping.
-
-A transfer changes the effective owner for:
-
-- unsettled balances in existing intents;
-- future payments to existing intents;
-- future intents using the same key.
-
-Already settled transfers remain unchanged.
-
-The interface MUST warn users before a name transfer.
-
----
-
-# 37. GOTName Events and Errors
 
 Events:
 
@@ -1987,130 +1700,109 @@ Errors:
 ```solidity
 error InvalidNameKey();
 error InvalidAccount();
+error ClaimExpired();
 error AlreadyClaimed();
 error NameNotClaimed();
-error ClaimExpired();
 error InvalidVerifierSignature();
 error Unauthorized();
 ```
 
 ---
 
-# 38. GOTName Claim Infrastructure
+# 38. GOTName Invariants and Tests
 
-Before signing a claim, infrastructure MUST verify:
+Invariants:
 
-1. control of the external name or identifier;
-2. control of the destination account;
-3. exact key derivation;
-4. current lifecycle or epoch;
-5. claim freshness;
-6. absence of an existing onchain claim;
-7. rate-limit and abuse policy.
+- a key is unclaimed or maps to exactly one current account;
+- first claim is authorized by the immutable verifier;
+- verifier cannot overwrite a claim;
+- only current account can transfer;
+- `resolveOwner` equals `accountOf`;
+- raw identifiers are absent from contract storage;
+- ERC-165 support cannot be disabled.
 
-Account proof:
-
-```text
-1. Generate a single-use backend nonce.
-2. User connects a Base Account or another supported account.
-3. User signs typed data or SIWE-equivalent data.
-4. Backend verifies EOA, ERC-1271 or counterfactual account signature.
-5. Backend consumes the nonce.
-```
-
-Namespace verification examples:
-
-```text
-GOT public name
-    account signature and name availability
-
-Email
-    magic link or verified code
-
-Phone
-    OTP against canonical E.164 number
-
-X
-    OAuth authenticated stable user ID
-
-Telegram
-    validated login, Mini App data or bot identity
-
-ENS
-    current ENS ownership or authorized resolver proof
-```
-
-The signing service MUST:
-
-- reconstruct the exact name key;
-- use a short claim deadline;
-- never expose signing keys to clients;
-- log an immutable audit record;
-- reject replayed backend nonces;
-- enforce rate limits;
-- support emergency signer rotation through the verifier Safe;
-- never gain power to overwrite claimed keys.
+Tests MUST cover EOA and Safe verifier signatures, threshold-signature fixtures, expired claims, replay, chain/domain separation, claim before intent deployment, claim after funding, transfer, invalid destinations and resolver integration.
 
 ---
 
-# 39. GOTSubscriptionCollector
+# Part III — GOTSubscription
 
-`GOTSubscriptionCollector` is optional Base-specific periphery for exact recurring stablecoin charges.
+# 39. GOTSubscription Overview
+
+`GOTSubscription` is optional Base-oriented periphery for recurring stablecoin transfers.
 
 It combines:
 
 ```text
 Base Spend Permission
-    customer authorization
+    subscriber authorization and periodic allowance
 
-GOTSubscriptionCollector
-    exact atomic charge routing
+GOTSubscription
+    immutable validation and atomic charge execution
 
-GOTIntent
+deterministic intent address
     isolated incoming accounting and settlement
 ```
 
-The collector is the authorized spender.
+`GOTSubscription` is the authorized spender. It receives the exact permitted gross amount, forwards it to the predicted intent address and atomically calls the factory.
 
-It receives the exact charge from the customer, forwards it to the deterministic subscription intent and atomically executes settlement.
+The initial deployment MUST be immutable, minimal, non-upgradeable and independently audited.
 
 ---
 
-# 40. Exact Periodic Permission
+# 40. Spend Permission Model
 
-For a monthly subscription of 29 USDC:
+A recurring transfer uses a permission containing at least:
+
+```text
+account
+spender
+token
+allowance
+period
+start
+end
+salt
+extraData
+```
+
+For a 29 USDC monthly transfer with no protocol fee:
 
 ```text
 token      = USDC
-spender    = GOTSubscriptionCollector
+spender    = GOTSubscription
 allowance  = 29 USDC
-period     = one month
+period     = billing period
 start      = subscription start
 end        = optional end
 ```
 
-Required v0.1 policy:
+Required v0.2 reference policy:
 
 ```text
-permission allowance == exact configured recurring amount
-permission period    == intent period
-permission token     == intent token
-permission spender   == collector
+permission.spender   == GOTSubscription
+permission.token     == config.token
+permission.allowance == config.amount
+permission.period    == config.period
 ```
 
 Consequences:
 
-- no more than the exact amount can be charged in one period;
-- a second exact charge in the same period fails;
-- the customer may revoke the permission;
-- unused allowance does not roll over;
-- missed periods become application-level past-due state.
+- no more than the allowance can be transferred in one period;
+- a second full charge in the same period fails;
+- the account owner may revoke;
+- unused allowance does not roll over as protocol debt;
+- missed periods are application-level overdue state.
+
+The got.cx product SHOULD use `feeBps == 0` for exact recurring merchant proceeds and for its own onchain SaaS subscriptions.
+
+Third-party applications MAY use positive fees, but the permission allowance is the gross charged amount and owner proceeds follow cumulative fee rules.
 
 ---
 
 # 41. Subscription Binding
 
-The permission `extraData` SHOULD bind the exact deterministic intent:
+`extraData` SHOULD bind the exact intent:
 
 ```solidity
 struct SubscriptionBinding {
@@ -2124,7 +1816,7 @@ struct SubscriptionBinding {
 Canonical version:
 
 ```solidity
-keccak256("GOT_SUBSCRIPTION_BINDING_V1")
+keccak256("GOT_SUBSCRIPTION_BINDING_V2")
 ```
 
 Required relationships:
@@ -2132,7 +1824,6 @@ Required relationships:
 ```solidity
 permission.spender == address(this);
 permission.token == config.token;
-config.token == USDC;
 config.period > 0;
 permission.period == uint48(config.period);
 permission.allowance == uint160(config.amount);
@@ -2140,24 +1831,24 @@ config.initialDeadline <= type(uint48).max;
 permission.start == uint48(config.initialDeadline);
 config.authorizedResolver == address(this);
 binding.factory == GOT_FACTORY;
-binding.configHash == factory.configHash(config);
-binding.intent == factory.previewAddress(config);
+binding.configHash == GOT_FACTORY.configHash(config);
+binding.intent == GOT_FACTORY.previewAddress(config);
 ```
 
-`config.amount` MUST fit in `uint160`.
+The binding MUST prevent arbitrary destination or configuration substitution.
 
 ---
 
-# 42. Subscription Charge
+# 42. Subscription Execution
 
-Conceptual interface:
+Conceptual function:
 
 ```solidity
-function charge(
+function execute(
     SpendPermission calldata permission,
     bytes calldata approvalSignature,
     IGOTFactory.IntentConfig calldata config
-) external returns (
+) external nonReentrant returns (
     address intent,
     uint256 processedAmount,
     uint256 ownerAmount,
@@ -2169,1465 +1860,745 @@ function charge(
 
 Required algorithm:
 
-```text
-1. Validate permission and exact intent binding.
-2. Predict the canonical intent address.
-3. Approve the permission by signature when necessary.
-4. Snapshot collector token balance.
-5. Spend exactly config.amount.
+1. Validate permission and exact binding.
+2. Predict the canonical intent.
+3. Register approval by signature when not already approved.
+4. Snapshot token balance.
+5. Spend exactly `config.amount`.
 6. Verify exact balance increase.
-7. Transfer exact principal to the predicted intent.
-8. Call GOTFactory.deployAndExecute(config).
-9. Receive execution reward at the collector.
-10. Forward exact execution reward to msg.sender.
+7. Transfer exact gross amount to the intent.
+8. Call `deployAndExecute`.
+9. Receive any execution reward at `GOTSubscription`.
+10. Forward the exact execution reward to `msg.sender`.
 11. Verify no unexpected principal remains.
-12. Emit SubscriptionCharged.
-```
+12. Emit the subscription event.
 
-The complete charge MUST revert when any step fails.
-
-If a named merchant remains unclaimed:
-
-```text
-GOTIntent.owner() = 0
-GOTIntent execution reverts
-customer spend reverts atomically
-customer is not charged
-```
-
-The collector MUST:
-
-- be immutable;
-- be non-upgradeable;
-- use a reentrancy guard;
-- expose no arbitrary destination;
-- expose no variable amount in v0.1;
-- validate exact balance deltas;
-- forward the exact keeper reward.
+If the owner is unresolved, the entire transaction reverts, including the account spend.
 
 ---
 
-# 43. Subscription Events
+# 43. Subscription Cancellation and Failure
+
+The account owner can revoke the Spend Permission through the permission manager.
+
+The spender MAY also revoke where supported.
+
+Application states such as paused, canceled, overdue and trial-ended remain offchain interpretations unless represented by permission validity or revocation.
+
+No rollover is performed by v0.2. Missed periods require a new invoice, a separate catch-up permission or explicit product policy.
+
+Keeper front-running changes only which keeper receives an execution allocation. It cannot change amount, token, recipient, period, partner or fee.
+
+---
+
+# 44. GOTSubscription Events, Invariants and Tests
+
+Event:
 
 ```solidity
-event SubscriptionCharged(
-    bytes32 indexed subscriptionId,
-    address indexed payer,
+event SubscriptionTransferProcessed(
+    bytes32 indexed intentId,
+    address indexed subscriber,
     address indexed intent,
-    address keeper,
-    uint256 grossAmount,
+    address executor,
+    uint256 processedAmount,
     uint256 ownerAmount,
+    uint256 treasuryFee,
+    uint256 partnerReward,
     uint256 executionReward
 );
 ```
 
-Optional cancellation helpers MAY emit:
+Invariants:
 
-```solidity
-event SubscriptionCancelled(
-    bytes32 indexed subscriptionId,
-    address indexed account
-);
-```
+- exact permission binding;
+- no arbitrary destination;
+- no variable charge amount beyond permission;
+- account spend and settlement are atomic;
+- unresolved owner rolls back the charge;
+- execution reward is forwarded exactly;
+- no residual principal remains;
+- cancellation prevents future charges.
 
-The customer ultimately cancels by revoking the Spend Permission through their account.
+Tests MUST cover approval-by-signature, ERC-6492 where supported, existing approval, period boundaries, revocation, malformed `extraData`, malicious keeper, unresolved owner, zero and positive fee intents, token balance deltas and reentrancy.
 
 ---
 
-# Part III — got.cx Interface
+# Part IV — got.cx Product
 
-# 44. Product Definition
+# 45. got.cx Product Role
 
-`got.cx` is the canonical interface for GOT.
+`got.cx` is a product built on GOT Protocol. It is not privileged by the core and MUST NOT be required for third-party use.
 
-It enables:
+It provides:
 
-- direct stablecoin transfers;
-- deterministic payment addresses;
-- payment links;
-- transfers to names;
-- payment-before-recipient-onboarding;
-- name claims;
+- Base Account onboarding;
+- direct and named transfers;
 - invoices;
-- subscriptions;
-- merchant dashboards;
+- recurring transfers;
 - receipts;
-- API integrations;
-- signed webhooks.
+- activity and reconciliation;
+- API and webhooks;
+- hosted resolver and scheduler infrastructure;
+- name verification and claim UX;
+- SaaS plans and team management.
 
-GOT is not a wallet.
+Another application can integrate the contracts directly, run its own infrastructure and use its own economic model.
 
-Base Account provides:
+---
+
+# 46. got.cx Business Model
+
+The preferred model is subscription-only SaaS pricing with no additional got.cx percentage fee on transfer volume.
+
+Canonical principle:
+
+> **GOT Protocol moves value. got.cx charges for hosted software, organization and automation.**
+
+got.cx plans MAY include Free, Go, Plus, Business and Enterprise.
+
+Paid plans SHOULD be fixed-price recurring subscriptions rather than a tax on money moved.
+
+got.cx’s own paid plan SHOULD be authorized and collected onchain through `GOTSubscription` as dogfooding.
+
+The got.cx SaaS subscription:
+
+- is separate from customer-to-merchant transfers;
+- does not require sharing subscription revenue with an integration partner;
+- MAY include an optional public referral program offchain in the future;
+- SHOULD use a zero-fee intent unless a specific execution design requires otherwise;
+- unlocks product features after indexed finality.
+
+No plan may impose an onchain transfer-value ceiling through GOT Protocol.
+
+---
+
+# 47. Hosted SaaS Limits
+
+Limits MAY apply to hosted resources:
+
+- organizations and projects;
+- active invoice records;
+- active subscription records;
+- API requests;
+- webhook deliveries;
+- automation executions;
+- resolver priority;
+- retained indexed history;
+- exports;
+- verification operations;
+- notification volume;
+- team seats;
+- custom domains;
+- sponsored gas.
+
+Limits MUST NOT be enforced by changing the protocol’s permissionless ability to receive and settle funds.
+
+When a paid plan expires:
+
+- existing intent addresses remain valid;
+- onchain funds remain controlled by protocol rules;
+- direct contract interaction remains possible;
+- only hosted features, automation, history retention, branding, API access or sponsorship may be reduced.
+
+---
+
+# 48. Base Account Integration
+
+Base Account is the preferred reference account layer for:
 
 - passkey authentication;
 - smart-account execution;
 - recovery;
-- multichain account support;
-- Spend Permissions;
-- sponsored transactions where supported.
+- multichain account use;
+- spend permissions;
+- sponsored transactions where available.
 
-The interface SHOULD also support external wallets and direct exchange transfers.
+GOT MUST NOT implement a competing custom wallet for v0.2.
 
----
+The interface SHOULD use capability detection and MUST degrade gracefully for EOA, Safe and other compatible accounts.
 
-# 45. Canonical Web Surfaces
-
-Primary domain:
-
-```text
-https://got.cx
-```
-
-Recommended routes:
-
-```text
-got.cx/send
-got.cx/receive
-got.cx/pay/{paymentId}
-got.cx/claim/{claimId}
-got.cx/names/{name}
-got.cx/invoices/{invoiceId}
-got.cx/subscriptions/{subscriptionId}
-got.cx/activity
-got.cx/developers
-```
-
-Recommended subdomains:
-
-```text
-docs.got.cx
-api.got.cx
-status.got.cx
-```
-
-URLs MUST use HTTPS.
-
-Public links MUST NOT expose:
-
-- OAuth tokens;
-- provider access tokens;
-- raw sensitive identifiers;
-- internal database IDs with security meaning;
-- claim-signing material.
+Account recovery is controlled by the account system, not GOT Protocol.
 
 ---
 
-# 46. Direct Transfer Flow
+# 49. Transfer and Invoice Experience
+
+Merchant flow:
 
 ```text
-1. Recipient supplies an account.
-2. GOT creates a direct IntentConfig:
-       ownerSource = recipient account
-       ownerKey    = 0
-3. GOTFactory previews the deterministic intent address.
-4. Sender transfers USDC to the address.
-5. Recipient or resolver deploys and processes the intent.
-6. Receipt and webhook are produced after finality.
+merchant signs in
+-> enters recipient target amount, asset, customer and description
+-> application chooses feeBps and partner
+-> application quotes gross payer amount
+-> application creates IntentConfig
+-> factory predicts intent address
+-> application returns transfer link and address
 ```
 
-Direct transfers require no name registration or claim infrastructure.
-
-The payer MAY:
-
-- use Base Account;
-- connect another wallet;
-- send from an exchange;
-- transfer ERC20 directly to the displayed address.
-
----
-
-# 47. Named Transfer Flow
+Payer display for positive fee:
 
 ```text
-1. Sender enters a public name or external identifier.
-2. GOT resolves the input to a canonical nameKey.
-3. GOT creates a named IntentConfig:
-       ownerSource = GOTName
-       ownerKey    = canonical nameKey
-4. GOTFactory previews the deterministic intent address.
-5. Sender transfers USDC.
-6. If the name is unclaimed, funds remain at the intent address.
-7. Recipient verifies the name and destination account.
-8. GOTName records nameKey → account.
-9. Recipient or resolver processes the intent.
+Invoice amount       100.00 USDC
+Execution/service fee  0.30 USDC
+Total to transfer    100.30 USDC
 ```
 
-The confirmation UI MUST display sufficient recipient context before payment.
-
-For mutable external identifiers, display metadata MAY include:
-
-- current profile name;
-- current handle;
-- profile image;
-- masked email;
-- masked phone;
-- provider;
-- verification state.
-
-Onchain transfers are not automatically reversible.
-
----
-
-# 48. Name Claim UX
-
-Required user flow:
+Payer display for zero fee:
 
 ```text
-1. Open canonical claim link.
-2. Authenticate the relevant name namespace.
-3. Connect or create a Base Account.
-4. Prove control of the account.
-5. Review the exact name and destination.
-6. Submit a sponsored GOTName.claim transaction.
-7. Wait for confirmation.
-8. Process pending intents or allow resolver automation.
+Invoice amount       100.00 USDC
+Total to transfer    100.00 USDC
 ```
 
-The interface MUST clearly distinguish:
+The interface MUST not hide a positive fee.
 
-- unclaimed;
-- claim prepared;
-- claim submitted;
-- claimed;
-- transferred;
-- invalid or expired claim.
-
-The interface MUST NOT imply that a raw external identifier is public onchain.
-
----
-
-# 49. Receive Flow
-
-A user SHOULD be able to receive through:
+Status is derived from finalized onchain owner proceeds and application target:
 
 ```text
-account
-GOT public name
-verified email
-verified phone
-verified X identity
-verified Telegram identity
-ENS identity
-individual payment link
-invoice
-subscription plan
-```
-
-The receive page SHOULD show:
-
-- destination type;
-- network;
-- asset;
-- deterministic address;
-- QR code;
-- amount when fixed;
-- payment status;
-- copyable payment link;
-- settlement status.
-
----
-
-# 50. Invoice Flow
-
-Merchant creation:
-
-```text
-1. Sign in with Base.
-2. Enter customer, amount, due date and description.
-3. Select direct account or name recipient.
-4. Generate immutable IntentConfig.
-5. Predict intent address.
-6. Store canonical metadata and metadata hash.
-7. Return payment link, address and QR code.
-```
-
-Recommended configuration:
-
-```text
-ownerSource         = merchant account or GOTName
-ownerKey            = 0 or merchant nameKey
-token               = canonical USDC
-amount              = gross invoice amount
-period              = 0
-initialDeadline     = due timestamp or 0
-partner             = GOT or integration partner
-authorizedResolver  = GOT resolver or 0
-metadataHash        = hash(canonical invoice metadata)
-```
-
-Application-derived states:
-
-```text
-DRAFT
 OPEN
 PARTIAL
-PAID
+SETTLED
 OVERPAID
-CANCELLED
 EXPIRED
+CANCELED
 ```
 
-Payment state from onchain values:
-
-```text
-OPEN
-    totalProcessed == 0
-
-PARTIAL
-    0 < totalProcessed < amount
-
-PAID
-    totalProcessed == amount
-
-OVERPAID
-    totalProcessed > amount
-```
-
-Cancellation or expiration affects application presentation only. It does not disable core settlement.
+A deadline does not disable protocol settlement.
 
 ---
 
-# 51. Subscription Flow
+# 50. Transfer Link Routing
+
+Canonical short routes SHOULD support:
 
 ```text
-1. Merchant creates a plan.
-2. Customer reviews exact amount and period.
-3. Customer signs a Spend Permission.
-4. Backend stores permission and intent binding.
-5. Scheduler detects a due period.
-6. Keeper calls GOTSubscriptionCollector.charge.
-7. Collector spends exact USDC amount.
-8. Collector forwards funds to the deterministic intent.
-9. Collector atomically deploys and processes the intent.
-10. Indexer confirms finality.
-11. Paid-through state advances.
-12. Receipt and webhook are delivered.
+got.cx/@name
+    public GOT name
+
+got.cx/x:@handle
+    public X identifier route
+
+got.cx/tg:@handle
+    public Telegram identifier route
+
+got.cx/ens:name.eth
+    ENS route
+
+got.cx/t/<transferLinkId>
+    opaque transfer or invoice link
+
+got.cx/#k=<opaque-key>
+    private client-side identifier or intent key
 ```
+
+Email and phone SHOULD default to opaque links or fragment-based keys. A user MAY explicitly create a public identifier route, but the interface MUST warn that URLs, browser history and onchain low-entropy hashes may expose the identifier.
+
+Routes provide discovery and UX only. The deterministic intent address and immutable config remain authoritative.
+
+---
+
+# 51. Named Transfer and Claim Experience
+
+Named transfer:
+
+```text
+payer enters or opens identifier
+-> application normalizes or resolves identifierKey
+-> creates intent with ownerSource = GOTName
+-> payer funds predicted address
+-> owner may remain unresolved
+-> recipient verifies identifier
+-> threshold verifier signs claim
+-> recipient claims nameKey to Base Account
+-> resolver or owner settles all funded intents
+```
+
+The claim interface MUST display:
+
+- normalized identifier;
+- namespace;
+- destination account;
+- claim deadline;
+- public nature of the resulting mapping;
+- irreversible first-claim consequences;
+- migration controls after claim.
+
+---
+
+# 52. Subscription Product Experience
+
+Merchant creates:
+
+- plan name;
+- gross recurring amount;
+- period;
+- optional end;
+- recipient intent configuration;
+- zero or positive protocol fee;
+- cancellation policy and application metadata.
+
+Subscriber signs a Spend Permission.
+
+The application stores the permission and signature securely, tracks periods and schedules execution.
+
+got.cx SHOULD use zero-fee recurring intents by default to make the merchant’s configured recurring amount equal owner proceeds.
+
+got.cx’s own SaaS plans SHOULD use the same flow:
+
+```text
+got.cx merchant
+-> authorizes fixed monthly USDC permission
+-> GOTSubscription charges
+-> zero-fee intent settles to GOT treasury
+-> indexer activates hosted plan
+```
+
+---
+
+# 53. Partner and Integrator Model
+
+The protocol-level `partner` is not a got.cx affiliate database. It is an immutable onchain reward address selected by the application creating the intent.
+
+Third-party integrations MAY:
+
+- set `partner` to their treasury;
+- choose `feeBps` based on gas and business economics;
+- operate the resolver;
+- earn partner and execution allocations onchain;
+- charge a subscription offchain or onchain;
+- use zero fees and monetize elsewhere;
+- expose GOT under their own product interface.
+
+got.cx MAY set:
+
+```text
+feeBps = 0
+partner = address(0)
+```
+
+and monetize through subscriptions.
+
+A marketplace MAY set a positive fee and its partner address.
+
+All positive fee terms MUST be visible before funding and immutable for the intent.
+
+---
+
+# 54. Developer Platform
+
+The developer platform SHOULD provide:
+
+- TypeScript SDK;
+- config builders;
+- deterministic preview;
+- fee quote helpers;
+- name-key helpers;
+- link builders;
+- account and chain validation;
+- indexed transfer lookup;
+- invoice and subscription APIs;
+- webhook signing;
+- test vectors;
+- local and testnet examples;
+- partner analytics derived from onchain events.
+
+The SDK MUST not silently select a nonzero fee or partner.
+
+---
+
+# 55. API Conventions
+
+Canonical base path:
+
+```text
+/api/v2
+```
+
+Representative endpoints:
+
+```text
+POST   /intents
+GET    /intents/{intentAddress}
+POST   /transfers
+GET    /transfers/{transferId}
+POST   /invoices
+GET    /invoices/{invoiceId}
+POST   /subscriptions
+GET    /subscriptions/{subscriptionId}
+POST   /names/resolve
+POST   /names/claims
+GET    /partners/{address}/rewards
+POST   /webhooks
+```
+
+Writes MUST support idempotency keys.
+
+Amounts MUST be strings in token base units in machine APIs.
+
+Every chain-bound record MUST include `chainId`.
+
+The API MUST distinguish `recipientTargetAmount`, `grossQuotedAmount`, `processedAmount`, `ownerAmount` and each fee allocation.
+
+---
+
+# 56. Data Model
+
+Minimum entities:
+
+```text
+Organization
+Project
+Account
+Intent
+TransferRequest
+FundingTransfer
+ProcessedTransfer
+Invoice
+Subscription
+SpendPermissionRecord
+NameRecord
+ClaimEvidence
+Partner
+WebhookEndpoint
+WebhookDelivery
+SaaSPlan
+SaaSSubscription
+UsageCounter
+```
+
+Onchain source-of-truth fields MUST be stored with chain, block, transaction, log index and finality status.
+
+Sensitive claim evidence MUST be separated from public indexed records.
+
+---
+
+# 57. Transfer State Model
 
 Application states:
 
 ```text
+CREATED
+ADDRESS_READY
+FUNDING_DETECTED
+UNRESOLVED
+PROCESSING
+SETTLED
+PARTIAL
+OVERPAID
+FAILED
+REORGED
+```
+
+A raw ERC20 transfer is not the same as a processed transfer.
+
+The finalized `TransferProcessed` event is authoritative for owner proceeds and fee allocation.
+
+---
+
+# 58. Invoice State Model
+
+Recommended invoice state derives from cumulative finalized owner proceeds:
+
+```text
 DRAFT
-PENDING_APPROVAL
-ACTIVE
-PAYMENT_DUE
-PAYMENT_PROCESSING
-PAID
+OPEN
+PARTIAL
+SETTLED
+OVERPAID
 PAST_DUE
-CANCELLED
-EXPIRED
+CANCELED
 ```
 
-For exact recurring charges:
+Application cancellation stops reminders or fulfillment but cannot invalidate the onchain address.
 
-```solidity
-uint256 periodsPaid =
-    totalProcessed / amount;
-
-uint256 paidThrough =
-    uint256(initialDeadline) +
-    periodsPaid * uint256(period);
-```
-
-Unused allowance does not become collectible debt in a later period.
-
-Missed charges SHOULD be handled by:
-
-- retry during the same period;
-- separate invoice;
-- renewed authorization;
-- application-level dunning.
+Refunds are separate transfers controlled by the merchant.
 
 ---
 
-# 52. Base Account Integration
+# 59. Subscription State Model
 
-The interface SHOULD use the current Base Account SDK.
-
-The returned account is the user's primary onchain GOT account.
-
-Direct intent:
+Recommended states:
 
 ```text
-ownerSource = Base Account
-ownerKey    = 0
+DRAFT
+AWAITING_APPROVAL
+ACTIVE
+PAST_DUE
+PAUSED
+REVOKED
+ENDED
+FAILED
 ```
 
-Named intent:
+The permission manager is authoritative for approval, spend and revocation.
 
-```text
-ownerSource = GOTName
-ownerKey    = nameKey
-GOTName mapping → Base Account
-```
-
-Backend signature verification MUST support:
-
-- EOA signatures;
-- ERC-1271 smart-account signatures;
-- counterfactual account signatures where required.
-
-The backend MUST NOT assume ordinary ECDSA recovery for every account.
-
-Account recovery that preserves the Base Account address requires no intent or name update.
-
-Moving a claimed name to a new account address requires `GOTName.transfer`.
-
-GOT MAY sponsor:
-
-- first claim;
-- first settlement;
-- subscription approval;
-- subscription cancellation;
-- account onboarding transactions.
-
-Gas sponsorship is an interface feature, not a core invariant.
+The scheduler state is operational, not authority over user funds.
 
 ---
 
-# 53. API Surface
+# Part V — Infrastructure
 
-Base URL:
+# 60. Indexing and Finality
 
-```text
-https://api.got.cx/v1
-```
+The indexer MUST process:
 
-## 53.1 Intents
+- ERC20 funding events;
+- `IntentDeployed`;
+- `TransferProcessed`;
+- recovery events;
+- GOTName claims and transfers;
+- subscription executions;
+- spend-permission state where available.
 
-```text
-POST   /intents
-GET    /intents/:id
-GET    /intents/:id/payments
-POST   /intents/:id/settle
-```
+It MUST support:
 
-## 53.2 Transfers
+- idempotent replay;
+- chain-specific finality;
+- reorg rollback;
+- duplicate-log prevention;
+- backfill;
+- cursor recovery;
+- contract code-hash validation;
+- versioned schemas.
 
-```text
-POST   /transfers
-GET    /transfers/:id
-POST   /transfers/:id/remind
-```
-
-## 53.3 Names
-
-```text
-POST   /names/resolve
-GET    /names/:nameKey
-POST   /names/claims/prepare
-POST   /names/claims/submit
-GET    /names/claims/:id
-POST   /names/:nameKey/transfer/prepare
-```
-
-## 53.4 Invoices
-
-```text
-POST   /invoices
-GET    /invoices/:id
-POST   /invoices/:id/cancel
-POST   /invoices/:id/remind
-GET    /invoices/:id/payments
-```
-
-## 53.5 Subscriptions
-
-```text
-POST   /subscriptions
-GET    /subscriptions/:id
-POST   /subscriptions/:id/approve
-POST   /subscriptions/:id/cancel
-POST   /subscriptions/:id/retry
-GET    /subscriptions/:id/payments
-```
-
-## 53.6 Webhook endpoints
-
-```text
-POST   /webhook-endpoints
-GET    /webhook-endpoints
-DELETE /webhook-endpoints/:id
-POST   /webhook-endpoints/:id/test
-```
-
-## 53.7 Activity
-
-```text
-GET    /activity
-GET    /payments/:id
-GET    /receipts/:id
-```
-
-API writes MUST be idempotent through an idempotency key.
-
-API responses MUST include:
-
-- chain ID;
-- protocol version;
-- factory;
-- config hash;
-- predicted intent address;
-- asset;
-- amount;
-- owner mode;
-- finality status.
+No webhook or fulfillment action should be treated as final before the configured finality threshold.
 
 ---
 
-# 54. SDK Surface
+# 61. Resolver Infrastructure
 
-Suggested TypeScript API:
+Resolver workers:
 
-```ts
-const intent = await got.intents.create({
-  owner: merchantAccount,
-  amount: "1000",
-  currency: "USDC",
-  network: "base",
-});
-```
+1. discover funded addresses;
+2. verify canonical config and predicted address;
+3. estimate gas and execution allocation;
+4. choose whether to execute;
+5. submit through factory or deployed intent;
+6. track inclusion and finality;
+7. retry safely;
+8. never infer authority from offchain database state alone.
 
-```ts
-const transfer = await got.transfers.create({
-  recipient: "email:alice@example.com",
-  amount: "100",
-  currency: "USDC",
-  network: "base",
-});
-```
+For zero-fee got.cx intents, resolver workers MAY be funded from SaaS subscription revenue or gas sponsorship.
 
-```ts
-const invoice = await got.invoices.create({
-  amount: "1000",
-  currency: "USDC",
-  recipient: merchantAccount,
-  dueAt: "2026-08-30T00:00:00Z",
-});
-```
-
-```ts
-const subscription = await got.subscriptions.create({
-  amount: "29",
-  currency: "USDC",
-  period: "monthly",
-  merchant: merchantAccount,
-});
-```
-
-The SDK MUST expose deterministic preview locally when possible.
-
-Recommended packages:
-
-```text
-@gotcx/core
-@gotcx/contracts
-@gotcx/sdk
-@gotcx/react
-@gotcx/types
-```
+Restricted resolver control SHOULD use Safe or a stable contract with rotating operators.
 
 ---
 
-# 55. Webhooks
+# 62. Subscription Scheduler
 
-Suggested event types:
+The scheduler:
+
+- tracks active permissions;
+- computes current spend periods;
+- avoids duplicate execution;
+- estimates gas;
+- submits valid charges;
+- retries transient failures;
+- stops on revocation or end;
+- emits operational alerts;
+- treats the permission manager and onchain events as authoritative.
+
+Scheduler compromise cannot increase the approved amount or change the destination when binding validation is correct.
+
+---
+
+# 63. Name Verification Infrastructure
+
+Verification adapters SHOULD support email, phone, X, Telegram, ENS, domains and application-defined namespaces.
+
+The system MUST preserve:
+
+- exact normalized identifier;
+- namespace and normalization version;
+- challenge nonce;
+- verification timestamp;
+- destination account proof;
+- evidence hash;
+- approving operators;
+- claim digest and deadline.
+
+The production signer workflow SHOULD require two independent approvals through the verifier Safe.
+
+Supabase MAY store records, but the onchain verifier signature and GOTName state are authoritative for claims.
+
+---
+
+# 64. Webhooks
+
+Canonical events MAY include:
 
 ```text
-intent.created
-intent.funded
-intent.deployed
-intent.processed
-intent.unresolved
-intent.resolved
-
-transfer.detected
+transfer.funding_detected
 transfer.processed
-transfer.failed
-
-name.claim_prepared
+transfer.partial
+transfer.overpaid
+invoice.settled
+invoice.past_due
+subscription.activated
+subscription.processed
+subscription.past_due
+subscription.revoked
 name.claimed
 name.transferred
-
-invoice.payment_detected
-invoice.payment_processed
-invoice.partially_paid
-invoice.paid
-invoice.overpaid
-
-subscription.approved
-subscription.payment_due
-subscription.charged
-subscription.past_due
-subscription.cancelled
+saas_plan.activated
+saas_plan.expired
 ```
 
-Every webhook MUST include:
+Webhook payloads MUST include:
 
 - event ID;
 - event type;
 - creation timestamp;
-- chain ID;
-- protocol version;
-- intent address when applicable;
-- transaction hash when applicable;
-- canonical JSON body;
-- HMAC or asymmetric signature;
-- replay-protection timestamp.
+- chain ID where applicable;
+- transaction and log references;
+- canonical JSON payload;
+- signature;
+- delivery attempt.
 
-Merchants MUST be able to retrieve the canonical event through the API.
-
-Retries SHOULD use exponential backoff.
-
-Event IDs and fulfillment MUST be idempotent.
+Deliveries MUST be idempotent and retryable.
 
 ---
 
-# 56. Receipts
+# 65. Notifications
 
-A receipt SHOULD include:
+Notifications MAY use email, browser push, Telegram and other channels.
 
-- payment ID;
-- intent ID;
-- intent address;
-- chain ID;
-- token;
-- gross amount;
-- effective owner at processing;
-- executor;
-- treasury fee;
-- partner reward;
-- execution reward;
-- transaction hash;
-- block number;
-- finality status;
-- created timestamp;
-- processed timestamp;
-- invoice or subscription reference when applicable.
+Notifications are advisory. They do not determine settlement or permission state.
 
-Receipts MUST distinguish:
-
-```text
-funds detected
-funds processed
-transaction confirmed
-application fulfilled
-```
+Sensitive identifiers MUST not be included in public logs or analytics events.
 
 ---
 
-# 57. Interface Security Requirements
+# 66. Observability and Operations
 
-The interface MUST:
+Required monitoring:
 
-- show exact chain and asset;
-- display deterministic address before payment;
-- validate address checksum;
-- show recipient context before named payments;
-- warn when a name is unclaimed;
-- warn that onchain transfers are not automatically reversible;
-- never expose secrets in URLs;
-- verify API response configuration against local address derivation where possible;
-- support phishing-resistant canonical-domain checks;
-- enforce CSP and secure headers;
-- protect session and OAuth tokens;
-- rate-limit claim and payment endpoints;
-- provide transaction links to a block explorer;
-- clearly separate detected, processed and finalized status.
+- RPC health;
+- chain lag;
+- indexer lag;
+- reorg depth;
+- resolver profitability and failures;
+- zero-fee sponsorship spend;
+- scheduler failures;
+- claim-signing queue;
+- Safe threshold availability;
+- webhook failure rate;
+- contract code-hash drift;
+- unexpected token balances;
+- SaaS usage and limits.
 
----
-
-# Part IV — Infrastructure
-
-# 58. Required Services
-
-Initial production services:
-
-1. application API;
-2. PostgreSQL or equivalent database;
-3. chain indexer;
-4. resolver worker;
-5. subscription scheduler;
-6. keeper workers;
-7. name resolution service;
-8. namespace verification adapters;
-9. EIP-712 claim signer;
-10. webhook dispatcher;
-11. email and Telegram notification workers;
-12. monitoring and alerting;
-13. deterministic deployment pipeline.
-
-No infrastructure service may custody configured-token funds.
+Operational runbooks MUST cover key loss, signer unavailability, RPC outage, indexer rebuild, webhook compromise, dependency upgrade and chain incident.
 
 ---
 
-# 59. Data Model
-
-## 59.1 User
-
-```text
-id
-primary account
-createdAt
-status
-```
-
-## 59.2 Name record
-
-```text
-namespace
-opaque identifier
-nameKey
-display value or masked value
-lifecycle epoch
-verification status
-claimed account
-claimed transaction
-createdAt
-updatedAt
-```
-
-Sensitive canonical identifiers MUST be encrypted and access-controlled.
-
-## 59.3 Billing account
-
-```text
-merchant ID
-primary account
-optional name keys
-branding
-notification settings
-webhook endpoints
-```
-
-## 59.4 Intent
-
-```text
-chainId
-protocolVersion
-factory
-config
-configHash
-predictedAddress
-intentType
-billingRecordId
-owner mode
-nameKey when applicable
-createdAt
-```
-
-## 59.5 Payment
-
-```text
-chainId
-intentAddress
-transactionHash
-logIndex
-payer when known
-executor
-effectiveOwner
-grossAmount
-ownerAmount
-treasuryFee
-partnerReward
-executionReward
-confirmationState
-```
-
-## 59.6 Name claim
-
-```text
-nameKey
-namespace
-account
-claimSignatureHash
-claimTransaction
-status
-createdAt
-```
-
-## 59.7 Invoice
-
-```text
-invoiceId
-merchant
-customer reference
-intent ID
-intent address
-amount
-due date
-status
-metadata
-createdAt
-```
-
-## 59.8 Subscription
-
-```text
-subscriptionId
-merchant
-customer account
-permission hash
-permission terms
-signed approval
-intent config
-intent address
-next due period
-status
-retry state
-```
-
-## 59.9 Webhook delivery
-
-```text
-event ID
-endpoint
-attempt
-signature
-timestamp
-status
-response code
-next retry
-```
-
----
-
-# 60. Indexer
-
-The indexer MUST key protocol state by:
-
-```text
-chainId + factory + intentAddress
-```
-
-It MUST handle:
-
-- counterfactual funding before deployment;
-- deployment after funding;
-- multiple funding transfers;
-- multiple processing operations;
-- partial payments;
-- overpayments;
-- owner changes between processing operations;
-- GOTName claims before intent deployment;
-- GOTName transfers;
-- subscription collector events;
-- duplicate RPC delivery;
-- chain reorgs;
-- log replay;
-- per-chain finality thresholds.
-
-Application fulfillment MUST be idempotent.
-
-The indexer SHOULD maintain:
-
-```text
-observed token balance
-deployed status
-total processed
-effective owner
-owner resolution status
-payment allocations
-finality status
-```
-
-An indexer view is not authoritative over onchain contract state.
-
----
-
-# 61. Resolver Worker
-
-The resolver worker:
-
-```text
-1. discovers funded intent addresses;
-2. reconstructs exact IntentConfig;
-3. verifies canonical address derivation;
-4. checks owner resolution;
-5. checks resolver authorization;
-6. estimates gas and execution reward;
-7. submits deployAndExecute or resolve;
-8. tracks transaction replacement and finality;
-9. retries safe failures;
-10. emits operational metrics.
-```
-
-For open resolvers, the worker MAY apply a profitability threshold:
-
-```text
-expected execution reward
-    >
-estimated gas cost + safety margin
-```
-
-For restricted GOT product intents, the service MAY process regardless of direct profitability according to product policy.
-
-The worker MUST NOT submit when:
-
-- configuration cannot be reconstructed;
-- predicted address differs;
-- owner is unresolved;
-- token is unsupported;
-- resolver authorization fails;
-- balance is zero;
-- chain state is stale.
-
----
-
-# 62. Name Resolution Service
-
-The name resolution service converts user input into a canonical `nameKey`.
-
-Responsibilities:
-
-- parse namespace;
-- canonicalize identifier;
-- retrieve stable provider identity where required;
-- apply lifecycle epoch;
-- return opaque identifier;
-- derive exact `nameKey`;
-- provide safe display metadata;
-- detect claimed or unclaimed state;
-- prevent raw sensitive values from appearing onchain.
-
-The service MUST return enough information for the client to confirm the recipient without exposing protected identifier data.
-
-Example logical response:
-
-```json
-{
-  "namespace": "EMAIL",
-  "nameKey": "0x...",
-  "display": "a***@example.com",
-  "claimed": false,
-  "account": null,
-  "lifecycle": 1
-}
-```
-
-The raw resolver database is security-sensitive infrastructure.
-
----
-
-# 63. Claim Signer
-
-The claim signer MUST:
-
-- accept only verified namespace sessions;
-- verify account control;
-- derive the key server-side;
-- bind exact key, account, deadline, chain and GOTName contract;
-- use short deadlines;
-- support an immutable Safe as verifier;
-- isolate signing infrastructure;
-- emit an immutable audit log;
-- reject replayed nonces;
-- rate-limit attempts;
-- never sign for an already claimed name;
-- never expose signer keys to web or API clients.
-
-High-value claims MAY require:
-
-- reauthentication;
-- delay;
-- secondary verification;
-- manual risk review;
-- user notification.
-
-These are product controls and do not change the immutable `GOTName` contract.
-
----
-
-# 64. Subscription Scheduler
-
-The scheduler MUST:
-
-- calculate due periods deterministically;
-- avoid duplicate jobs;
-- verify subscription status;
-- verify permission validity;
-- verify allowance for the current period;
-- verify exact intent binding;
-- submit one charge attempt at a time;
-- classify failures;
-- retry only safe failures;
-- stop after cancellation or expiration;
-- advance paid-through state only after finality.
-
-Common failures:
-
-- insufficient USDC;
-- permission not approved;
-- permission revoked;
-- allowance already consumed;
-- outside permission window;
-- unresolved merchant owner;
-- invalid binding;
-- token pause or blacklist;
-- RPC failure;
-- chain congestion.
-
-A failed atomic collector transaction MUST NOT mark the customer as charged.
-
----
-
-# 65. Webhook Dispatcher
-
-The dispatcher MUST:
-
-- sign canonical payloads;
-- use idempotent event IDs;
-- maintain delivery attempts;
-- apply exponential backoff;
-- stop or quarantine persistently failing endpoints;
-- prevent SSRF;
-- restrict unsupported protocols and private network targets;
-- expose delivery history;
-- allow event retrieval through the API;
-- support secret rotation.
-
-Merchant systems SHOULD acknowledge successful delivery with a 2xx response.
-
----
-
-# 66. Notifications
-
-Supported channels MAY include:
-
-- email;
-- Telegram;
-- in-app;
-- push;
-- X direct communication where supported.
-
-Notifications SHOULD cover:
-
-- payment detected;
-- payment finalized;
-- name claim requested;
-- name claimed;
-- name transferred;
-- invoice due;
-- invoice paid;
-- subscription charge failed;
-- subscription cancelled;
-- webhook disabled.
-
-Notifications MUST NOT include full sensitive identifiers unless the recipient has authenticated and policy permits it.
-
----
-
-# 67. Monitoring
-
-Required metrics:
-
-```text
-RPC health
-indexer lag
-reorg depth
-funded unresolved intent count
-funded undeployed intent count
-resolver success rate
-resolver profit and cost
-claim success rate
-claim rejection rate
-subscription charge success rate
-webhook delivery success rate
-signer service health
-contract code hash verification
-treasury and partner allocation totals
-```
-
-Required alerts:
-
-- canonical contract code mismatch;
-- unexpected factory address;
-- claim signer anomaly;
-- unusual unresolved-fund growth;
-- resolver failure spike;
-- scheduler duplicate attempts;
-- webhook backlog;
-- indexer divergence;
-- unexpected token balance remaining after processing;
-- infrastructure key exposure indicators.
-
----
-
-# Part V — Economics
-
-# 68. Protocol Fee
-
-Each intent commits an immutable `feeBps`.
-
-The fee is divided into:
-
-```text
-execution reward
-    compensates the actual executor
-
-partner reward
-    rewards the immutable integration or distribution partner
-
-treasury fee
-    supports GOT development and operations
-```
-
-The cumulative fee model prevents fee manipulation through payment splitting.
-
-The protocol MAY define a maximum fee through immutable factory configuration.
-
-Changing global fee-share parameters requires a new immutable factory version.
-
----
-
-# 69. Partner Model
-
-The immutable partner address creates a permissionless distribution layer.
-
-Possible partners:
-
-- wallets;
-- marketplaces;
-- commerce platforms;
-- developer tools;
-- accounting systems;
-- creator platforms;
-- payment applications;
-- referral partners.
-
-Partner attribution is committed to the intent address and cannot be replaced after creation.
-
-The partner receives a share only when nonzero.
-
----
-
-# 70. Resolver Market
-
-Open intents permit executor competition.
-
-The execution reward creates an economic incentive to:
-
-- detect funded addresses;
-- deploy counterfactual intents;
-- process balances;
-- pay transaction gas;
-- maintain independent automation.
-
-Restricted resolver mode supports application-controlled workflows where:
-
-- service guarantees are required;
-- subscription atomicity is required;
-- claim timing must be coordinated;
-- application policy sponsors execution.
-
----
-
-# 71. Product Revenue
-
-The GOT product MAY earn revenue from:
-
-- protocol treasury fees;
-- partner rewards;
-- resolver rewards;
-- merchant subscriptions;
-- premium invoicing;
-- subscription tooling;
-- API usage;
-- webhook and accounting integrations;
-- sponsored gas plans;
-- enterprise support.
-
-Product pricing is not a core protocol invariant.
-
-The public protocol MUST remain usable by third-party interfaces and infrastructure.
-
----
-
-# Part VI — Security and Trust
-
-# 72. Trust Model
-
-## 72.1 Protocol core
-
-Trust minimized:
-
-- immutable contracts;
-- no administrator;
-- no pause;
-- no upgradeability;
-- deterministic deployment;
-- public source and code hashes.
-
-## 72.2 GOTName before claim
-
-The claim verifier is trusted to authorize the correct first account for an unclaimed key.
-
-## 72.3 GOTName after claim
-
-Only the current mapped account may transfer the name.
-
-The verifier cannot overwrite it.
-
-## 72.4 Name resolution infrastructure
-
-The service is trusted to map user input to the correct namespace, opaque identifier and lifecycle key.
-
-Clients SHOULD display recipient context and MAY independently verify public namespaces.
-
-## 72.5 Base Account
-
-Account authentication, execution and recovery rely on Base Account contracts and services used by the application.
-
-## 72.6 Spend Permissions
-
-Recurring authorization relies on the deployed Spend Permission system and the exact signed permission.
-
-## 72.7 Infrastructure
-
-Indexers, resolvers and webhooks improve usability but do not control direct intent ownership or bypass protocol accounting.
-
----
-
-# 73. Threat Model
-
-## 73.1 Counterfactual deployment attack
-
-An attacker attempts to deploy different code at a funded predicted address.
-
-Mitigation:
-
-- `CREATE2` commits to factory, salt and exact init code;
-- configuration is included in immutable proxy bytecode;
-- canonical factory verifies deployment address;
-- release artifacts publish bytecode hashes.
-
-## 73.2 Malicious owner resolver
-
-A resolver may return an incorrect account or fail.
-
-Mitigation:
-
-- resolver selection is immutable in each intent;
-- resolver mode is explicit through nonzero owner key;
-- resolution is bounded;
-- malformed resolution fails closed;
-- intended resolvers require independent audit.
-
-## 73.3 Claim verifier compromise before claim
-
-A compromised verifier may authorize an attacker for an unclaimed key.
-
-Mitigations:
-
-- verifier Safe;
-- signer separation;
-- short deadlines;
-- account-control proof;
-- identity-verification audit logs;
-- rate limits;
-- user notification;
-- risk review for high values;
-- limited signer-service access.
-
-## 73.4 Claim verifier compromise after claim
-
-The verifier cannot overwrite a nonzero mapping.
-
-Claimed names remain controlled by their mapped accounts.
-
-## 73.5 External identity compromise
-
-A compromised email, phone or social account may satisfy namespace verification.
-
-Mitigations MAY include:
-
-- recent authentication;
-- destination-account proof;
-- secondary confirmation;
-- risk scoring;
-- delay for high-value unclaimed balances;
-- user notification.
-
-## 73.6 Identifier reassignment
-
-A phone number, email or social identity changes control.
-
-Mitigation:
-
-- claimed names are not automatically reassigned;
-- lifecycle epochs create new keys;
-- old intents remain linked to the original claimed account.
-
-## 73.7 Name transfer risk
-
-Transferring a name changes the recipient of unsettled and future payments using that key.
-
-Mitigation:
-
-- only current owner may transfer;
-- explicit user warning;
-- optional account-level confirmation policy;
-- notification;
-- full event history.
-
-## 73.8 Token incompatibility
-
-Fee-on-transfer, rebasing, callback-enabled or malicious tokens may break exact-balance assumptions.
-
-Mitigation:
-
-- application token allowlists;
-- canonical USDC-only v0.1 product;
-- exact balance checks;
-- hostile token tests.
-
-## 73.9 Resolver front-running
-
-Open resolvers compete for execution reward.
-
-Only one transaction succeeds. Front-running changes only the valid executor receiving the reward.
-
-## 73.10 Reentrancy
-
-Tokens or recipient contracts attempt nested execution.
-
-Mitigation:
-
-- packed execution lock;
-- state update before transfers;
-- final balance verification;
-- reentrancy tests.
-
-## 73.11 Subscription collector compromise
-
-The collector is an authorized spender.
-
-Mitigation:
-
-- immutable contract;
-- exact signed binding;
-- exact amount;
-- exact period;
-- no arbitrary destination;
-- atomic charge and settlement;
-- independent audit.
-
-## 73.12 Webhook forgery
-
-An attacker sends fake payment notifications.
-
-Mitigation:
-
-- signed canonical payloads;
-- replay protection;
-- API retrieval;
-- transaction and chain references;
-- merchant-side signature validation.
-
----
-
-# 74. Privacy
+# 67. Privacy
 
 Onchain data MUST exclude:
 
-- raw email;
-- raw phone;
-- raw provider usernames when sensitive;
+- raw email and phone;
 - OAuth tokens;
 - login assertions;
 - personal messages;
-- billing documents;
-- customer personal data.
+- invoice documents;
+- customer personal data;
+- secret API keys;
+- private transfer descriptions.
 
-`metadataHash` MAY commit to offchain records but MUST NOT reveal protected content.
+`metadataHash` MAY commit to encrypted or access-controlled records.
 
-Sensitive namespace records MUST be encrypted at rest.
+Users MUST be informed that intent addresses, transfers, name keys, claims, account mappings, name transfers, partners and settlement events are public.
 
-Access MUST follow least privilege.
-
-Retention policies MUST be documented.
-
-Users SHOULD be informed that:
-
-- intent addresses;
-- token transfers;
-- name keys;
-- claims;
-- account mappings;
-- name transfers;
-- settlement events
-
-are public onchain data.
+Low-entropy deterministic identifier hashes are discoverable through dictionary attacks. Applications SHOULD use opaque keys for sensitive identifiers.
 
 ---
 
-# 75. Independent Audit Scope
+# 68. Threat Model
 
-## 75.1 GOTIntent and GOTFactory
+## 68.1 Counterfactual address confusion
 
-Audit MUST cover:
+Mitigate with canonical config display, deterministic test vectors, chain ID display and factory/code-hash verification.
 
-- immutable argument encoding and decoding;
-- proxy bytecode and calldata suffix;
-- direct implementation protection;
-- `CREATE2` derivation;
-- factory statelessness;
-- configuration validation;
-- direct and resolver ownership modes;
-- ERC-165 probing;
-- bounded static calls;
-- unresolved behavior;
-- one-read owner caching;
-- factory authority dispatch;
-- cumulative fee invariance;
+## 68.2 Resolver compromise
+
+A resolver can choose whether and when to process but cannot redirect owner proceeds or change fees. Owner settlement remains available.
+
+## 68.3 Zero-fee liveness
+
+A zero-fee intent may remain unprocessed when no party pays gas. Product UX must communicate sponsorship or execution responsibility.
+
+## 68.4 Partner substitution
+
+Mitigate by committing partner and fee to the address and displaying them before funding.
+
+## 68.5 Claim verifier compromise
+
+Before first claim, compromised threshold signers may authorize an attacker. Use 2-of-3 Safe, independent evidence review, short deadlines, monitoring and destination account proof.
+
+After claim, the verifier cannot overwrite the mapping.
+
+## 68.6 Social account compromise
+
+Use recent authentication, account-control proof, notifications and risk controls.
+
+## 68.7 GOTSubscription compromise
+
+Mitigate through immutable code, exact binding, exact allowance, no arbitrary destination, reentrancy protection and audit.
+
+## 68.8 Webhook forgery
+
+Use signed canonical payloads, replay protection and API verification.
+
+## 68.9 Token behavior
+
+Reference profile supports canonical USDC. Generic deployments must assess fee-on-transfer, rebasing, callback and blacklist behavior.
+
+## 68.10 SaaS account compromise
+
+Hosted dashboard compromise must not grant protocol ownership. Sensitive writes require wallet signatures where authority matters.
+
+---
+
+# 69. Independent Audit Scope
+
+## 69.1 GOTIntent and GOTFactory
+
+Audit:
+
+- immutable encoding;
+- proxy runtime and suffix;
+- CREATE2 derivation;
+- zero-fee behavior;
+- positive cumulative fee math;
+- quote helpers;
+- partner allocation;
 - one-slot state;
-- complete-balance processing;
-- token transfer ordering;
-- final balance check;
+- owner resolution;
+- atomic deployment;
+- authorization;
 - reentrancy;
+- token transfers;
 - recovery;
-- atomic first deployment;
-- hostile ERC20 behavior;
-- deterministic multichain release.
+- complete-balance clearing;
+- deterministic deployment.
 
-## 75.2 GOTName
+## 69.2 GOTName
 
-Audit MUST cover:
+Audit EIP-712 domain, EOA/ERC-1271 verifier signatures, threshold Safe fixtures, one-time claim, current-owner transfer, invalid account rejection, ERC-165 and non-upgradeability.
 
-- EIP-712 domain;
-- EOA and ERC-1271 verifier signatures;
-- exact key and account binding;
-- one-time first claim;
-- claim before intent deployment;
-- no verifier overwrite;
-- current-owner transfer;
-- invalid account rejection;
-- permanent ERC-165 support;
-- event correctness;
-- no pause or upgradeability.
+## 69.3 GOTSubscription
 
-## 75.3 GOTSubscriptionCollector
+Audit exact permission binding, extraData parsing, approval, allowance, period, token, atomic spend and settlement, reward forwarding, cancellation, malicious keeper and unresolved-owner rollback.
 
-Audit MUST cover:
+## 69.4 Application security
 
-- exact permission binding;
-- `extraData` parsing;
-- approval-by-signature;
-- exact allowance and period;
-- exact token;
-- atomic spend, transfer and settlement;
-- principal balance checks;
-- execution-reward forwarding;
-- reentrancy;
-- cancellation;
-- malicious keeper;
-- unresolved owner rollback.
+Review account authentication, API authorization, idempotency, claim evidence, webhook signing, secret storage, privacy, data isolation and SaaS limit enforcement.
 
 ---
 
-# Part VII — Deployment and Versioning
+# Part VI — Deployment and Versioning
 
-# 76. Launch Profile
+# 70. Deployment Profile
 
 Initial production:
 
@@ -3638,594 +2609,439 @@ Account:     Base Account preferred
 Interface:   got.cx
 ```
 
-Initial testing:
+Testing:
 
 ```text
 Chain:       Base Sepolia
 Asset:       approved test USDC
 ```
 
-The core SHOULD remain deployable on Ethereum and compatible EVM chains.
+Core SHOULD remain deployable on Ethereum and compatible EVM chains.
 
 ---
 
-# 77. Canonical Multichain Deployment
+# 71. Canonical Multichain Deployment
 
-`GOTIntent` implementation and `GOTFactory` SHOULD use identical canonical addresses across supported chains through deterministic deployment.
+`GOTIntent` and `GOTFactory` SHOULD use identical canonical addresses across supported chains through deterministic deployment.
 
-The release manifest MUST publish:
+Release manifest MUST publish:
 
-- implementation address;
-- factory address;
-- GOTName address;
-- subscription collector address where applicable;
-- runtime code hashes;
+- implementation, factory, GOTName and GOTSubscription addresses;
+- runtime and creation code hashes;
 - constructor arguments;
-- compiler version;
-- EVM version;
-- optimizer settings;
-- metadata settings;
+- compiler and EVM version;
+- optimizer and metadata settings;
 - deployment salts;
-- deterministic deployer address and code hash;
+- deployer address and code hash;
 - protocol constants;
-- immutable argument layout;
-- proxy creation and runtime hashes;
-- interface identifiers;
-- deterministic address vectors.
+- immutable layout;
+- interface IDs;
+- deterministic vectors;
+- supported tokens and dependency addresses.
 
-Equal hexadecimal addresses across chains do not imply shared:
-
-- balances;
-- total processed;
-- name claims;
-- name ownership;
-- subscription permissions;
-- events.
+Equal hexadecimal addresses do not imply shared balances, processed totals, name claims, permissions or events.
 
 ---
 
-# 78. Versioning
+# 72. Versioning and Migration
 
 System version:
 
 ```text
-GOT Unified System Specification v0.1
+GOT Unified System Specification v0.2
 ```
 
-Component versions MAY evolve independently:
+Protocol identifier:
 
-```text
-GOT protocol core
-GOTName
-GOTSubscriptionCollector
-got.cx interface
-GOT API
-GOT infrastructure
+```solidity
+keccak256("GOT_PROTOCOL_V0_2")
 ```
 
-A core behavioral change requires:
+The protocol identifier changes because allowing `feeBps == 0` changes normative configuration validation and creates a new deterministic address namespace.
 
-- new protocol identifier;
-- new implementation;
-- new factory;
-- new address namespace;
-- new deterministic vectors.
+v0.1 intents remain immutable and valid under their original factory and namespace.
 
-An interface or infrastructure release does not require a new protocol version unless it changes normative onchain behavior.
+New applications SHOULD default to v0.2.
+
+Interfaces MUST display the protocol version for every intent and MUST NOT reinterpret v0.1 fee validation as v0.2 behavior.
 
 Canonical contracts MUST NOT be upgraded in place.
 
 ---
 
-# 79. Release Artifacts
+# 73. Release Artifacts
 
 Every release MUST include:
 
 - verified source;
 - SPDX license;
-- compiler lockfile;
-- dependency lockfile;
-- build reproducibility instructions;
-- contract ABIs;
-- TypeScript types;
-- code hashes;
-- deployed addresses;
-- chain IDs;
-- deterministic address test vectors;
+- compiler and dependency lockfiles;
+- reproducible build instructions;
+- ABIs and TypeScript types;
+- creation and runtime code hashes;
+- deployed addresses and chain IDs;
+- deterministic vectors;
+- quote vectors;
 - audit reports;
 - known limitations;
 - security contact;
 - deployment transaction references;
-- subgraph or indexer schema version;
-- API schema version.
+- indexer schema version;
+- API schema version;
+- name normalization versions;
+- external dependency addresses and versions.
 
 ---
 
-# Part VIII — Implementation Plan
+# Part VII — Implementation
 
-# 80. Phase 1 — Protocol Core
+# 74. Implementation Plan
 
-- implement `IGOTOwnerResolver`;
-- implement 226-byte immutable layout;
-- implement `GOTIntent`;
-- implement `GOTFactory`;
-- implement direct mode through zero owner key;
-- implement resolver mode through nonzero owner key;
-- preserve one-slot storage;
-- implement cumulative fee math;
-- implement deterministic preview;
-- implement atomic deployment and execution;
-- add required unit, fuzz and invariant tests;
-- publish deterministic vectors.
+## Phase 1 — Protocol core
 
----
+- update protocol identifier;
+- permit zero fee;
+- preserve immutable layout;
+- implement zero-fee tests;
+- implement quote helpers;
+- preserve cumulative positive-fee math;
+- publish new deterministic vectors;
+- audit.
 
-# 81. Phase 2 — GOTName
+## Phase 2 — GOTName
 
-- implement immutable verifier;
+- deploy verifier Safe;
 - implement EIP-712 claim;
-- implement ERC-1271 verifier support;
-- implement one-time claim;
-- implement `resolveOwner`;
-- implement current-owner transfer;
-- publish key derivation rules;
-- implement name resolution database;
-- implement namespace adapters;
-- implement account-control proof;
-- sponsor claim transactions;
-- add monitoring and audit logs.
+- build two-operator verification workflow;
+- publish namespaces and normalization;
+- implement public and opaque key modes;
+- audit.
 
----
-
-# 82. Phase 3 — Transfer and Invoice MVP
+## Phase 3 — Transfer and invoice MVP
 
 - Base Account sign-in;
 - Base USDC;
-- direct transfer creation;
-- named transfer creation;
-- payment links;
-- intent address preview;
-- counterfactual payment detection;
+- direct and named transfer creation;
+- route resolver;
+- exact recipient and gross quote display;
+- indexer;
 - resolver worker;
-- name claim UX;
-- invoice creation;
-- receipts;
-- webhooks;
-- CSV export;
-- activity feed.
+- receipts, webhooks and CSV export.
 
----
-
-# 83. Phase 4 — Subscriptions
+## Phase 4 — Subscriptions and SaaS
 
 - integrate Spend Permissions;
-- implement `GOTSubscriptionCollector`;
-- implement exact recurring permission;
-- implement signed intent binding;
-- scheduler and keepers;
-- retries;
-- cancellation;
-- receipts;
-- subscription webhooks;
-- merchant subscription dashboard.
+- deploy GOTSubscription;
+- use zero-fee recurring intents by default;
+- implement got.cx onchain SaaS subscriptions;
+- activate hosted plans from finalized events;
+- add scheduler, cancellation and retries.
 
----
+## Phase 5 — Ecosystem
 
-# 84. Phase 5 — Integrations and Expansion
-
-- Telegram verification;
-- X verification;
-- email and phone verification;
-- ENS adapter;
-- public GOT names;
-- developer SDK;
-- API keys;
-- accounting integrations;
-- partner integrations;
-- additional EVM deployments;
+- SDK;
+- partner analytics;
+- third-party integration examples;
+- X, Telegram, email, phone, ENS and domain verification;
+- additional chains;
 - independent resolver operators.
 
 ---
 
-# 85. Complete Implementation Checklist
+# 75. Complete Implementation Checklist
 
-## 85.1 Repository
+## Repository
 
-- [ ] one authoritative `docs/SPEC.md`;
-- [ ] protocol core separated from periphery;
-- [ ] interface separated from infra;
-- [ ] core has no periphery dependency;
-- [ ] contract ABIs and deployments published;
-- [ ] security policy and disclosure contact published.
+- [ ] authoritative `docs/SPEC.md`;
+- [ ] core/periphery/interface/infra boundaries;
+- [ ] security and contribution policies;
+- [ ] generated ABIs and types;
+- [ ] deterministic and quote vectors.
 
-## 85.2 GOTFactory
+## GOTFactory
 
 - [ ] zero mutable storage;
-- [ ] no admin;
-- [ ] no pause;
-- [ ] no upgrade;
-- [ ] exact protocol identifier;
-- [ ] exact 226-byte immutable args;
-- [ ] canonical config hash;
-- [ ] canonical salt;
-- [ ] canonical `CREATE2` address;
-- [ ] no token-code requirement during preview;
-- [ ] token-code requirement during execution;
-- [ ] atomic first deployment and execution;
-- [ ] actual external executor forwarded;
-- [ ] no raw owner-source authority comparison;
-- [ ] deterministic vectors published.
+- [ ] no admin, pause or upgrade;
+- [ ] `GOT_PROTOCOL_V0_2`;
+- [ ] exact 226-byte layout;
+- [ ] zero fee accepted;
+- [ ] fee above maximum rejected;
+- [ ] preview has no external calls;
+- [ ] token code required only at execution;
+- [ ] atomic deployment and execution;
+- [ ] exact external executor forwarded;
+- [ ] quote helpers tested.
 
-## 85.3 GOTIntent
+## GOTIntent
 
-- [ ] direct implementation protection;
-- [ ] immutable suffix validation;
+- [ ] direct implementation blocked;
 - [ ] one mutable slot;
-- [ ] zero owner key means direct owner;
-- [ ] nonzero owner key means resolver mode;
-- [ ] bounded ERC-165 probe;
-- [ ] bounded resolver call;
-- [ ] unresolved owner handled safely;
-- [ ] fail closed on resolver failure;
-- [ ] invalid resolved addresses rejected;
-- [ ] exactly one owner read per operation;
+- [ ] direct and resolver modes;
+- [ ] bounded resolver calls;
+- [ ] unresolved owner safe;
+- [ ] one owner read;
 - [ ] owner settlement always available;
-- [ ] open resolver exact;
-- [ ] restricted resolver exact;
-- [ ] cumulative fee mathematics;
-- [ ] execution reward to actual executor;
-- [ ] configured token unrecoverable;
-- [ ] unsupported assets recover to effective owner;
-- [ ] complete balance processed;
-- [ ] final token balance verified;
-- [ ] reentrancy lock correct;
-- [ ] effective owner emitted.
+- [ ] open and restricted resolver exact;
+- [ ] zero-fee owner receives full balance;
+- [ ] positive cumulative fee math;
+- [ ] partner reward to immutable partner;
+- [ ] configured token protected;
+- [ ] complete balance cleared;
+- [ ] lock correct;
+- [ ] events exact.
 
-## 85.4 GOTName
+## GOTName
 
-- [ ] one onchain contract;
-- [ ] one mapping from name key to account;
-- [ ] immutable verifier;
-- [ ] EOA and ERC-1271 verifier support;
-- [ ] EIP-712 domain separation;
-- [ ] exact key, account and deadline binding;
+- [ ] immutable 2-of-3 Safe verifier;
+- [ ] EIP-712 and ERC-1271;
 - [ ] one-time claim;
-- [ ] claim before intent deployment;
 - [ ] no verifier overwrite;
-- [ ] transfer only by current account;
-- [ ] zero and self account rejected;
-- [ ] ERC-165 support;
-- [ ] no raw identifiers onchain;
-- [ ] no upgrade;
-- [ ] no pause;
-- [ ] no admin mapping setter.
+- [ ] current-owner transfer;
+- [ ] namespace versions;
+- [ ] opaque private mode;
+- [ ] evidence audit logs.
 
-## 85.5 Name Infrastructure
+## GOTSubscription
 
-- [ ] namespace definitions;
-- [ ] canonicalization rules;
-- [ ] opaque identifiers for sensitive namespaces;
-- [ ] lifecycle epochs;
-- [ ] email verification;
-- [ ] phone verification;
-- [ ] X stable user ID verification;
-- [ ] Telegram stable user ID verification;
-- [ ] ENS verification;
-- [ ] account-control proof;
-- [ ] short claim deadlines;
-- [ ] one-time backend nonces;
-- [ ] exact key reconstruction;
-- [ ] claim signer isolation;
-- [ ] audit logs;
-- [ ] rate limits;
-- [ ] user notifications.
-
-## 85.6 Subscription Collector
-
-- [ ] immutable manager, factory and token;
-- [ ] exact spender;
-- [ ] exact token;
-- [ ] exact allowance;
-- [ ] exact period;
-- [ ] exact intent binding;
-- [ ] authorized resolver equals collector;
-- [ ] approval-by-signature;
-- [ ] exact balance increase;
-- [ ] transfer principal to predicted intent;
-- [ ] atomic deploy and execute;
-- [ ] forward exact execution reward;
-- [ ] reentrancy guard;
+- [ ] immutable;
+- [ ] exact binding;
+- [ ] exact allowance and period;
+- [ ] atomic account spend and settlement;
+- [ ] zero-fee reference profile;
+- [ ] execution reward forwarding;
+- [ ] revocation handling;
 - [ ] no arbitrary destination;
-- [ ] no variable charge;
-- [ ] cancellation and retry handling.
+- [ ] reentrancy guard.
 
-## 85.7 Interface
+## got.cx
 
-- [ ] canonical `got.cx` routes;
-- [ ] Base Account sign-in;
-- [ ] external wallet support;
-- [ ] direct transfer UX;
-- [ ] named transfer UX;
-- [ ] unclaimed warning;
-- [ ] claim UX;
-- [ ] invoice UX;
-- [ ] subscription UX;
-- [ ] local address verification;
-- [ ] chain and asset display;
-- [ ] QR codes;
-- [ ] receipts;
-- [ ] activity;
-- [ ] webhook management;
-- [ ] API keys;
-- [ ] secure headers;
-- [ ] privacy disclosures.
-
-## 85.8 Infrastructure
-
-- [ ] chain-aware indexing;
-- [ ] reorg handling;
-- [ ] counterfactual funding detection;
-- [ ] resolver config reconstruction;
-- [ ] resolver profitability policy;
-- [ ] subscription scheduler;
-- [ ] idempotent jobs;
+- [ ] subscription-only default pricing;
+- [ ] no hosted transfer-volume fee by default;
+- [ ] SaaS limits only;
+- [ ] onchain paid-plan dogfooding;
+- [ ] protocol access survives plan expiration;
+- [ ] fee and gross quote visible;
+- [ ] route formats;
+- [ ] API idempotency;
 - [ ] signed webhooks;
-- [ ] webhook retries;
-- [ ] SSRF protection;
-- [ ] notification workers;
-- [ ] monitoring;
-- [ ] alerts;
-- [ ] deterministic deployments;
-- [ ] code-hash verification.
+- [ ] usage counters;
+- [ ] privacy controls.
 
-## 85.9 Security and Release
+## Infrastructure
 
-- [ ] core audit complete;
-- [ ] GOTName audit complete;
-- [ ] collector audit complete;
-- [ ] compiler pinned;
-- [ ] dependencies pinned;
-- [ ] source verified;
-- [ ] code hashes published;
-- [ ] interface IDs published;
-- [ ] test vectors published;
-- [ ] deployment manifest published;
-- [ ] incident response documented;
-- [ ] bug bounty prepared.
+- [ ] reorg-safe indexer;
+- [ ] funded-address detection;
+- [ ] zero-fee sponsor policy;
+- [ ] resolver profitability checks;
+- [ ] subscription scheduler;
+- [ ] threshold claim workflow;
+- [ ] monitoring and runbooks;
+- [ ] backups and restoration tests.
 
 ---
 
-# 86. Reference Contract Skeletons
+# 76. Reference Solidity
 
-## 86.1 Owner resolver
+## 76.1 Validation
 
 ```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
-
-import {
-    IERC165
-} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-
-interface IGOTOwnerResolver is IERC165 {
-    function resolveOwner(
-        address intent,
-        bytes32 ownerKey
-    ) external view returns (address);
+function _validate(
+    IntentConfig calldata config
+) internal view {
+    if (
+        config.ownerSource == address(0) ||
+        config.token == address(0) ||
+        config.amount == 0 ||
+        config.feeBps > MAX_FEE_BPS ||
+        (
+            config.period != 0 &&
+            config.initialDeadline == 0
+        )
+    ) {
+        revert InvalidConfiguration();
+    }
 }
 ```
 
-## 86.2 GOTName
+## 76.2 Cumulative allocation
 
 ```solidity
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+function _cumulativeFee(
+    uint256 total,
+    uint16 feeBps_
+) internal pure returns (uint256) {
+    return Math.mulDiv(
+        total,
+        feeBps_,
+        10_000
+    );
+}
 
-import {
-    EIP712
-} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {
-    SignatureChecker
-} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {
-    ERC165
-} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+function _cumulativeExecution(
+    uint256 total,
+    uint16 feeBps_
+) internal view returns (uint256) {
+    uint256 totalFee =
+        _cumulativeFee(total, feeBps_);
 
-contract GOTName
-    is EIP712,
-       ERC165,
-       IGOTOwnerResolver
-{
-    struct Claim {
-        bytes32 nameKey;
-        address account;
-        uint48 deadline;
-    }
+    return Math.mulDiv(
+        totalFee,
+        EXECUTION_SHARE_BPS,
+        10_000
+    );
+}
 
-    bytes32 private constant CLAIM_TYPEHASH =
-        keccak256(
-            "Claim(bytes32 nameKey,address account,uint48 deadline)"
+function _cumulativePartner(
+    uint256 total,
+    uint16 feeBps_,
+    bool hasPartner
+) internal view returns (uint256) {
+    if (!hasPartner) return 0;
+
+    uint256 totalFee =
+        _cumulativeFee(total, feeBps_);
+
+    uint256 execution =
+        Math.mulDiv(
+            totalFee,
+            EXECUTION_SHARE_BPS,
+            10_000
         );
 
-    address public immutable CLAIM_VERIFIER;
+    uint256 nonExecution =
+        totalFee - execution;
 
-    mapping(bytes32 => address)
-        private _accountOf;
+    return Math.mulDiv(
+        nonExecution,
+        PARTNER_SHARE_BPS,
+        10_000
+    );
+}
+```
 
-    constructor(address verifier)
-        EIP712("GOTName", "1")
-    {
-        if (verifier == address(0)) {
-            revert InvalidAccount();
-        }
+## 76.3 Zero-fee fast path
 
-        CLAIM_VERIFIER = verifier;
+```solidity
+if (feeBps_ == 0) {
+    ownerAmount = balance;
+    treasuryFee = 0;
+    partnerReward = 0;
+    executionReward = 0;
+} else {
+    // Calculate cumulative deltas.
+}
+```
+
+The fast path is optional; observable behavior MUST equal the general cumulative formulas.
+
+## 76.4 Quote helper
+
+```solidity
+function quoteOwnerAmount(
+    uint256 gross,
+    uint16 feeBps_
+) public pure returns (uint256) {
+    return gross - Math.mulDiv(
+        gross,
+        feeBps_,
+        10_000
+    );
+}
+
+function quoteGrossAmount(
+    uint256 recipientAmount,
+    uint16 feeBps_
+) public pure returns (uint256 gross) {
+    if (feeBps_ == 0) {
+        return recipientAmount;
     }
 
-    function accountOf(
-        bytes32 nameKey
-    ) external view returns (address) {
-        return _accountOf[nameKey];
+    if (feeBps_ >= 10_000) {
+        revert InvalidConfiguration();
     }
 
-    function resolveOwner(
-        address,
-        bytes32 ownerKey
-    ) external view returns (address) {
-        return _accountOf[ownerKey];
+    gross = Math.mulDiv(
+        recipientAmount,
+        10_000,
+        10_000 - feeBps_,
+        Math.Rounding.Ceil
+    );
+
+    while (
+        quoteOwnerAmount(gross, feeBps_) >
+        recipientAmount
+    ) {
+        unchecked {
+            --gross;
+        }
     }
 
-    function claim(
-        Claim calldata c,
-        bytes calldata signature
-    ) external {
-        if (c.nameKey == bytes32(0)) {
-            revert InvalidNameKey();
+    while (
+        quoteOwnerAmount(gross, feeBps_) <
+        recipientAmount
+    ) {
+        unchecked {
+            ++gross;
         }
+    }
+}
+```
 
-        if (
-            c.account == address(0) ||
-            c.account == address(this)
-        ) {
-            revert InvalidAccount();
-        }
+Production implementation MUST prove bounded adjustment and overflow safety.
 
-        if (block.timestamp > c.deadline) {
-            revert ClaimExpired();
-        }
+## 76.5 GOTName claim
 
-        if (_accountOf[c.nameKey] != address(0)) {
-            revert AlreadyClaimed();
-        }
+```solidity
+function claim(
+    Claim calldata c,
+    bytes calldata signature
+) external {
+    if (
+        c.nameKey == bytes32(0) ||
+        c.account == address(0) ||
+        c.account == address(this)
+    ) {
+        revert InvalidAccount();
+    }
 
-        bytes32 structHash = keccak256(
+    if (block.timestamp > c.deadline) {
+        revert ClaimExpired();
+    }
+
+    if (_accountOf[c.nameKey] != address(0)) {
+        revert AlreadyClaimed();
+    }
+
+    bytes32 digest = _hashTypedDataV4(
+        keccak256(
             abi.encode(
                 CLAIM_TYPEHASH,
                 c.nameKey,
                 c.account,
                 c.deadline
             )
-        );
-
-        bytes32 digest =
-            _hashTypedDataV4(structHash);
-
-        if (
-            !SignatureChecker.isValidSignatureNow(
-                CLAIM_VERIFIER,
-                digest,
-                signature
-            )
-        ) {
-            revert InvalidVerifierSignature();
-        }
-
-        _accountOf[c.nameKey] = c.account;
-
-        emit NameClaimed(
-            c.nameKey,
-            c.account
-        );
-    }
-
-    function transfer(
-        bytes32 nameKey,
-        address newAccount
-    ) external {
-        address current = _accountOf[nameKey];
-
-        if (current == address(0)) {
-            revert NameNotClaimed();
-        }
-
-        if (msg.sender != current) {
-            revert Unauthorized();
-        }
-
-        if (
-            newAccount == address(0) ||
-            newAccount == address(this)
-        ) {
-            revert InvalidAccount();
-        }
-
-        _accountOf[nameKey] = newAccount;
-
-        emit NameTransferred(
-            nameKey,
-            current,
-            newAccount
-        );
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override returns (bool) {
-        return
-            interfaceId ==
-                type(IGOTOwnerResolver).interfaceId ||
-            super.supportsInterface(interfaceId);
-    }
-}
-```
-
-## 86.3 Owner resolution in GOTIntent
-
-```solidity
-function owner()
-    public
-    view
-    onlyProxy
-    returns (address effectiveOwner)
-{
-    address source =
-        _getArgAddress(OWNER_SOURCE_OFFSET);
-
-    bytes32 key =
-        _getArgBytes32(OWNER_KEY_OFFSET);
-
-    if (key == bytes32(0)) {
-        return source;
-    }
-
-    if (source.code.length == 0) {
-        revert OwnerResolverUnavailable();
-    }
-
-    if (!_supportsOwnerResolver(source)) {
-        revert InvalidOwnerResolver();
-    }
-
-    (bool ok, bytes memory data) =
-        source.staticcall{
-            gas: OWNER_RESOLVER_GAS_LIMIT
-        }(
-            abi.encodeCall(
-                IGOTOwnerResolver.resolveOwner,
-                (address(this), key)
-            )
-        );
-
-    if (!ok || data.length != 32) {
-        revert OwnerResolutionFailed();
-    }
-
-    effectiveOwner =
-        abi.decode(data, (address));
+        )
+    );
 
     if (
-        effectiveOwner == address(this) ||
-        effectiveOwner == source
+        !SignatureChecker.isValidSignatureNow(
+            CLAIM_VERIFIER,
+            digest,
+            signature
+        )
     ) {
-        revert InvalidResolvedOwner();
+        revert InvalidVerifierSignature();
     }
+
+    _accountOf[c.nameKey] = c.account;
+    emit NameClaimed(c.nameKey, c.account);
 }
 ```
 
-## 86.4 Subscription charge
+## 76.6 Subscription execution
 
 ```solidity
-function charge(
+function execute(
     SpendPermission calldata permission,
     bytes calldata approvalSignature,
     IGOTFactory.IntentConfig calldata config
@@ -4250,8 +3066,8 @@ function charge(
             );
     }
 
-    uint256 balanceBefore =
-        IERC20(USDC).balanceOf(
+    uint256 beforeBalance =
+        IERC20(config.token).balanceOf(
             address(this)
         );
 
@@ -4261,15 +3077,15 @@ function charge(
     );
 
     uint256 received =
-        IERC20(USDC).balanceOf(
+        IERC20(config.token).balanceOf(
             address(this)
-        ) - balanceBefore;
+        ) - beforeBalance;
 
     if (received != config.amount) {
         revert IncorrectReceivedAmount();
     }
 
-    IERC20(USDC).safeTransfer(
+    IERC20(config.token).safeTransfer(
         intent,
         config.amount
     );
@@ -4278,27 +3094,27 @@ function charge(
         ,
         uint256 processedAmount,
         uint256 ownerAmount,
-        ,
-        ,
+        uint256 treasuryFee,
+        uint256 partnerReward,
         uint256 executionReward
-    ) = GOT_FACTORY.deployAndExecute(
-        config
-    );
+    ) = GOT_FACTORY.deployAndExecute(config);
 
     if (executionReward != 0) {
-        IERC20(USDC).safeTransfer(
+        IERC20(config.token).safeTransfer(
             msg.sender,
             executionReward
         );
     }
 
-    emit SubscriptionCharged(
+    emit SubscriptionTransferProcessed(
         config.intentId,
         permission.account,
         intent,
         msg.sender,
         processedAmount,
         ownerAmount,
+        treasuryFee,
+        partnerReward,
         executionReward
     );
 }
@@ -4306,52 +3122,134 @@ function charge(
 
 ---
 
-# 87. External Standards and Dependencies
+# 77. External Standards and Dependencies
 
-Implementation review MUST cover applicable current specifications and pinned deployments for:
+Implementation review MUST pin and validate the applicable versions, deployments and behavior of:
 
 - EIP-1014 / `CREATE2`;
 - ERC-1167 minimal proxies;
-- minimal proxies with immutable arguments;
+- the selected immutable-arguments proxy implementation;
 - ERC-20;
 - ERC-165;
 - EIP-712;
 - ERC-1271;
-- ERC-4337 where used by accounts;
+- ERC-4337 where used by account systems;
 - ERC-6492 where used for counterfactual signatures;
 - Base Account;
 - Base Spend Permissions;
 - canonical USDC deployments;
-- X authenticated user identity;
-- Telegram validated identity;
-- ENS ownership and resolution.
+- X, Telegram, email, phone, domain and ENS verification mechanisms.
 
-External SDK versions and deployed dependency addresses MUST be pinned in the implementation repository and release manifest.
+External SDK versions and deployed dependency addresses MUST be pinned in the repository and release manifest.
 
 ---
 
-# 88. Canonical Statements
+# 78. Canonical Statements
 
-## GOTIntent
+## Deterministic intent address
 
-> **GOTIntent is a standalone deterministic counterfactual payment address with immutable configuration, cumulative fee accounting and optional effective-owner resolution.**
+> **A deterministic intent address is a standalone counterfactual ERC20 transfer address with immutable configuration, cumulative accounting and optional effective-owner resolution.**
+
+## Zero-fee intent
+
+> **A zero-fee intent is valid and transfers the complete processed balance to the effective owner, but it provides no built-in third-party execution reward.**
+
+## Positive-fee intent
+
+> **A positive-fee intent allocates a transparent cumulative fee among the executor, optional partner and protocol treasury.**
 
 ## GOTName
 
-> **GOTName is an optional reusable name service that maps an opaque name key to an account and resolves every GOTIntent created for that key.**
+> **GOTName maps an opaque reusable name key to an account and can resolve every intent created for that key.**
 
-## Direct transfer
+## GOTSubscription
 
-> **A direct GOTIntent works with an account alone and has no dependency on GOTName.**
+> **GOTSubscription binds a revocable account spend permission to an exact deterministic intent and executes the recurring transfer atomically.**
 
-## Named transfer
+## got.cx
 
-> **A named GOTIntent can receive funds before the name is claimed and becomes settleable when GOTName resolves the key to an account.**
+> **got.cx is one product built on GOT Protocol. It monetizes hosted software and automation rather than requiring a percentage of every transfer.**
 
-## GOT
+## Integrators
 
-> **GOT is an open stack for global onchain transfers through deterministic intent addresses, reusable names, interfaces and automated execution infrastructure.**
+> **Integrators may use zero fees or configure their own immutable onchain fee and partner reward without depending on got.cx.**
 
 ---
 
-**End of GOT Unified System Implementation Specification v0.1**
+# 79. v0.2 Change Log
+
+Changes from Final Unified System Specification v0.1:
+
+1. Protocol identifier changed to `GOT_PROTOCOL_V0_2`.
+2. `feeBps == 0` is valid.
+3. Removed the minimum-positive-fee configuration invariant.
+4. Added normative zero-fee settlement behavior.
+5. Clarified that zero-fee intents do not guarantee permissionless execution.
+6. Added gross and recipient quote helpers.
+7. Clarified fee-on-top invoice presentation while retaining cumulative gross protocol accounting.
+8. Clarified that `got.cx` is one product consumer, not a privileged protocol participant.
+9. Added subscription-only got.cx business-model requirements.
+10. Added SaaS-only hosted limits and prohibited protocol-level volume limits.
+11. Added got.cx onchain SaaS subscription dogfooding.
+12. Clarified that got.cx does not need to share subscription revenue with integrators.
+13. Clarified third-party onchain partner rewards through the intent fee model.
+14. Added public and private transfer-link routing recommendations.
+15. Added 2-of-3 Safe verifier operations for GOTName.
+16. Updated tests, threats, audit scope and deployment artifacts.
+
+---
+
+# 80. Final Decisions
+
+The v0.2 implementation MUST follow these final decisions:
+
+```text
+Core primitive
+    deterministic intent address
+
+Public terminology
+    transfer, not payment
+
+Core fee
+    optional; zero is valid
+
+Positive fee accounting
+    cumulative and split invariant on gross processed value
+
+Fee recipients
+    executor, optional partner, treasury
+
+Exact invoice UX
+    application quotes gross amount above recipient target
+
+Zero-fee execution
+    gas funded by payer, owner, application or sponsor
+
+got.cx economics
+    fixed SaaS subscriptions; no additional transfer-volume fee by default
+
+got.cx limits
+    hosted SaaS resources only; never onchain transfer value
+
+got.cx protocol status
+    one consumer with no privileged core role
+
+got.cx subscription
+    onchain through GOTSubscription as dogfooding
+
+Third-party integrators
+    free to choose zero fees, positive onchain fees, subscriptions or another model
+
+Partner rewards
+    transparent and onchain when configured in a positive-fee intent
+
+Name claims
+    opaque keys, immutable verifier, 2-of-3 Safe recommended
+
+Canonical launch
+    Base Mainnet + canonical USDC + Base Account
+```
+
+---
+
+**End of GOT Final Unified System Implementation Specification v0.2**
