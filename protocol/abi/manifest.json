@@ -1,0 +1,38 @@
+{
+  "GOTFactory": {
+    "abi": "GOTFactory.json",
+    "sourceName": "contracts/core/GOTFactory.sol"
+  },
+  "GOTIntent": {
+    "abi": "GOTIntent.json",
+    "sourceName": "contracts/core/GOTIntent.sol"
+  },
+  "GOTName": {
+    "abi": "GOTName.json",
+    "sourceName": "contracts/periphery/GOTName.sol"
+  },
+  "GOTSubscription": {
+    "abi": "GOTSubscription.json",
+    "sourceName": "contracts/periphery/GOTSubscription.sol"
+  },
+  "IGOTFactory": {
+    "abi": "IGOTFactory.json",
+    "sourceName": "contracts/core/interfaces/IGOTFactory.sol"
+  },
+  "IGOTIntent": {
+    "abi": "IGOTIntent.json",
+    "sourceName": "contracts/core/interfaces/IGOTIntent.sol"
+  },
+  "IGOTName": {
+    "abi": "IGOTName.json",
+    "sourceName": "contracts/periphery/interfaces/IGOTName.sol"
+  },
+  "IGOTOwnerResolver": {
+    "abi": "IGOTOwnerResolver.json",
+    "sourceName": "contracts/core/interfaces/IGOTOwnerResolver.sol"
+  },
+  "ISpendPermissionManager": {
+    "abi": "ISpendPermissionManager.json",
+    "sourceName": "contracts/periphery/interfaces/ISpendPermissionManager.sol"
+  }
+}
