@@ -11,8 +11,9 @@
 **Primary launch asset:** canonical USDC  
 **Primary account layer:** Base Account  
 **Target protocol networks:** Cancun-compatible Ethereum/EVM networks supporting `CREATE2` and `MCOPY`
-**Status:** Final implementation specification; pre-audit  
-**Date:** 2026-07-31  
+**Document revision:** `0.2.1-review`  
+**Status:** Review-remediation candidate; independent audit closure pending  
+**Date:** 2026-08-06  
 
 ---
 
@@ -558,7 +559,7 @@ MAX_FEE_BPS < 10_000;
 
 The factory MUST have zero mutable storage. Solidity immutables embedded in bytecode are permitted.
 
-Changing protocol constants, fee allocation order, immutable layout or normative resolver gas limits requires a new protocol version.
+Changing protocol constants, fee allocation order, immutable layout, normative resolver gas limits, clone dispatch behavior, or the canonical `GOTIntent` public/external selector set requires a new protocol version and newly published implementation and factory code hashes.
 
 ---
 
@@ -1146,7 +1147,7 @@ The partner address and fee basis points are immutable per intent.
 
 The canonical got.cx USDC profile MUST use zero-fee intents and fund hosted execution from subscriptions or sponsorship. Another integrator MAY choose a positive fee and receive its partner allocation onchain.
 
-For a blacklistable configured token, every synchronous positive-fee recipient is a liveness dependency. A later token-administrator blocklist of the immutable treasury or partner can make an already-funded intent permanently unprocessable because allocation is atomic and the configured token cannot use the recovery path. Positive-fee integrators MUST disclose this risk, validate fixed recipients before publishing or funding an address, and monitor them continuously. Preflight checks reduce likelihood but cannot rescue funds after a later blocklist action.
+For a blacklistable configured token, every address receiving a nonzero synchronous transfer is a liveness dependency. The effective owner is always a dependency, including for zero-fee intents. For positive-fee intents, the treasury, configured partner and current executor are additional dependencies whenever their cumulative deltas are nonzero. An open executor can sometimes be replaced by another unblocked executor, but the immutable treasury and partner cannot be replaced, and a blocked effective owner prevents settlement under any fee policy. A later token-administrator blocklist can therefore make an already-funded intent permanently unprocessable because allocation is atomic and the configured token cannot use the recovery path. Applications MUST disclose this risk, validate fixed recipients before publishing or funding an address, and monitor them continuously. Preflight checks and zero-fee configuration reduce dependencies but cannot rescue funds after a later blocklist action.
 
 ---
 
@@ -1244,13 +1245,13 @@ For `f == 0`:
 G = N
 ```
 
-A safe implementation may start from:
+Let `d = 10,000 - f`. For `N > 0` and `f > 0`, the exact minimum is:
 
 ```text
-ceil(N × 10,000 / (10,000 - f))
+G = floor((N - 1) × 10,000 / d) + 1
 ```
 
-and adjust by at most a small number of token base units until the equality holds.
+This follows because owner proceeds equal `ceil(G × d / 10,000)`. The implementation MUST use overflow-safe full-precision arithmetic and MUST revert when no result is representable in `uint256`.
 
 Example:
 
@@ -1937,7 +1938,7 @@ Invariants:
 - account spend and settlement are atomic;
 - unresolved owner rolls back the charge;
 - execution reward is forwarded exactly;
-- no residual principal remains;
+- no incremental configured-token balance from the current execution remains; pre-existing unsolicited balances are preserved and may be permanently stranded;
 - cancellation prevents future charges.
 
 Tests MUST cover approval-by-signature, ERC-6492 where supported, existing approval, period boundaries, revocation, malformed `extraData`, malicious keeper, unresolved owner, zero and positive fee intents, token balance deltas and reentrancy.
@@ -2571,7 +2572,7 @@ Use signed canonical payloads, replay protection and API verification.
 
 ## 68.9 Token behavior
 
-Reference profile supports canonical USDC. Generic deployments must assess fee-on-transfer, rebasing, callback and blacklist behavior. Canonical got.cx USDC intents use `feeBps == 0`; positive-fee integrations accept that a later blocklist of an immutable treasury or partner can permanently prevent atomic settlement. Recipient monitoring and pre-funding checks are required operational controls, not recovery mechanisms.
+Reference profile supports canonical USDC. Generic deployments must assess fee-on-transfer, rebasing, callback and blacklist behavior. Canonical got.cx USDC intents use `feeBps == 0`, which removes treasury, partner and executor token transfers but does not eliminate the effective-owner blocklist dependency. Positive-fee integrations additionally accept that a later blocklist of the immutable treasury or partner, or of the selected executor when a reward is due, can prevent atomic settlement. Recipient monitoring and pre-funding checks are required operational controls, not recovery mechanisms.
 
 ## 68.10 SaaS account compromise
 
@@ -2974,42 +2975,29 @@ function quoteGrossAmount(
     uint256 recipientAmount,
     uint16 feeBps_
 ) public pure returns (uint256 gross) {
-    if (feeBps_ == 0) {
-        return recipientAmount;
-    }
-
     if (feeBps_ >= 10_000) {
         revert InvalidConfiguration();
     }
-
-    gross = Math.mulDiv(
-        recipientAmount,
-        10_000,
-        10_000 - feeBps_,
-        Math.Rounding.Ceil
-    );
-
-    while (
-        quoteOwnerAmount(gross, feeBps_) >
-        recipientAmount
-    ) {
-        unchecked {
-            --gross;
-        }
+    if (feeBps_ == 0 || recipientAmount == 0) {
+        return recipientAmount;
     }
 
-    while (
-        quoteOwnerAmount(gross, feeBps_) <
+    gross = Math.mulDiv(
+        recipientAmount - 1,
+        10_000,
+        10_000 - feeBps_
+    ) + 1;
+
+    if (
+        quoteOwnerAmount(gross, feeBps_) !=
         recipientAmount
     ) {
-        unchecked {
-            ++gross;
-        }
+        revert InvalidConfiguration();
     }
 }
 ```
 
-Production implementation MUST prove bounded adjustment and overflow safety.
+The closed form is exact and loop-free. Production implementation MUST use overflow-safe full-precision arithmetic.
 
 ## 76.5 GOTName claim
 
