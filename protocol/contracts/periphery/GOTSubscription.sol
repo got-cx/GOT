@@ -149,6 +149,7 @@ contract GOTSubscription is ReentrancyGuard {
         || config.period == 0 || permission.period != uint48(config.period)
         || config.initialDeadline > type(uint48).max
         || permission.start != uint48(config.initialDeadline)
+        || permission.end <= permission.start
         || config.authorizedResolver != address(this)
     ) revert InvalidPermission();
 

@@ -10,7 +10,7 @@
 **Primary launch network:** Base  
 **Primary launch asset:** canonical USDC  
 **Primary account layer:** Base Account  
-**Target protocol networks:** Ethereum and EVM-compatible networks supporting `CREATE2`  
+**Target protocol networks:** Cancun-compatible Ethereum/EVM networks supporting `CREATE2` and `MCOPY`
 **Status:** Final implementation specification; pre-audit  
 **Date:** 2026-07-31  
 
@@ -55,6 +55,7 @@ Version 0.2 makes the following decisions normative:
 8. Third-party integrators MAY configure their own immutable onchain fee through `feeBps` and receive transparent partner rewards.
 9. `got.cx` usage limits apply only to hosted software and infrastructure, never to permissionless onchain protocol usage or transfer value.
 10. GOT’s own paid SaaS plans SHOULD use `GOTSubscription` onchain as production dogfooding, without requiring subscription revenue sharing with integrators.
+11. Canonical v0.2 bytecode targets the Cancun EVM; support for an older hard fork requires a separately versioned build and published code hashes.
 
 The primary product promise is:
 
@@ -599,6 +600,8 @@ bytes32 intentId = keccak256(
 
 `intentId`, `transferRequestId`, `transferId` and `transferLinkId` are different identifiers.
 
+The first four bytes of `intentId` MUST NOT equal any public or external function selector exposed by the canonical `GOTIntent` implementation. The immutable-argument proxy appends `intentId` immediately after empty external calldata; rejecting selector prefixes guarantees that a direct native transfer dispatches to the payable fallback instead of a nonpayable function. `previewAddress` MUST reject colliding identifiers. The recommended `keccak256` derivation above makes accidental collisions unlikely, but callers MUST still use factory validation rather than deriving an unchecked address locally.
+
 Canonical processed-transfer identity:
 
 ```text
@@ -969,6 +972,7 @@ The factory MUST:
 - have zero mutable storage;
 - expose no administrator, pause or upgrade;
 - validate configuration;
+- reject an `intentId` whose first four bytes collide with a canonical intent function selector;
 - derive the canonical address;
 - deploy only when code is absent;
 - verify the actual deployment address;
@@ -1140,7 +1144,9 @@ The canonical positive-fee allocation order is:
 
 The partner address and fee basis points are immutable per intent.
 
-`got.cx` MAY choose zero fees and fund its hosted execution from subscriptions. Another integrator MAY choose a positive fee and receive its partner allocation onchain.
+The canonical got.cx USDC profile MUST use zero-fee intents and fund hosted execution from subscriptions or sponsorship. Another integrator MAY choose a positive fee and receive its partner allocation onchain.
+
+For a blacklistable configured token, every synchronous positive-fee recipient is a liveness dependency. A later token-administrator blocklist of the immutable treasury or partner can make an already-funded intent permanently unprocessable because allocation is atomic and the configured token cannot use the recovery path. Positive-fee integrators MUST disclose this risk, validate fixed recipients before publishing or funding an address, and monitor them continuously. Preflight checks reduce likelihood but cannot rescue funds after a later blocklist action.
 
 ---
 
@@ -1311,6 +1317,8 @@ The configured token MUST NOT be recoverable outside canonical processing.
 
 Only the cached effective owner may recover the complete native balance.
 
+Deployed canonical intents accept direct native transfers through the payable fallback. Factory validation MUST reject `intentId` selector prefixes that would dispatch empty original calldata to a nonpayable intent function.
+
 ## 26.3 Unresolved intent
 
 Recovery is unavailable while owner resolution returns zero.
@@ -1437,6 +1445,9 @@ Nested processing cannot corrupt accounting.
 **INV-18 — Dynamic-owner event correctness**  
 The event records the exact cached owner used.
 
+**INV-19 — Native funding selector safety**
+Every canonical implementation function selector is rejected as an `intentId` prefix, so empty-calldata native transfers reach the payable fallback.
+
 ---
 
 # 30. Required Core Tests
@@ -1462,6 +1473,7 @@ Tests MUST include:
 - fee-on-transfer, rebasing, malicious and reentrant token behavior;
 - totalProcessed overflow boundary;
 - proxy suffix validation;
+- rejection of every implementation selector as an `intentId` prefix and successful native funding for valid identifiers;
 - deterministic address vectors across supported chains.
 
 Fuzz properties MUST include:
@@ -1639,6 +1651,8 @@ Claim requirements:
 
 Claim submission MAY be sponsored. The submitting account does not need to equal the destination account because the verifier signature binds the account.
 
+The immutable verifier has complete authority over first claims. Its offchain signing policy MUST require both fresh identity evidence and cryptographic proof of control over `claimData.account`; the contract does not independently require a destination-account signature.
+
 ---
 
 # 36. Name Transfer
@@ -1655,6 +1669,8 @@ function transfer(
 The verifier cannot force migration.
 
 This supports user-controlled migration from an EOA to Base Account, Safe or another smart account.
+
+Transfer is an immediate, one-step, irreversible assignment. There is no pending-owner acceptance, cancellation, guardian or verifier recovery. Applications MUST checksum and simulate the destination, warn about incapable contracts and loss of access, and require an explicit confirmation before submitting a transfer.
 
 Applications SHOULD warn users that external identity ownership changes do not automatically change the onchain mapping.
 
@@ -1774,8 +1790,10 @@ spender    = GOTSubscription
 allowance  = 29 USDC
 period     = billing period
 start      = subscription start
-end        = optional end
+end        = required exclusive end
 ```
+
+The pinned Coinbase Spend Permission Manager requires `start < end`; zero is not an unbounded-expiry sentinel. A product with no user-selected end MUST encode an explicit future timestamp. `type(uint48).max` MAY represent a practically unbounded permission when that policy is clearly disclosed.
 
 Required v0.2 reference policy:
 
@@ -1784,6 +1802,7 @@ permission.spender   == GOTSubscription
 permission.token     == config.token
 permission.allowance == config.amount
 permission.period    == config.period
+permission.end       > permission.start
 ```
 
 Consequences:
@@ -1829,6 +1848,7 @@ permission.period == uint48(config.period);
 permission.allowance == uint160(config.amount);
 config.initialDeadline <= type(uint48).max;
 permission.start == uint48(config.initialDeadline);
+permission.end > permission.start;
 config.authorizedResolver == address(this);
 binding.factory == GOT_FACTORY;
 binding.configHash == GOT_FACTORY.configHash(config);
@@ -2133,7 +2153,7 @@ Merchant creates:
 - plan name;
 - gross recurring amount;
 - period;
-- optional end;
+- optional user-selected end, encoded onchain as a required explicit future timestamp;
 - recipient intent configuration;
 - zero or positive protocol fee;
 - cancellation policy and application metadata.
@@ -2551,7 +2571,7 @@ Use signed canonical payloads, replay protection and API verification.
 
 ## 68.9 Token behavior
 
-Reference profile supports canonical USDC. Generic deployments must assess fee-on-transfer, rebasing, callback and blacklist behavior.
+Reference profile supports canonical USDC. Generic deployments must assess fee-on-transfer, rebasing, callback and blacklist behavior. Canonical got.cx USDC intents use `feeBps == 0`; positive-fee integrations accept that a later blocklist of an immutable treasury or partner can permanently prevent atomic settlement. Recipient monitoring and pre-funding checks are required operational controls, not recovery mechanisms.
 
 ## 68.10 SaaS account compromise
 
@@ -2767,6 +2787,7 @@ Every release MUST include:
 - [ ] zero fee accepted;
 - [ ] fee above maximum rejected;
 - [ ] preview has no external calls;
+- [ ] all intent function-selector prefixes rejected;
 - [ ] token code required only at execution;
 - [ ] atomic deployment and execution;
 - [ ] exact external executor forwarded;
@@ -2806,6 +2827,7 @@ Every release MUST include:
 - [ ] immutable;
 - [ ] exact binding;
 - [ ] exact allowance and period;
+- [ ] explicit `end > start` compatible with the pinned manager;
 - [ ] atomic account spend and settlement;
 - [ ] zero-fee reference profile;
 - [ ] execution reward forwarding;

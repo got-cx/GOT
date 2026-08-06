@@ -137,7 +137,39 @@ contract GOTFactory is IGOTFactory {
     if (
       config.ownerSource == address(0) || config.token == address(0) || config.amount == 0
         || config.feeBps > MAX_FEE_BPS || (config.period != 0 && config.initialDeadline == 0)
+        || _isIntentSelector(bytes4(config.intentId))
     ) revert InvalidConfiguration();
+  }
+
+  /// @dev Empty external calldata is followed immediately by immutable args in
+  /// the clone delegatecall. Rejecting every declared implementation selector
+  /// keeps native transfers on the payable fallback instead of dispatching to
+  /// a nonpayable function whose selector matches the intentId prefix.
+  function _isIntentSelector(bytes4 selector) internal pure returns (bool) {
+    return selector == bytes4(keccak256("ERC165_GAS_LIMIT()"))
+      || selector == bytes4(keccak256("EXECUTION_SHARE_BPS()"))
+      || selector == bytes4(keccak256("IMMUTABLE_ARGS_LENGTH()"))
+      || selector == bytes4(keccak256("OWNER_RESOLVER_GAS_LIMIT()"))
+      || selector == bytes4(keccak256("PARTNER_SHARE_BPS()"))
+      || selector == bytes4(keccak256("PROTOCOL_VERSION()"))
+      || selector == bytes4(keccak256("TREASURY()"))
+      || selector == IGOTIntent.amount.selector
+      || selector == IGOTIntent.authorizedResolver.selector
+      || selector == IGOTIntent.executeFor.selector
+      || selector == IGOTIntent.factory.selector
+      || selector == IGOTIntent.feeBps.selector
+      || selector == IGOTIntent.initialDeadline.selector
+      || selector == IGOTIntent.intentId.selector
+      || selector == IGOTIntent.metadataHash.selector
+      || selector == IGOTIntent.owner.selector
+      || selector == IGOTIntent.ownerKey.selector
+      || selector == IGOTIntent.ownerSource.selector
+      || selector == IGOTIntent.partner.selector
+      || selector == IGOTIntent.period.selector
+      || selector == IGOTIntent.recoverERC20.selector
+      || selector == IGOTIntent.recoverNative.selector
+      || selector == IGOTIntent.resolve.selector || selector == IGOTIntent.settle.selector
+      || selector == IGOTIntent.token.selector || selector == IGOTIntent.totalProcessed.selector;
   }
 
   function _validateDerivedAddress(IntentConfig calldata config, address intentAddress)

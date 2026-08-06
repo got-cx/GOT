@@ -49,7 +49,9 @@ contract GOTSubscriptionTest is Test {
     assertGt(intent.code.length, 0);
 
     vm.prank(KEEPER);
-    vm.expectRevert(MockSpendPermissionManager.AllowanceExceeded.selector);
+    vm.expectRevert(
+      abi.encodeWithSelector(MockSpendPermissionManager.ExceededSpendPermission.selector, 2_000, 1_000)
+    );
     subscription.execute(permission, "", config);
   }
 
@@ -109,8 +111,23 @@ contract GOTSubscriptionTest is Test {
     vm.prank(SUBSCRIBER);
     permissionManager.revoke(permission);
     vm.prank(KEEPER);
-    vm.expectRevert(MockSpendPermissionManager.PermissionInvalid.selector);
+    vm.expectRevert(MockSpendPermissionManager.UnauthorizedSpendPermission.selector);
     subscription.execute(permission, "", config);
+  }
+
+  function test_InvalidPermissionTimeRangeFailsBeforeApproval() public {
+    (IGOTFactory.IntentConfig memory config, ISpendPermissionManager.SpendPermission memory permission) =
+      _boundTransfer(MERCHANT, bytes32(0), 0);
+
+    permission.end = permission.start;
+    vm.expectRevert(GOTSubscription.InvalidPermission.selector);
+    subscription.execute(permission, hex"01", config);
+    assertFalse(permissionManager.isApproved(permission));
+
+    permission.end = 0;
+    vm.expectRevert(GOTSubscription.InvalidPermission.selector);
+    subscription.execute(permission, hex"01", config);
+    assertFalse(permissionManager.isApproved(permission));
   }
 
   function test_NewPeriodAllowsNextExactCharge() public {
@@ -168,7 +185,7 @@ contract GOTSubscriptionTest is Test {
       allowance: uint160(config.amount),
       period: uint48(config.period),
       start: uint48(config.initialDeadline),
-      end: 0,
+      end: type(uint48).max,
       salt: 1,
       extraData: abi.encode(binding)
     });

@@ -374,7 +374,9 @@ describe("GOT protocol product and integrator examples", async function () {
       allowance: monthlyPlanAmount,
       period,
       start,
-      end: 0,
+      // The pinned manager requires an explicit exclusive end timestamp.
+      // uint48 max represents a practically unbounded product subscription.
+      end: 2 ** 48 - 1,
       salt: 1n,
       extraData,
     };
@@ -404,7 +406,7 @@ describe("GOT protocol product and integrator examples", async function () {
         account: subscriptionKeeper.account,
       }),
       permissionManager,
-      "AllowanceExceeded",
+      "ExceededSpendPermission",
     );
     await networkHelpers.time.increase(period);
     await subscription.write.execute([permission, "0x", config], {

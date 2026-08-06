@@ -76,6 +76,18 @@ contract GOTCoreTest is Test {
     IGOTIntent(intent).resolve();
   }
 
+  function test_IntentIdFunctionSelectorCollisionsAreRejected() public {
+    bytes4[3] memory selectors =
+      [IGOTIntent.owner.selector, IGOTIntent.resolve.selector, IGOTIntent.recoverNative.selector];
+
+    for (uint256 i; i < selectors.length; ++i) {
+      IGOTFactory.IntentConfig memory invalid = _config(OWNER, bytes32(0), 0, address(0));
+      invalid.intentId = bytes32(selectors[i]);
+      vm.expectRevert(GOTFactory.InvalidConfiguration.selector);
+      factory.previewAddress(invalid);
+    }
+  }
+
   function test_PreviewAllowsCounterfactualTokenAndExecutionRequiresCode() public {
     IGOTFactory.IntentConfig memory config = _config(address(0x1234), bytes32(0), 0, address(0));
     config.token = address(0x1234);

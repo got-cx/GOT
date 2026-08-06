@@ -8,12 +8,12 @@ This iteration implements the core and initial periphery. Deployment modules, ne
 
 ## Contracts
 
-| Contract | Role |
-| --- | --- |
-| `GOTFactory` | Stateless CREATE2 preview, deployment, first execution, and quote helpers |
-| `GOTIntent` | One-slot intent implementation with immutable configuration and cumulative fee accounting |
-| `GOTName` | Optional EIP-712 / ERC-1271 name-key owner resolver |
-| `GOTSubscription` | Exact-binding adapter for Coinbase/Base Spend Permissions |
+| Contract          | Role                                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `GOTFactory`      | Stateless CREATE2 preview, deployment, first execution, and quote helpers                 |
+| `GOTIntent`       | One-slot intent implementation with immutable configuration and cumulative fee accounting |
+| `GOTName`         | Optional EIP-712 / ERC-1271 name-key owner resolver                                       |
+| `GOTSubscription` | Exact-binding adapter for Coinbase/Base Spend Permissions                                 |
 
 Production contracts are split by dependency boundary:
 
@@ -36,6 +36,7 @@ The ABI exporter is a Hardhat build hook, so both the default and production bui
 
 - The factory has no mutable storage, administrator, pause switch, or upgrade path.
 - Every intent field is committed to its CREATE2 address in the canonical 226-byte immutable layout.
+- Intent IDs whose first four bytes collide with an implementation function selector are rejected, preserving payable native transfers to deployed clones.
 - Intent implementation calls are blocked; clone calls validate the immutable suffix before reading it.
 - Direct owners can always settle. Resolver mode uses bounded ERC-165 and owner-resolution calls and fails closed.
 - Unresolved ownership cannot settle or recover assets.
@@ -53,6 +54,8 @@ This code is production-oriented but remains **pre-audit**. Do not deploy it wit
 ## Token assumptions
 
 The generic core accepts any deployed ERC-20 address, but production applications should allowlist exact-transfer, non-rebasing assets. Fee-on-transfer, rebasing, blacklistable, or otherwise non-standard tokens can produce economic behavior outside the quoted allocation even when ERC-20 calls succeed. The initial deployment profile in the specification is canonical USDC on Base.
+
+Canonical got.cx USDC transfers use `feeBps == 0`. With a blacklistable token, a positive-fee intent synchronously depends on its immutable treasury and partner: if either becomes blocklisted, atomic settlement can fail permanently, and the configured-token recovery path remains intentionally unavailable. Third-party positive-fee integrations must disclose this liveness risk, preflight fixed recipients before funding, and monitor them continuously.
 
 ## Install and verify
 
@@ -74,7 +77,7 @@ npm run build:production
 npm run coverage
 ```
 
-Solidity tests cover unit, adversarial, rollback, and fuzz properties. TypeScript/viem tests exercise all eighteen numbered core security invariants plus got.cx and third-party business workflows: zero-fee transfers, exact-net partner invoices, reconciliation, named routes, and recurring SaaS subscriptions.
+Solidity tests cover unit, adversarial, rollback, and fuzz properties. TypeScript/viem tests exercise all numbered core security invariants plus got.cx and third-party business workflows: zero-fee transfers, exact-net partner invoices, reconciliation, named routes, and recurring SaaS subscriptions.
 
 `contracts/core/GOTIntent.sol` is deliberately excluded from Hardhat source instrumentation because injected hooks alter its calldata-sensitive implementation. Coverage runs still execute every intent test against canonical bytecode, but do not report line percentages for that file.
 
@@ -100,9 +103,9 @@ maxFeeBps
 
 The treasury and share values must exactly match the implementation. All basis-point values are strictly between `0` and `10_000`; an individual intent's `feeBps` may be zero and may not exceed `maxFeeBps`.
 
-`GOTName` takes one immutable claim verifier. The production profile should use a separately operated threshold Safe.
+`GOTName` takes one immutable claim verifier. The production profile should use a separately operated threshold Safe. That verifier controls every first claim and must verify both the external identity and destination-account control offchain. Subsequent name transfers are immediate and irreversible; there is no pending-owner acceptance or verifier recovery.
 
-`GOTSubscription` takes immutable GOT factory and Spend Permission Manager addresses. Its interface is pinned to Coinbase's `coinbase/spend-permissions` commit `e0004e63edc4e17de7aa978293800ac7a16892e5`; deployments must verify the target chain's canonical manager code and address.
+`GOTSubscription` takes immutable GOT factory and Spend Permission Manager addresses. Its interface is pinned to Coinbase's `coinbase/spend-permissions` commit `e0004e63edc4e17de7aa978293800ac7a16892e5`; deployments must verify the target chain's canonical manager code and address. Permissions require an explicit exclusive `end` greater than `start`; zero does not mean unlimited, while `type(uint48).max` can represent a practically unbounded permission.
 
 ## Solidity dependency and clone format
 
@@ -111,6 +114,8 @@ The treasury and share values must exactly match the implementation. All basis-p
 
 Exact versions are recorded in `package-lock.json`.
 
+Both compiler profiles explicitly target Cancun because the pinned OpenZeppelin release uses the Cancun `MCOPY` instruction. Supported networks must therefore be Cancun-compatible; a pre-Cancun release requires separately versioned bytecode and deterministic hashes.
+
 ## Next phase
 
-Deployment work should add deterministic implementation/factory deployment, Base Sepolia and Base Mainnet profiles, canonical USDC and Spend Permission Manager verification, published code hashes and deterministic vectors, contract verification, and a release manifest. No deployment script is included in this iteration.
+Deployment work should add deterministic implementation/factory deployment, Base Sepolia and Base Mainnet profiles, canonical USDC and Spend Permission Manager verification, published code hashes and deterministic vectors, contract verification, and a release manifest. Release testing must exercise the exact pinned manager with Coinbase Smart Wallet/ERC-6492 fixtures and the threshold Safe name verifier rather than only local mocks. No deployment script is included in this iteration.

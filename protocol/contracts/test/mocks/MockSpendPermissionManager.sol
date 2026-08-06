@@ -13,47 +13,89 @@ contract MockSpendPermissionManager is ISpendPermissionManager {
   mapping(bytes32 => mapping(uint256 => uint160)) public periodSpend;
 
   error InvalidSignature();
-  error Unauthorized();
-  error PermissionInvalid();
-  error AllowanceExceeded();
+  error InvalidSender(address sender, address expected);
+  error ZeroToken();
+  error ZeroSpender();
+  error ZeroAllowance();
+  error ZeroPeriod();
+  error InvalidStartEnd(uint48 start, uint48 end);
+  error ZeroValue();
+  error UnauthorizedSpendPermission();
+  error BeforeSpendPermissionStart(uint48 currentTimestamp, uint48 start);
+  error AfterSpendPermissionEnd(uint48 currentTimestamp, uint48 end);
+  error ExceededSpendPermission(uint256 value, uint256 allowance);
 
   function approveWithSignature(SpendPermission calldata permission, bytes calldata signature)
     external
     returns (bool)
   {
     if (signature.length == 0) revert InvalidSignature();
-    bytes32 hash = _hash(permission);
-    if (revoked[hash]) revert PermissionInvalid();
-    approved[hash] = true;
-    return true;
+    return _approve(permission);
   }
 
-  function approve(SpendPermission calldata permission) external {
-    if (msg.sender != permission.account) revert Unauthorized();
-    approved[_hash(permission)] = true;
+  function approve(SpendPermission calldata permission) external returns (bool) {
+    _requireSender(permission.account);
+    return _approve(permission);
   }
 
   function revoke(SpendPermission calldata permission) external {
-    if (msg.sender != permission.account) revert Unauthorized();
+    _requireSender(permission.account);
     revoked[_hash(permission)] = true;
   }
 
   function spend(SpendPermission calldata permission, uint160 value) external {
-    if (msg.sender != permission.spender) revert Unauthorized();
+    _requireSender(permission.spender);
+    if (value == 0) revert ZeroValue();
+
     bytes32 hash = _hash(permission);
-    if (!approved[hash] || revoked[hash] || block.timestamp < permission.start) {
-      revert PermissionInvalid();
+    if (!approved[hash] || revoked[hash]) revert UnauthorizedSpendPermission();
+
+    uint48 currentTimestamp = uint48(block.timestamp);
+    if (currentTimestamp < permission.start) {
+      revert BeforeSpendPermissionStart(currentTimestamp, permission.start);
     }
-    if (permission.end != 0 && block.timestamp >= permission.end) revert PermissionInvalid();
+    if (currentTimestamp >= permission.end) {
+      revert AfterSpendPermissionEnd(currentTimestamp, permission.end);
+    }
+    // The production manager rejects zero periods during approval. Keep this
+    // defensive check so malformed test state cannot panic during division.
+    if (permission.period == 0) revert ZeroPeriod();
+
     uint256 periodIndex = (block.timestamp - permission.start) / permission.period;
     uint160 spent = periodSpend[hash][periodIndex];
-    if (value > permission.allowance - spent) revert AllowanceExceeded();
-    periodSpend[hash][periodIndex] = spent + value;
+    uint256 totalSpend = uint256(spent) + value;
+    if (totalSpend > permission.allowance) {
+      revert ExceededSpendPermission(totalSpend, permission.allowance);
+    }
+    periodSpend[hash][periodIndex] = uint160(totalSpend);
     IERC20(permission.token).safeTransferFrom(permission.account, permission.spender, value);
   }
 
   function isApproved(SpendPermission calldata permission) external view returns (bool) {
     return approved[_hash(permission)];
+  }
+
+  function isRevoked(SpendPermission calldata permission) external view returns (bool) {
+    return revoked[_hash(permission)];
+  }
+
+  function _approve(SpendPermission calldata permission) internal returns (bool) {
+    if (permission.token == address(0)) revert ZeroToken();
+    if (permission.spender == address(0)) revert ZeroSpender();
+    if (permission.period == 0) revert ZeroPeriod();
+    if (permission.allowance == 0) revert ZeroAllowance();
+    if (permission.start >= permission.end) {
+      revert InvalidStartEnd(permission.start, permission.end);
+    }
+
+    bytes32 hash = _hash(permission);
+    if (revoked[hash]) return false;
+    approved[hash] = true;
+    return true;
+  }
+
+  function _requireSender(address expected) internal view {
+    if (msg.sender != expected) revert InvalidSender(msg.sender, expected);
   }
 
   function _hash(SpendPermission calldata permission) internal pure returns (bytes32) {

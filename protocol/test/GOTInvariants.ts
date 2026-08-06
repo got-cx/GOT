@@ -7,6 +7,7 @@ import {
   getAddress,
   keccak256,
   stringToHex,
+  toFunctionSelector,
   zeroAddress,
   type Address,
   type Hex,
@@ -438,5 +439,39 @@ describe("GOT invariants", async function () {
     assert.equal(await malicious.read.callbackSucceeded(), false);
     assert.equal(await malicious.read.balanceOf([predicted]), 0n);
     assert.equal(await intent.read.totalProcessed(), 100_000n);
+  });
+
+  it("INV-19: every implementation selector prefix is rejected so native funding remains payable", async function () {
+    const { token, implementation, factory } =
+      await networkHelpers.loadFixture(deployCore);
+    const functions = implementation.abi.filter((item) => item.type === "function");
+    assert.ok(functions.length > 0);
+
+    for (const abiFunction of functions) {
+      const selector = toFunctionSelector(abiFunction);
+      const intentId = `${selector}${"00".repeat(28)}` as Hex;
+      await viem.assertions.revertWithCustomError(
+        factory.read.previewAddress([
+          directConfig(token.address, { intentId }),
+        ]),
+        factory,
+        "InvalidConfiguration",
+      );
+    }
+
+    const validConfig = directConfig(token.address, {
+      intentId: key("native funding selector safety"),
+    });
+    const validIntent = await factory.read.previewAddress([validConfig]);
+    await token.write.mint([validIntent, 1n]);
+    await factory.write.deployAndExecute([validConfig], {
+      account: executor.account,
+    });
+    await deployer.sendTransaction({ to: validIntent, value: 1n });
+    assert.equal(await publicClient.getBalance({ address: validIntent }), 1n);
+
+    const intent = await viem.getContractAt("GOTIntent", validIntent);
+    await intent.write.recoverNative({ account: ownerA.account });
+    assert.equal(await publicClient.getBalance({ address: validIntent }), 0n);
   });
 });
