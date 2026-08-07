@@ -1,0 +1,25 @@
+{
+  "name": "@got-cx/protocol",
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "build": "hardhat build",
+    "build:production": "hardhat build --build-profile production",
+    "test": "hardhat test",
+    "test:solidity": "hardhat test solidity",
+    "test:integration": "hardhat test nodejs",
+    "coverage": "hardhat test --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.6.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
+    "@types/node": "^22.20.1",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.12.0",
+    "typescript": "~6.0.3",
+    "viem": "^2.55.11"
+  }
+}

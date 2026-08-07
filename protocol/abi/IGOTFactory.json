@@ -1,0 +1,303 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "intentId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "ownerSource",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ownerKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "authorizedResolver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "amount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "initialDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "period",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "metadataHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct IGOTFactory.IntentConfig",
+        "name": "config",
+        "type": "tuple"
+      }
+    ],
+    "name": "configHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "intentId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "ownerSource",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ownerKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "authorizedResolver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "amount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "initialDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "period",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "metadataHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct IGOTFactory.IntentConfig",
+        "name": "config",
+        "type": "tuple"
+      }
+    ],
+    "name": "deployAndExecute",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "intentAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "processedAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "ownerAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "treasuryFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "partnerReward",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "executionReward",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "intentId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "ownerSource",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ownerKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "authorizedResolver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "amount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "initialDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "period",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "metadataHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct IGOTFactory.IntentConfig",
+        "name": "config",
+        "type": "tuple"
+      }
+    ],
+    "name": "previewAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "recipientAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint16",
+        "name": "feeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "quoteGrossAmount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "grossAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint16",
+        "name": "feeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "quoteOwnerAmount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  }
+]
