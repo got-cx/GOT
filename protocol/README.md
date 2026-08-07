@@ -71,11 +71,13 @@ npm test
 Useful focused commands:
 
 ```sh
-npm run test:solidity
+npm run test
 npm run test:integration
 npm run build:production
 npm run coverage
 ```
+
+`npm run test:integration` runs the deployment-grade suite against a Base Mainnet fork. It uses canonical Base USDC, Coinbase's deployed Spend Permission Manager with a real counterfactual Coinbase Smart Wallet/ERC-6492 signature, and a freshly deployed 2-of-2 Safe verifier.
 
 Solidity tests cover unit, adversarial, rollback, and fuzz properties. TypeScript/viem tests exercise all numbered core security invariants plus got.cx and third-party business workflows: zero-fee transfers, exact-net partner invoices, reconciliation, named routes, and recurring SaaS subscriptions.
 

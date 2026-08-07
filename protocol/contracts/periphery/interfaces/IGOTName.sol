@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IGOTOwnerResolver} from "../../core/interfaces/IGOTOwnerResolver.sol";
+import { IGOTOwnerResolver } from "../../core/interfaces/IGOTOwnerResolver.sol";
 
 interface IGOTName is IGOTOwnerResolver {
-  struct Claim {
-    bytes32 nameKey;
-    address account;
-    uint48 deadline;
-  }
+    struct Claim {
+        bytes32 nameKey;
+        address account;
+        uint48 deadline;
+    }
 
-  function accountOf(bytes32 nameKey) external view returns (address);
-  function claim(Claim calldata claimData, bytes calldata verifierSignature) external;
-  function transfer(bytes32 nameKey, address newAccount) external;
+    function accountOf(bytes32 nameKey) external view returns (address);
+    function claim(Claim calldata claimData, bytes calldata verifierSignature) external;
+    function transfer(bytes32 nameKey, address newAccount) external;
 }

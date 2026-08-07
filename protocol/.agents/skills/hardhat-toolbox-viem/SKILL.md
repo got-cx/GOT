@@ -66,27 +66,15 @@ Use `viem.assertions` for contract-specific checks. Pass the **unawaited** trans
 ```ts
 // Reverts
 await viem.assertions.revert(counter.write.inc({ account: banned }));
-await viem.assertions.revertWith(
-  counter.write.inc({ account: banned }),
-  "Not authorized",
-);
-await viem.assertions.revertWithCustomError(
-  counter.write.inc({ account: banned }),
-  counter,
-  "Unauthorized",
-);
-await viem.assertions.revertWithCustomErrorWithArgs(
-  counter.write.inc({ account: banned }),
-  counter,
-  "Unauthorized",
-  [banned],
-);
+await viem.assertions.revertWith(counter.write.inc({ account: banned }), "Not authorized");
+await viem.assertions.revertWithCustomError(counter.write.inc({ account: banned }), counter, "Unauthorized");
+await viem.assertions.revertWithCustomErrorWithArgs(counter.write.inc({ account: banned }), counter, "Unauthorized", [
+  banned,
+]);
 
 // Events
 await viem.assertions.emit(counter.write.inc(), counter, "Increment");
-await viem.assertions.emitWithArgs(counter.write.inc(), counter, "Increment", [
-  1n,
-]);
+await viem.assertions.emitWithArgs(counter.write.inc(), counter, "Increment", [1n]);
 
 // ETH balance changes (positive = received, negative = spent, before gas)
 await viem.assertions.balancesHaveChanged(game.write.claim(), {
@@ -101,26 +89,17 @@ The `*WithArgs` matchers (`revertWithCustomErrorWithArgs` and `emitWithArgs`) ac
 import { anyValue } from "@nomicfoundation/hardhat-toolbox-viem/predicates";
 
 // Inline predicate at any arg position. Useful for ranges or computed conditions.
-await viem.assertions.revertWithCustomErrorWithArgs(
-  contract.write.failing(),
-  contract,
-  "BadValue",
-  [(n: bigint) => n > 100n, "another error arg"],
-);
-await viem.assertions.emitWithArgs(
-  counter.write.incBy([3n]),
-  counter,
-  "Increment",
-  [(by: bigint) => by >= 1n],
-);
+await viem.assertions.revertWithCustomErrorWithArgs(contract.write.failing(), contract, "BadValue", [
+  (n: bigint) => n > 100n,
+  "another error arg",
+]);
+await viem.assertions.emitWithArgs(counter.write.incBy([3n]), counter, "Increment", [(by: bigint) => by >= 1n]);
 
 // `anyValue` matches anything — handy for fields you don't care about.
-await viem.assertions.revertWithCustomErrorWithArgs(
-  contract.write.failing(),
-  contract,
-  "BadValue",
-  [anyValue, "another error arg"],
-);
+await viem.assertions.revertWithCustomErrorWithArgs(contract.write.failing(), contract, "BadValue", [
+  anyValue,
+  "another error arg",
+]);
 ```
 
 For plain TypeScript assertions (equality, arrays, types), use `node:assert/strict`.

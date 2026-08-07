@@ -2,6 +2,8 @@ import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { defineConfig } from "hardhat/config";
 import abiExportPlugin from "./plugins/abi-export/index.js";
 
+const BASE_RPC_URL = process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
+
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin, abiExportPlugin],
   // GOTIntent validates an exact calldata suffix. Coverage hooks change the
@@ -37,6 +39,20 @@ export default defineConfig({
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
+    },
+    baseFork: {
+      type: "edr-simulated",
+      chainType: "op",
+      chainId: 8453,
+      forking: {
+        url: BASE_RPC_URL,
+      },
+    },
+    base: {
+      type: "http",
+      chainType: "op",
+      url: BASE_RPC_URL,
+      chainId: 8453,
     },
   },
 });
