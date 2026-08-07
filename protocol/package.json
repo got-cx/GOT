@@ -2,19 +2,43 @@
   "name": "@got-cx/protocol",
   "version": "0.2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./nameKeys": {
+      "types": "./dist/nameKeys.d.ts",
+      "import": "./dist/nameKeys.js"
+    },
+    "./abi/*": "./abi/*",
+    "./contracts/*": "./contracts/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "abi",
+    "contracts",
+    "dist"
+  ],
   "scripts": {
-    "build": "hardhat build",
-    "build:production": "hardhat build --build-profile production",
+    "build": "hardhat build && npm run build:package",
+    "build:production": "hardhat build --build-profile production && npm run build:package",
+    "build:package": "tsc -p tsconfig.package.json",
     "test": "hardhat test",
     "test:solidity": "hardhat test solidity",
     "test:nodejs": "hardhat test nodejs",
-    "test:integration": "hardhat --build-profile production --network baseFork test nodejs integration/GOTBaseFork.ts",
+    "test:integration": "GOT_BASE_FORK_MODE=pinned hardhat --build-profile production --network baseFork test nodejs integration/GOTBaseFork.ts",
+    "test:integration:tip": "GOT_BASE_FORK_MODE=tip hardhat --build-profile production --network baseForkTip test nodejs integration/GOTBaseFork.ts",
     "coverage": "hardhat test --coverage",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{sol,ts,js,json,md,yml,yaml}\""
+    "format": "prettier --write \"**/*.{sol,ts,js,json,md,yml,yaml}\"",
+    "prepack": "npm run build:package"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "5.6.1"
+    "@openzeppelin/contracts": "5.6.1",
+    "viem": "^2.55.11"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
@@ -23,7 +47,6 @@
     "hardhat": "^3.12.0",
     "prettier": "^3.9.6",
     "prettier-plugin-solidity": "^2.4.0",
-    "typescript": "~6.0.3",
-    "viem": "^2.55.11"
+    "typescript": "~6.0.3"
   }
 }

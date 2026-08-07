@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 /// @notice Minimal interface for Coinbase's canonical SpendPermissionManager.
 /// @dev Struct and selectors are pinned to coinbase/spend-permissions commit

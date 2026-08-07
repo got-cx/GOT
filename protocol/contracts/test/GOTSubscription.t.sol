@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 import { Test } from "forge-std/Test.sol";
 import { GOTIntent } from "../core/GOTIntent.sol";
@@ -154,6 +154,68 @@ contract GOTSubscriptionTest is Test {
         vm.prank(KEEPER);
         subscription.execute(permission, "", config);
         assertEq(token.balanceOf(MERCHANT), uint256(config.amount) * 2);
+    }
+
+    function test_PreExistingAdapterAndIntentBalancesArePreservedAndReconciled() public {
+        (
+            IGOTFactory.IntentConfig memory config,
+            ISpendPermissionManager.SpendPermission memory permission
+        ) = _boundTransfer(MERCHANT, bytes32(0), 0);
+        address intent = factory.previewAddress(config);
+        token.mint(address(subscription), 77);
+        token.mint(intent, 33);
+
+        vm.prank(KEEPER);
+        (, uint256 processedAmount, uint256 ownerAmount, , , ) = subscription.execute(permission, hex"01", config);
+
+        assertEq(processedAmount, 1_033);
+        assertEq(ownerAmount, 1_033);
+        assertEq(token.balanceOf(MERCHANT), 1_033);
+        assertEq(token.balanceOf(address(subscription)), 77);
+        assertEq(token.balanceOf(intent), 0);
+    }
+
+    function test_PermissionStartIsInclusiveAndEndIsExclusive() public {
+        uint48 start = uint48(block.timestamp + 10);
+        IGOTFactory.IntentConfig memory config = IGOTFactory.IntentConfig({
+            intentId: keccak256("permission-boundaries"),
+            ownerSource: MERCHANT,
+            ownerKey: bytes32(0),
+            token: address(token),
+            partner: address(0),
+            authorizedResolver: address(subscription),
+            amount: 1_000,
+            initialDeadline: uint64(start),
+            period: 30 days,
+            feeBps: 0,
+            metadataHash: bytes32(0)
+        });
+        ISpendPermissionManager.SpendPermission memory permission = _permissionFor(config);
+        permission.end = start + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MockSpendPermissionManager.BeforeSpendPermissionStart.selector,
+                uint48(block.timestamp),
+                start
+            )
+        );
+        subscription.execute(permission, hex"01", config);
+        assertFalse(permissionManager.isApproved(permission));
+
+        vm.warp(start);
+        subscription.execute(permission, hex"01", config);
+        assertEq(token.balanceOf(MERCHANT), 1_000);
+
+        vm.warp(permission.end);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MockSpendPermissionManager.AfterSpendPermissionEnd.selector,
+                permission.end,
+                permission.end
+            )
+        );
+        subscription.execute(permission, "", config);
     }
 
     function _boundTransfer(

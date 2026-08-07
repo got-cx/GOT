@@ -56,6 +56,25 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "canonicalIdentity",
+        "type": "string"
+      }
+    ],
+    "name": "deriveNameKey",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "intent",
         "type": "address"

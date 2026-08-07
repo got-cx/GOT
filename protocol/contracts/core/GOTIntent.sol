@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -223,13 +223,13 @@ contract GOTIntent is IGOTIntent {
     }
 
     function recoverERC20(address asset) external onlyProxy returns (uint256 recoveredAmount) {
-        address configuredToken = _getArgAddress(84);
-        if (asset == configuredToken) revert ConfiguredTokenNotRecoverable();
-        if (asset == address(0) || asset.code.length == 0) revert InvalidAsset();
-
         address effectiveOwner = _resolveOwner();
         if (effectiveOwner == address(0)) revert OwnerUnresolved();
         if (msg.sender != effectiveOwner) revert UnauthorizedOwner();
+
+        address configuredToken = _getArgAddress(84);
+        if (asset == configuredToken) revert ConfiguredTokenNotRecoverable();
+        if (asset == address(0) || asset.code.length == 0) revert InvalidAsset();
         uint256 state = _acquireLock();
 
         IERC20 recoverable = IERC20(asset);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
@@ -7,16 +7,11 @@ import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/Sig
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IGOTOwnerResolver } from "../core/interfaces/IGOTOwnerResolver.sol";
 import { IGOTName } from "./interfaces/IGOTName.sol";
+import { GOTNameKeys } from "./libraries/GOTNameKeys.sol";
 
 /// @title GOTName
 /// @notice Optional reusable, opaque name-key ownership resolver for GOT intents.
-contract GOTName is EIP712, ReentrancyGuard, IGOTOwnerResolver {
-    struct Claim {
-        bytes32 nameKey;
-        address account;
-        uint48 deadline;
-    }
-
+contract GOTName is EIP712, ReentrancyGuard, IGOTName {
     bytes32 public constant CLAIM_TYPEHASH = keccak256("Claim(bytes32 nameKey,address account,uint48 deadline)");
 
     address public immutable CLAIM_VERIFIER;
@@ -30,6 +25,7 @@ contract GOTName is EIP712, ReentrancyGuard, IGOTOwnerResolver {
     error ClaimExpired();
     error AlreadyClaimed();
     error NameNotClaimed();
+    error NoAccountChange();
     error InvalidVerifierSignature();
     error Unauthorized();
 
@@ -38,15 +34,19 @@ contract GOTName is EIP712, ReentrancyGuard, IGOTOwnerResolver {
         CLAIM_VERIFIER = claimVerifier_;
     }
 
-    function accountOf(bytes32 nameKey) external view returns (address) {
+    function deriveNameKey(string calldata canonicalIdentity) external pure override returns (bytes32) {
+        return GOTNameKeys.deriveIdentifierKey(canonicalIdentity);
+    }
+
+    function accountOf(bytes32 nameKey) external view override returns (address) {
         return _accountOf[nameKey];
     }
 
-    function resolveOwner(address, bytes32 nameKey) external view returns (address) {
+    function resolveOwner(address, bytes32 nameKey) external view override returns (address) {
         return _accountOf[nameKey];
     }
 
-    function claim(Claim calldata claimData, bytes calldata verifierSignature) external nonReentrant {
+    function claim(Claim calldata claimData, bytes calldata verifierSignature) external override nonReentrant {
         if (claimData.nameKey == bytes32(0)) revert InvalidNameKey();
         if (claimData.account == address(0) || claimData.account == address(this)) {
             revert InvalidAccount();
@@ -65,18 +65,19 @@ contract GOTName is EIP712, ReentrancyGuard, IGOTOwnerResolver {
         emit NameClaimed(claimData.nameKey, claimData.account);
     }
 
-    function transfer(bytes32 nameKey, address newAccount) external nonReentrant {
+    function transfer(bytes32 nameKey, address newAccount) external override nonReentrant {
         if (nameKey == bytes32(0)) revert InvalidNameKey();
         if (newAccount == address(0) || newAccount == address(this)) revert InvalidAccount();
         address previousAccount = _accountOf[nameKey];
         if (previousAccount == address(0)) revert NameNotClaimed();
         if (msg.sender != previousAccount) revert Unauthorized();
+        if (newAccount == previousAccount) revert NoAccountChange();
 
         _accountOf[nameKey] = newAccount;
         emit NameTransferred(nameKey, previousAccount, newAccount);
     }
 
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
         return
             interfaceId == type(IGOTName).interfaceId ||
             interfaceId == type(IGOTOwnerResolver).interfaceId ||

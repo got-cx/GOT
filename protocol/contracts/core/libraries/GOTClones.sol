@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 
@@ -12,8 +12,9 @@ import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 library GOTClones {
     error CloneArgumentsTooLong();
 
-    uint256 private constant MAX_ARGS_LENGTH = type(uint16).max - 55;
     uint256 private constant RUNTIME_PREFIX_LENGTH = 55;
+    uint256 private constant RUNTIME_SUFFIX_LENGTH = 2;
+    uint256 private constant MAX_ARGS_LENGTH = type(uint16).max - RUNTIME_PREFIX_LENGTH - RUNTIME_SUFFIX_LENGTH;
 
     function creationCode(address implementation, bytes memory args) internal pure returns (bytes memory) {
         if (args.length > MAX_ARGS_LENGTH) revert CloneArgumentsTooLong();

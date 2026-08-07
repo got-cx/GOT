@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
+import { deriveNameKeyV1 } from "../src/nameKeys.js";
 import { encodeAbiParameters, keccak256, stringToHex, zeroAddress, type Address, type Hex } from "viem";
 
 type IntentConfig = {
@@ -171,7 +172,8 @@ describe("GOT protocol product and integrator examples", async function () {
   it("named transfers: funds before claim, settles reusable routes, and follows owner migration", async function () {
     const { token, implementation, factory } = await networkHelpers.loadFixture(deployProtocol);
     const names = await viem.deployContract("GOTName", [nameVerifier.account.address]);
-    const nameKey = id("GOT_NAME_KEY_V1", "got:@alice");
+    const nameKey = deriveNameKeyV1("got", "@alice");
+    assert.equal(await names.read.deriveNameKey(["got:alice"]), nameKey);
     const first = directIntent(token.address, "named-transfer-a", {
       ownerSource: names.address,
       ownerKey: nameKey,

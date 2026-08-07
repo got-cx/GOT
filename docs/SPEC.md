@@ -11,9 +11,9 @@
 **Primary launch asset:** canonical USDC  
 **Primary account layer:** Base Account  
 **Target protocol networks:** Cancun-compatible Ethereum/EVM networks supporting `CREATE2` and `MCOPY`
-**Document revision:** `0.2.1-review`  
+**Document revision:** `0.2.2-links-sync`  
 **Status:** Review-remediation candidate; independent audit closure pending  
-**Date:** 2026-08-06  
+**Date:** 2026-08-07
 
 ---
 
@@ -57,6 +57,7 @@ Version 0.2 makes the following decisions normative:
 9. `got.cx` usage limits apply only to hosted software and infrastructure, never to permissionless onchain protocol usage or transfer value.
 10. GOT’s own paid SaaS plans SHOULD use `GOTSubscription` onchain as production dogfooding, without requiring subscription revenue sharing with integrators.
 11. Canonical v0.2 bytecode targets the Cancun EVM; support for an older hard fork requires a separately versioned build and published code hashes.
+12. The canonical got.cx Links Model uses `@`, `x:`, `tg:`, fragment-based `email:`/`phone:`, and direct `0x...` intent-address routes; processed `transferId` values are receipt identifiers, not canonical transfer URLs.
 
 The primary product promise is:
 
@@ -70,86 +71,86 @@ The recommended brand line is:
 
 # Table of Contents
 
-1. Canonical Definition  
-2. Terminology  
-3. Repository Architecture  
-4. Goals  
-5. Non-Goals  
-6. Normative Language  
-7. System Architecture  
-8. Component Boundaries  
-9. Protocol Constants  
-10. Intent Configuration  
-11. Configuration Validation  
-12. Immutable Argument Encoding  
-13. Configuration Hash and Deterministic Address  
-14. Generic Owner Resolver  
-15. Effective Owner Resolution  
-16. Unresolved Ownership  
-17. Factory Interface and Behavior  
-18. Intent Interface  
-19. Mutable Storage  
-20. Authorization  
-21. Resolver Liveness and Competition  
-22. Fee Policy  
-23. Cumulative Fee Accounting  
-24. Exact Recipient Quotes  
-25. Processing Algorithm  
-26. Recovery  
-27. Core Events  
-28. Core Errors  
-29. Core Security Invariants  
-30. Required Core Tests  
-31. GOTName Overview  
-32. Name Keys and Namespaces  
-33. Public and Private Identifier Modes  
-34. Claim Verifier Security  
-35. Claim Authorization  
-36. Name Transfer  
-37. GOTName Interface, Events and Errors  
-38. GOTName Invariants and Tests  
-39. GOTSubscription Overview  
-40. Spend Permission Model  
-41. Subscription Binding  
-42. Subscription Execution  
-43. Subscription Cancellation and Failure  
-44. GOTSubscription Events, Invariants and Tests  
-45. got.cx Product Role  
-46. got.cx Business Model  
-47. Hosted SaaS Limits  
-48. Base Account Integration  
-49. Transfer and Invoice Experience  
-50. Transfer Link Routing  
-51. Named Transfer and Claim Experience  
-52. Subscription Product Experience  
-53. Partner and Integrator Model  
-54. Developer Platform  
-55. API Conventions  
-56. Data Model  
-57. Transfer State Model  
-58. Invoice State Model  
-59. Subscription State Model  
-60. Indexing and Finality  
-61. Resolver Infrastructure  
-62. Subscription Scheduler  
-63. Name Verification Infrastructure  
-64. Webhooks  
-65. Notifications  
-66. Observability and Operations  
-67. Privacy  
-68. Threat Model  
-69. Independent Audit Scope  
-70. Deployment Profile  
-71. Canonical Multichain Deployment  
-72. Versioning and Migration  
-73. Release Artifacts  
-74. Implementation Plan  
-75. Complete Implementation Checklist  
-76. Reference Solidity  
-77. External Standards and Dependencies  
-78. Canonical Statements  
-79. v0.2 Change Log  
-80. Final Decisions  
+1. Canonical Definition
+2. Terminology
+3. Repository Architecture
+4. Goals
+5. Non-Goals
+6. Normative Language
+7. System Architecture
+8. Component Boundaries
+9. Protocol Constants
+10. Intent Configuration
+11. Configuration Validation
+12. Immutable Argument Encoding
+13. Configuration Hash and Deterministic Address
+14. Generic Owner Resolver
+15. Effective Owner Resolution
+16. Unresolved Ownership
+17. Factory Interface and Behavior
+18. Intent Interface
+19. Mutable Storage
+20. Authorization
+21. Resolver Liveness and Competition
+22. Fee Policy
+23. Cumulative Fee Accounting
+24. Exact Recipient Quotes
+25. Processing Algorithm
+26. Recovery
+27. Core Events
+28. Core Errors
+29. Core Security Invariants
+30. Required Core Tests
+31. GOTName Overview
+32. Name Keys and Namespaces
+33. Public and Private Identifier Modes
+34. Claim Verifier Security
+35. Claim Authorization
+36. Name Transfer
+37. GOTName Interface, Events and Errors
+38. GOTName Invariants and Tests
+39. GOTSubscription Overview
+40. Spend Permission Model
+41. Subscription Binding
+42. Subscription Execution
+43. Subscription Cancellation and Failure
+44. GOTSubscription Events, Invariants and Tests
+45. got.cx Product Role
+46. got.cx Business Model
+47. Hosted SaaS Limits
+48. Base Account Integration
+49. Transfer and Invoice Experience
+50. Transfer Link Routing
+51. Named Transfer and Claim Experience
+52. Subscription Product Experience
+53. Partner and Integrator Model
+54. Developer Platform
+55. API Conventions
+56. Data Model
+57. Transfer State Model
+58. Invoice State Model
+59. Subscription State Model
+60. Indexing and Finality
+61. Resolver Infrastructure
+62. Subscription Scheduler
+63. Name Verification Infrastructure
+64. Webhooks
+65. Notifications
+66. Observability and Operations
+67. Privacy
+68. Threat Model
+69. Independent Audit Scope
+70. Deployment Profile
+71. Canonical Multichain Deployment
+72. Versioning and Migration
+73. Release Artifacts
+74. Implementation Plan
+75. Complete Implementation Checklist
+76. Reference Solidity
+77. External Standards and Dependencies
+78. Canonical Statements
+79. v0.2 Change Log
+80. Final Decisions
 
 ---
 
@@ -179,7 +180,7 @@ GOTFactory
     the stateless canonical factory that previews, deploys and executes intents
 
 GOTName
-    the optional name service mapping an opaque reusable nameKey to an account
+    the optional name service mapping a reusable bytes32 nameKey to an account
 
 GOTSubscription
     optional periphery for recurring transfers through account spend permissions
@@ -599,7 +600,7 @@ bytes32 intentId = keccak256(
 );
 ```
 
-`intentId`, `transferRequestId`, `transferId` and `transferLinkId` are different identifiers.
+`intentId`, `transferRequestId` and `transferId` are different identifiers. A canonical got.cx transfer URL resolves directly to an intent address and does not introduce a separate protocol-level `transferLinkId`.
 
 The first four bytes of `intentId` MUST NOT equal any public or external function selector exposed by the canonical `GOTIntent` implementation. The immutable-argument proxy appends `intentId` immediately after empty external calldata; rejecting selector prefixes guarantees that a direct native transfer dispatches to the payable fallback instead of a nonpayable function. `previewAddress` MUST reject colliding identifiers. The recommended `keccak256` derivation above makes accidental collisions unlikely, but callers MUST still use factory validation rather than deriving an unchecked address locally.
 
@@ -760,20 +761,20 @@ When `ownerKey != 0`, execution MUST fail closed unless `ownerSource` supports t
 
 The canonical immutable layout remains 226 bytes:
 
-| Offset | Size | Field |
-|---:|---:|---|
-| `0` | `32` | `intentId` |
-| `32` | `20` | `ownerSource` |
-| `52` | `32` | `ownerKey` |
-| `84` | `20` | `token` |
-| `104` | `20` | `partner` |
-| `124` | `20` | `authorizedResolver` |
-| `144` | `16` | `amount` |
-| `160` | `8` | `initialDeadline` |
-| `168` | `4` | `period` |
-| `172` | `2` | `feeBps` |
-| `174` | `32` | `metadataHash` |
-| `206` | `20` | `factory` |
+| Offset | Size | Field                |
+| -----: | ---: | -------------------- |
+|    `0` | `32` | `intentId`           |
+|   `32` | `20` | `ownerSource`        |
+|   `52` | `32` | `ownerKey`           |
+|   `84` | `20` | `token`              |
+|  `104` | `20` | `partner`            |
+|  `124` | `20` | `authorizedResolver` |
+|  `144` | `16` | `amount`             |
+|  `160` |  `8` | `initialDeadline`    |
+|  `168` |  `4` | `period`             |
+|  `172` |  `2` | `feeBps`             |
+|  `174` | `32` | `metadataHash`       |
+|  `206` | `20` | `factory`            |
 
 Canonical encoding:
 
@@ -1059,9 +1060,9 @@ Each deployed intent uses exactly one mutable slot:
 uint256 private packedState;
 ```
 
-| Bits | Meaning |
-|---|---|
-| `255` | execution lock |
+| Bits    | Meaning                           |
+| ------- | --------------------------------- |
+| `255`   | execution lock                    |
 | `0–254` | cumulative gross `totalProcessed` |
 
 ```solidity
@@ -1320,6 +1321,8 @@ Only the cached effective owner may recover the complete native balance.
 
 Deployed canonical intents accept direct native transfers through the payable fallback. Factory validation MUST reject `intentId` selector prefixes that would dispatch empty original calldata to a nonpayable intent function.
 
+Callers MUST use a full-gas call. Solidity `send` and `transfer` are not compatible with the deployed clone path because their 2,300-gas stipend cannot cover a cold implementation access and delegation.
+
 ## 26.3 Unresolved intent
 
 Recovery is unavailable while owner resolution returns zero.
@@ -1528,16 +1531,10 @@ Required properties:
 
 # 32. Name Keys and Namespaces
 
-Canonical public derivation:
+Canonical public derivation hashes the single normalized identity string defined by the GOT Links Model:
 
 ```solidity
-bytes32 nameKey = keccak256(
-    abi.encode(
-        keccak256("GOT_NAME_KEY_V1"),
-        namespace,
-        normalizedIdentifier
-    )
-);
+bytes32 nameKey = keccak256(bytes(canonicalIdentity));
 ```
 
 Recommended namespace identifiers:
@@ -1554,14 +1551,16 @@ domain
 custom:<application-id>
 ```
 
-Normalization rules MUST be versioned, deterministic and published.
+Normalization rules MUST be versioned, deterministic, injective and published. The normative version is `got-links-v1`. Identifiers MUST NOT contain `:`, built-in namespaces MUST come from the list above, and custom namespaces MUST have exactly the form `custom:<application-id>`. Unknown namespaces are invalid.
+
+The complete handle, email, phone, ENSIP-15, IDNA domain, and custom-namespace rules plus negative and cross-language golden vectors are normative in `docs/NAME_KEYS.md`. The URL presentation `@` is removed from native and social handles, and the `tg` route alias canonicalizes to `telegram`, before hashing.
 
 Examples:
 
 ```text
-got:@alice
-x:@vitalik
-telegram:@alice
+got:alice
+x:vitalik
+telegram:alice
 email:alice@example.com
 ens:alice.eth
 ```
@@ -1570,31 +1569,40 @@ Applications MUST NOT silently change normalization rules for an existing namesp
 
 ---
 
-# 33. Public and Private Identifier Modes
+# 33. Deterministic and Private Identifier Modes
 
-## 33.1 Public deterministic mode
+## 33.1 Deterministic identity mode
 
-Appropriate for public handles and explicitly public GOT names.
+Canonical GOT names, social handles, email addresses and phone numbers use the versioned normalization rules in `docs/NAME_KEYS.md` and are deterministically hashed into `nameKey`.
 
-The identifier is normalized and deterministically hashed into `nameKey`.
-
-Because low-entropy identifiers may be dictionary attacked, this mode does not provide secrecy.
-
-## 33.2 Private opaque mode
-
-Appropriate when the route or identifier should not be publicly enumerable.
-
-The application generates a random opaque `identifierKey` and uses it as the onchain `nameKey`. The private identifier and verification evidence remain offchain.
-
-A private link SHOULD place the opaque key in a URL fragment so the browser receives it without sending it in the initial HTTP request:
+Public path routes are appropriate for public identifiers such as GOT names and social handles:
 
 ```text
-https://got.cx/#k=<base64url-encoded-key>
+got.cx/@dima
+got.cx/x:@vitalik
+got.cx/tg:@username
 ```
 
-The fragment is not a secret from a person who already has the link, but it reduces passive server and referrer exposure.
+Email and phone use URL fragments in the canonical Links Model:
 
-Applications MAY also use opaque path identifiers when server-side lookup is necessary.
+```text
+got.cx/#email:alice@example.com
+got.cx/#phone:+491234567890
+```
+
+A fragment is not sent in the initial HTTP request and therefore reduces passive server-log and referrer exposure. It is not cryptographic secrecy: the recipient of the link can read the identifier, browser history may retain it, and the deterministic onchain hash of a low-entropy identifier can be dictionary attacked.
+
+Applications MUST NOT describe fragment-based deterministic email or phone routes as private or secret.
+
+## 33.2 Optional private opaque mode
+
+Applications MAY provide a separate private-link mode when the identifier or route must not be derivable from a public identity.
+
+The application generates a cryptographically random `bytes32` key and uses it directly as the onchain `nameKey`. Any identifier-to-key mapping and verification evidence remain offchain.
+
+An opaque key MAY be transported in a URL fragment so the initial HTTP request does not contain the key. The exact opaque-link presentation is application-defined and is not part of the canonical public GOT Links Model.
+
+Opaque keys MUST NOT be derived from email, phone, social handles or other low-entropy identifiers.
 
 ---
 
@@ -1681,6 +1689,10 @@ Applications SHOULD warn users that external identity ownership changes do not a
 
 ```solidity
 interface IGOTName is IGOTOwnerResolver {
+    function deriveNameKey(
+        string calldata canonicalIdentity
+    ) external pure returns (bytes32);
+
     function accountOf(
         bytes32 nameKey
     ) external view returns (address);
@@ -1696,6 +1708,8 @@ interface IGOTName is IGOTOwnerResolver {
     ) external;
 }
 ```
+
+The fixed `IGOTName` ERC-165 interface ID is `0x73a79167`. Implementations MUST also support `IGOTOwnerResolver` and `IERC165` independently.
 
 Events:
 
@@ -1720,6 +1734,7 @@ error InvalidAccount();
 error ClaimExpired();
 error AlreadyClaimed();
 error NameNotClaimed();
+error NoAccountChange();
 error InvalidVerifierSignature();
 error Unauthorized();
 ```
@@ -2089,33 +2104,41 @@ A deadline does not disable protocol settlement.
 
 ---
 
-# 50. Transfer Link Routing
+# 50. GOT Links Model and Routing
 
-Canonical short routes SHOULD support:
+The canonical got.cx Links Model is:
 
 ```text
-got.cx/@name
-    public GOT name
+got.cx/@dima
+    GOT name
 
-got.cx/x:@handle
-    public X identifier route
+got.cx/x:@vitalik
+    X identity
 
-got.cx/tg:@handle
-    public Telegram identifier route
+got.cx/tg:@username
+    Telegram identity
 
-got.cx/ens:name.eth
-    ENS route
+got.cx/#email:alice@example.com
+    email identity carried in the URL fragment
 
-got.cx/t/<transferLinkId>
-    opaque transfer or invoice link
+got.cx/#phone:+491234567890
+    phone identity carried in the URL fragment
 
-got.cx/#k=<opaque-key>
-    private client-side identifier or intent key
+got.cx/0x...
+    deterministic intent address
 ```
 
-Email and phone SHOULD default to opaque links or fragment-based keys. A user MAY explicitly create a public identifier route, but the interface MUST warn that URLs, browser history and onchain low-entropy hashes may expose the identifier.
+The `@` presentation marker is removed during identity normalization. The `tg` route alias canonicalizes to the `telegram` namespace. Email and phone normalization MUST follow `docs/NAME_KEYS.md`.
 
-Routes provide discovery and UX only. The deterministic intent address and immutable config remain authoritative.
+The `got.cx/0x...` route MUST contain a valid 20-byte EVM address and represents the deterministic intent address itself. It MUST NOT be interpreted as a `transferId`. A processed `transferId` remains an infrastructure and receipt identifier derived from chain and log coordinates.
+
+On the canonical launch product, `got.cx/0x...` resolves in the Base context. In multichain applications, an address alone does not prove the intended chain; the interface MUST display the selected `chainId` and verify the expected factory, implementation and immutable configuration before asking a payer to fund it.
+
+Fragment routes reduce passive HTTP request and referrer exposure because the fragment is handled client-side. They do not make email or phone secret. The interface MUST not claim cryptographic privacy for deterministic fragment routes.
+
+Applications MAY offer a separate random opaque-link mode as described in Section 33.2, but that mode is not a canonical identity route and MUST NOT replace the deterministic `#email:` or `#phone:` normalization rules when those canonical routes are used.
+
+Routes provide discovery and UX only. The deterministic intent address, selected chain and immutable intent configuration remain authoritative.
 
 ---
 
@@ -2124,15 +2147,26 @@ Routes provide discovery and UX only. The deterministic intent address and immut
 Named transfer:
 
 ```text
-payer enters or opens identifier
--> application normalizes or resolves identifierKey
+payer enters or opens GOT identity link
+-> application parses the canonical route
+-> application normalizes identity and derives identifierKey
 -> creates intent with ownerSource = GOTName
--> payer funds predicted address
+-> payer funds predicted intent address
 -> owner may remain unresolved
 -> recipient verifies identifier
 -> threshold verifier signs claim
 -> recipient claims nameKey to Base Account
 -> resolver or owner settles all funded intents
+```
+
+Direct intent-address transfer:
+
+```text
+payer opens got.cx/0x...
+-> application resolves the deterministic intent address on the selected chain
+-> application verifies canonical factory/code/config context
+-> payer transfers the configured asset to the intent address
+-> resolver or owner settles according to the immutable intent configuration
 ```
 
 The claim interface MUST display:
@@ -2530,7 +2564,7 @@ Onchain data MUST exclude:
 
 Users MUST be informed that intent addresses, transfers, name keys, claims, account mappings, name transfers, partners and settlement events are public.
 
-Low-entropy deterministic identifier hashes are discoverable through dictionary attacks. Applications SHOULD use opaque keys for sensitive identifiers.
+Low-entropy deterministic identifier hashes are discoverable through dictionary attacks. Fragment routing reduces passive HTTP/referrer exposure but does not prevent dictionary attacks or make an identifier secret. Applications requiring actual identifier privacy SHOULD use the separate cryptographically random opaque-key mode described in Section 33.2.
 
 ---
 
@@ -2735,7 +2769,7 @@ Every release MUST include:
 - implement EIP-712 claim;
 - build two-operator verification workflow;
 - publish namespaces and normalization;
-- implement public and opaque key modes;
+- implement deterministic identity keys and optional random opaque-key mode;
 - audit.
 
 ## Phase 3 — Transfer and invoice MVP
@@ -2743,7 +2777,7 @@ Every release MUST include:
 - Base Account sign-in;
 - Base USDC;
 - direct and named transfer creation;
-- route resolver;
+- canonical GOT link parser and route resolver;
 - exact recipient and gross quote display;
 - indexer;
 - resolver worker;
@@ -2820,7 +2854,8 @@ Every release MUST include:
 - [ ] no verifier overwrite;
 - [ ] current-owner transfer;
 - [ ] namespace versions;
-- [ ] opaque private mode;
+- [ ] deterministic canonical identity mode;
+- [ ] optional random opaque private mode;
 - [ ] evidence audit logs.
 
 ## GOTSubscription
@@ -2844,7 +2879,8 @@ Every release MUST include:
 - [ ] onchain paid-plan dogfooding;
 - [ ] protocol access survives plan expiration;
 - [ ] fee and gross quote visible;
-- [ ] route formats;
+- [ ] canonical `@`, `x:`, `tg:`, `#email:`, `#phone:` and `0x...` route formats;
+- [ ] shared route parser with normalization parity across frontend, API, claim service and signer tooling;
 - [ ] API idempotency;
 - [ ] signed webhooks;
 - [ ] usage counters;
@@ -3170,7 +3206,7 @@ External SDK versions and deployed dependency addresses MUST be pinned in the re
 
 ## GOTName
 
-> **GOTName maps an opaque reusable name key to an account and can resolve every intent created for that key.**
+> **GOTName maps a reusable bytes32 name key to an account and can resolve every intent created for that key; canonical identities use deterministic versioned derivation, while explicitly private applications may use random opaque keys.**
 
 ## GOTSubscription
 
@@ -3203,7 +3239,7 @@ Changes from Final Unified System Specification v0.1:
 11. Added got.cx onchain SaaS subscription dogfooding.
 12. Clarified that got.cx does not need to share subscription revenue with integrators.
 13. Clarified third-party onchain partner rewards through the intent fee model.
-14. Added public and private transfer-link routing recommendations.
+14. Added and synchronized the canonical GOT Links Model: `@`, `x:`, `tg:`, fragment-based `email:`/`phone:`, and direct `0x...` intent-address routes; removed canonical `/t/<transferLinkId>` routing.
 15. Added 2-of-3 Safe verifier operations for GOTName.
 16. Updated tests, threats, audit scope and deployment artifacts.
 
@@ -3254,7 +3290,7 @@ Partner rewards
     transparent and onchain when configured in a positive-fee intent
 
 Name claims
-    opaque keys, immutable verifier, 2-of-3 Safe recommended
+    deterministic bytes32 identifier keys for canonical identities; optional random opaque keys for explicit private mode; immutable verifier; 2-of-3 Safe recommended
 
 Canonical launch
     Base Mainnet + canonical USDC + Base Account

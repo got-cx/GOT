@@ -3,6 +3,11 @@ import { defineConfig } from "hardhat/config";
 import abiExportPlugin from "./plugins/abi-export/index.js";
 
 const BASE_RPC_URL = process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
+const BASE_FORK_BLOCK = Number(process.env.BASE_FORK_BLOCK ?? "49650000");
+
+if (!Number.isSafeInteger(BASE_FORK_BLOCK) || BASE_FORK_BLOCK <= 0) {
+  throw new Error("BASE_FORK_BLOCK must be a positive safe integer");
+}
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin, abiExportPlugin],
@@ -14,13 +19,13 @@ export default defineConfig({
   solidity: {
     profiles: {
       default: {
-        version: "0.8.28",
+        version: "0.8.36",
         settings: {
           evmVersion: "cancun",
         },
       },
       production: {
-        version: "0.8.28",
+        version: "0.8.36",
         settings: {
           evmVersion: "cancun",
           optimizer: {
@@ -41,6 +46,15 @@ export default defineConfig({
       chainType: "op",
     },
     baseFork: {
+      type: "edr-simulated",
+      chainType: "op",
+      chainId: 8453,
+      forking: {
+        url: BASE_RPC_URL,
+        blockNumber: BASE_FORK_BLOCK,
+      },
+    },
+    baseForkTip: {
       type: "edr-simulated",
       chainType: "op",
       chainId: 8453,

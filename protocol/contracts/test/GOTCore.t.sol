@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -7,8 +7,15 @@ import { GOTFactory } from "../core/GOTFactory.sol";
 import { GOTIntent } from "../core/GOTIntent.sol";
 import { IGOTFactory } from "../core/interfaces/IGOTFactory.sol";
 import { IGOTIntent } from "../core/interfaces/IGOTIntent.sol";
+import { GOTClones } from "../core/libraries/GOTClones.sol";
 import { MockERC20, ReentrantERC20 } from "./mocks/MockERC20.sol";
 import { MockOwnerResolver, NotAResolver, MalformedOwnerResolver } from "./mocks/MockOwnerResolver.sol";
+
+contract GOTClonesHarness {
+    function creationCode(address implementation, bytes memory args) external pure returns (bytes memory) {
+        return GOTClones.creationCode(implementation, args);
+    }
+}
 
 contract GOTCoreTest is Test {
     uint16 internal constant EXECUTION_SHARE_BPS = 2_000;
@@ -24,6 +31,7 @@ contract GOTCoreTest is Test {
     GOTIntent internal implementation;
     GOTFactory internal factory;
     MockERC20 internal token;
+    GOTClonesHarness internal cloneHarness;
 
     receive() external payable {}
 
@@ -37,6 +45,7 @@ contract GOTCoreTest is Test {
             MAX_FEE_BPS
         );
         token = new MockERC20();
+        cloneHarness = new GOTClonesHarness();
     }
 
     function test_ConstantsAndDirectImplementationAreLocked() public {
@@ -179,6 +188,31 @@ contract GOTCoreTest is Test {
         assertEq(token.balanceOf(intent), 0);
     }
 
+    function test_CompetingResolversAndOwnerResolverOrderingAreFirstExecutionWins() public {
+        IGOTFactory.IntentConfig memory open = _config(OWNER, bytes32(0), 0, address(0));
+        open.intentId = keccak256("open-resolver-race");
+        address openIntent = factory.previewAddress(open);
+        token.mint(openIntent, 1_000);
+
+        vm.prank(RESOLVER);
+        factory.deployAndExecute(open);
+        vm.prank(STRANGER);
+        vm.expectRevert(GOTIntent.NoFundsAvailable.selector);
+        IGOTIntent(openIntent).resolve();
+
+        IGOTFactory.IntentConfig memory restricted = _config(OWNER, bytes32(0), 0, address(0));
+        restricted.intentId = keccak256("owner-resolver-race");
+        restricted.authorizedResolver = RESOLVER;
+        address restrictedIntent = factory.previewAddress(restricted);
+        token.mint(restrictedIntent, 1_000);
+
+        vm.prank(OWNER);
+        factory.deployAndExecute(restricted);
+        vm.prank(RESOLVER);
+        vm.expectRevert(GOTIntent.NoFundsAvailable.selector);
+        IGOTIntent(restrictedIntent).resolve();
+    }
+
     function test_DynamicOwnerUnresolvedThenResolvedAndMigrated() public {
         MockOwnerResolver ownerResolver = new MockOwnerResolver();
         bytes32 key = keccak256("alice");
@@ -274,6 +308,40 @@ contract GOTCoreTest is Test {
         assertTrue(funded);
         assertEq(IGOTIntent(intent).recoverNative(), 0.4 ether);
         assertEq(intent.balance, 0);
+    }
+
+    function test_UnresolvedRecoveryAlwaysUsesOwnerUnresolvedPrecedence() public {
+        MockOwnerResolver ownerResolver = new MockOwnerResolver();
+        ownerResolver.setOwner(OWNER);
+        IGOTFactory.IntentConfig memory config = _config(address(ownerResolver), keccak256("recover"), 0, address(0));
+        address intent = factory.previewAddress(config);
+        token.mint(intent, 1);
+        factory.deployAndExecute(config);
+
+        MockERC20 other = new MockERC20();
+        other.mint(intent, 77);
+        ownerResolver.setOwner(address(0));
+
+        vm.expectRevert(GOTIntent.OwnerUnresolved.selector);
+        IGOTIntent(intent).recoverERC20(address(token));
+        vm.expectRevert(GOTIntent.OwnerUnresolved.selector);
+        IGOTIntent(intent).recoverERC20(address(0));
+        vm.expectRevert(GOTIntent.OwnerUnresolved.selector);
+        IGOTIntent(intent).recoverERC20(address(other));
+        vm.expectRevert(GOTIntent.OwnerUnresolved.selector);
+        IGOTIntent(intent).recoverNative();
+    }
+
+    function test_CloneArgumentLengthGuardMatchesUint16RuntimeEncoding() public view {
+        uint256 maxArgsLength = type(uint16).max - 57;
+        bytes memory creation = cloneHarness.creationCode(address(implementation), new bytes(maxArgsLength));
+        assertEq(creation.length, 10 + uint256(type(uint16).max));
+    }
+
+    function test_CloneArgumentsOneByteOverEncodableRuntimeRevert() public {
+        uint256 firstInvalidLength = type(uint16).max - 56;
+        vm.expectRevert(GOTClones.CloneArgumentsTooLong.selector);
+        cloneHarness.creationCode(address(implementation), new bytes(firstInvalidLength));
     }
 
     function test_ReentrantTokenCannotEnterProcessingTwice() public {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
+import { deriveNameKeyV1 } from "../src/nameKeys.js";
 import {
   concatHex,
   encodeAbiParameters,
@@ -9,6 +10,7 @@ import {
   getAddress,
   hashTypedData,
   keccak256,
+  padHex,
   parseAbi,
   stringToHex,
   toFunctionSelector,
@@ -46,13 +48,15 @@ type SpendPermission = {
 type InvoiceStatus = "OPEN" | "PARTIAL" | "SETTLED" | "OVERPAID";
 
 const BASE_CHAIN_ID = 8453;
-const BASE_FORK_BLOCK = 49_650_000n;
+const PINNED_BASE_FORK_BLOCK = BigInt(process.env.BASE_FORK_BLOCK ?? "49650000");
+const FORK_MODE = process.env.GOT_BASE_FORK_MODE ?? "pinned";
 const USDC = getAddress("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
 const SPEND_PERMISSION_MANAGER = getAddress("0xf85210B21cC50302F477BA56686d2019dC9b67Ad");
 const COINBASE_SMART_WALLET_FACTORY = getAddress("0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a");
 const SAFE_PROXY_FACTORY = getAddress("0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67");
 const SAFE_L2_SINGLETON = getAddress("0x29fcB43b46531BcA003ddC8FCB67FFE91900C762");
 const SAFE_FALLBACK_HANDLER = getAddress("0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99");
+const SAFE_FALLBACK_HANDLER_SLOT = "0x6c9a6c4a39284e37ed1cf53d337577d14212a4870fb976a4366c693b939918d5" as Hex;
 const ERC6492_MAGIC = `0x${"6492".repeat(16)}` as Hex;
 const CANONICAL_CODE_HASHES = [
   [USDC, "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab"],
@@ -110,6 +114,11 @@ const safeAbi = parseAbi([
   "function setup(address[] owners,uint256 threshold,address to,bytes data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
   "function getThreshold() view returns (uint256)",
   "function getOwners() view returns (address[])",
+  "function nonce() view returns (uint256)",
+  "function approveHash(bytes32 hashToApprove)",
+  "function getTransactionHash(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 _nonce) view returns (bytes32)",
+  "function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address payable refundReceiver,bytes signatures) returns (bool success)",
+  "function swapOwner(address prevOwner,address oldOwner,address newOwner)",
 ]);
 
 describe("GOT production profile on a Base mainnet fork", async function () {
@@ -124,16 +133,35 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     subscriberOwner,
     safeOwnerA,
     safeOwnerB,
+    safeOwnerC,
+    rotatedSafeOwner,
     namedRecipient,
     migratedRecipient,
     blockedPartner,
     alternateResolver,
   ] = await viem.getWalletClients();
   const publicClient = await viem.getPublicClient();
+  const forkOriginBlock = await publicClient.getBlockNumber();
+  const forkOriginHash = (await publicClient.getBlock({ blockNumber: forkOriginBlock })).hash;
+
+  function forkStateNonce(label: string, attempt = 0): bigint {
+    return BigInt(
+      keccak256(
+        encodeAbiParameters(
+          [{ type: "bytes32" }, { type: "string" }, { type: "uint256" }],
+          [forkOriginHash, label, BigInt(attempt)],
+        ),
+      ),
+    );
+  }
 
   async function assertCanonicalBaseContracts() {
     assert.equal(await publicClient.getChainId(), BASE_CHAIN_ID);
-    assert.ok((await publicClient.getBlockNumber()) >= BASE_FORK_BLOCK);
+    if (FORK_MODE === "pinned") {
+      assert.equal(forkOriginBlock, PINNED_BASE_FORK_BLOCK, "release fork must start at the pinned Base block");
+    } else {
+      assert.ok(forkOriginBlock >= PINNED_BASE_FORK_BLOCK, "tip fork predates the release baseline");
+    }
     for (const [address, expectedCodeHash] of CANONICAL_CODE_HASHES) {
       const code = await publicClient.getCode({ address });
       assert.notEqual(code, undefined, `missing canonical Base contract ${address}`);
@@ -231,7 +259,7 @@ describe("GOT production profile on a Base mainnet fork", async function () {
   }
 
   async function deployThresholdSafe(): Promise<Address> {
-    const owners = [safeOwnerA.account.address, safeOwnerB.account.address].sort((a, b) =>
+    const owners = [safeOwnerA.account.address, safeOwnerB.account.address, safeOwnerC.account.address].sort((a, b) =>
       a.toLowerCase().localeCompare(b.toLowerCase()),
     );
     const initializer = encodeFunctionData({
@@ -239,15 +267,39 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       functionName: "setup",
       args: [owners, 2n, zeroAddress, "0x", SAFE_FALLBACK_HANDLER, zeroAddress, 0n, zeroAddress],
     });
-    const { request, result } = await publicClient.simulateContract({
-      account: deployer.account,
-      address: SAFE_PROXY_FACTORY,
-      abi: safeFactoryAbi,
-      functionName: "createProxyWithNonce",
-      args: [SAFE_L2_SINGLETON, initializer, 1n],
-    });
+    async function simulateUnusedSafeDeployment() {
+      for (let attempt = 0; attempt < 32; attempt++) {
+        try {
+          const deployment = await publicClient.simulateContract({
+            account: deployer.account,
+            address: SAFE_PROXY_FACTORY,
+            abi: safeFactoryAbi,
+            functionName: "createProxyWithNonce",
+            args: [SAFE_L2_SINGLETON, initializer, forkStateNonce("got-safe-verifier-v1", attempt)],
+          });
+          if ((await publicClient.getCode({ address: deployment.result })) === undefined) return deployment;
+        } catch {
+          // A CREATE2 collision is possible on evolving fork state; try the next derived nonce.
+        }
+      }
+      throw new Error("could not derive an unused Safe CREATE2 nonce from fork state");
+    }
+    const { request, result } = await simulateUnusedSafeDeployment();
+    assert.equal(await publicClient.getCode({ address: result }), undefined);
     await deployer.writeContract(request);
     assert.equal(await publicClient.readContract({ address: result, abi: safeAbi, functionName: "getThreshold" }), 2n);
+    assert.deepEqual(
+      (await publicClient.readContract({ address: result, abi: safeAbi, functionName: "getOwners" }))
+        .map((owner) => getAddress(owner))
+        .toSorted(),
+      owners.map((owner) => getAddress(owner)).toSorted(),
+    );
+    const fallbackHandlerStorage = await publicClient.getStorageAt({
+      address: result,
+      slot: SAFE_FALLBACK_HANDLER_SLOT,
+    });
+    assert.notEqual(fallbackHandlerStorage, undefined);
+    assert.equal(getAddress(`0x${fallbackHandlerStorage!.slice(-40)}`), SAFE_FALLBACK_HANDLER);
     return result;
   }
 
@@ -269,6 +321,12 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     const transferAmount = 250_000_000n;
     const direct = directIntent("base-fork-transfer", { amount: transferAmount });
     const intentAddress = await factory.read.previewAddress([direct]);
+    const merchantBeforeTransfer = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [merchant.account.address],
+    });
 
     assert.equal(await publicClient.getCode({ address: intentAddress }), undefined);
     await mintCanonicalUsdc(payer.account.address, transferAmount);
@@ -280,12 +338,12 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     });
     await factory.write.deployAndExecute([direct], { account: resolver.account });
     assert.equal(
-      await publicClient.readContract({
+      (await publicClient.readContract({
         address: USDC,
         abi: usdcAbi,
         functionName: "balanceOf",
         args: [merchant.account.address],
-      }),
+      })) - merchantBeforeTransfer,
       transferAmount,
     );
     assert.notEqual(await publicClient.getCode({ address: intentAddress }), undefined);
@@ -323,6 +381,24 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       functionName: "balanceOf",
       args: [merchant.account.address],
     });
+    const partnerBeforeFee = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [partner.account.address],
+    });
+    const treasuryBeforeFee = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [treasury.account.address],
+    });
+    const resolverBeforeFee = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [resolver.account.address],
+    });
     await mintCanonicalUsdc(feeIntent, grossQuotedAmount);
     await factory.write.deployAndExecute([feeConfig], { account: resolver.account });
     const totalFee = grossQuotedAmount - recipientTargetAmount;
@@ -340,30 +416,30 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       recipientTargetAmount,
     );
     assert.equal(
-      await publicClient.readContract({
+      (await publicClient.readContract({
         address: USDC,
         abi: usdcAbi,
         functionName: "balanceOf",
         args: [partner.account.address],
-      }),
+      })) - partnerBeforeFee,
       partnerReward,
     );
     assert.equal(
-      await publicClient.readContract({
+      (await publicClient.readContract({
         address: USDC,
         abi: usdcAbi,
         functionName: "balanceOf",
         args: [treasury.account.address],
-      }),
+      })) - treasuryBeforeFee,
       treasuryFee,
     );
     assert.equal(
-      await publicClient.readContract({
+      (await publicClient.readContract({
         address: USDC,
         abi: usdcAbi,
         functionName: "balanceOf",
         args: [resolver.account.address],
-      }),
+      })) - resolverBeforeFee,
       executionReward,
     );
 
@@ -405,8 +481,32 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     assert.equal(invoiceStatus(installmentProceeds, installmentConfig.amount), "OVERPAID");
 
     const safe = await deployThresholdSafe();
+    const safeOwnerConfig = directIntent("base-fork-safe-owner", {
+      ownerSource: safe,
+      amount: 5_000_000n,
+    });
+    const safeOwnerIntent = await factory.read.previewAddress([safeOwnerConfig]);
+    const safeBalanceBefore = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [safe],
+    });
+    await mintCanonicalUsdc(safeOwnerIntent, safeOwnerConfig.amount);
+    await factory.write.deployAndExecute([safeOwnerConfig], { account: resolver.account });
+    assert.equal(
+      (await publicClient.readContract({
+        address: USDC,
+        abi: usdcAbi,
+        functionName: "balanceOf",
+        args: [safe],
+      })) - safeBalanceBefore,
+      safeOwnerConfig.amount,
+    );
+
     const names = await viem.deployContract("GOTName", [safe]);
-    const nameKey = id("GOT_NAME_KEY_V1", "got:@base-fork");
+    const nameKey = deriveNameKeyV1("got", "@base-fork");
+    assert.equal(await names.read.deriveNameKey(["got:base-fork"]), nameKey);
     const deadline = Number(await networkHelpers.time.latest()) + 3_600;
     const claim = { nameKey, account: namedRecipient.account.address, deadline };
     const domain = { name: "GOTName", version: "1", chainId: BASE_CHAIN_ID, verifyingContract: names.address } as const;
@@ -419,9 +519,13 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     } as const;
     const claimDigest = hashTypedData({ domain, types, primaryType: "Claim", message: claim });
     const safeMessage = encodeAbiParameters([{ type: "bytes32" }], [claimDigest]);
-    async function signSafeMessage(message: Hex) {
+    async function signSafeMessage(
+      message: Hex,
+      signers = [safeOwnerA, safeOwnerB] as Array<typeof safeOwnerA>,
+      sortSignatures = true,
+    ) {
       const individual = await Promise.all(
-        [safeOwnerA, safeOwnerB].map(async (owner) => ({
+        signers.map(async (owner) => ({
           address: owner.account.address,
           signature: await owner.signTypedData({
             account: owner.account,
@@ -435,9 +539,10 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       return {
         individual,
         combined: concatHex(
-          individual
-            .toSorted((a, b) => a.address.toLowerCase().localeCompare(b.address.toLowerCase()))
-            .map(({ signature }) => signature),
+          (sortSignatures
+            ? individual.toSorted((a, b) => a.address.toLowerCase().localeCompare(b.address.toLowerCase()))
+            : individual
+          ).map(({ signature }) => signature),
         ),
       };
     }
@@ -475,6 +580,41 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       names,
       "InvalidVerifierSignature",
     );
+
+    const unorderedClaim = {
+      nameKey: deriveNameKeyV1("got", "@unordered-signatures"),
+      account: namedRecipient.account.address,
+      deadline,
+    };
+    const unorderedDigest = hashTypedData({ domain, types, primaryType: "Claim", message: unorderedClaim });
+    const unorderedSignatures = await signSafeMessage(encodeAbiParameters([{ type: "bytes32" }], [unorderedDigest]));
+    const orderedSignatures = unorderedSignatures.individual.toSorted((a, b) =>
+      a.address.toLowerCase().localeCompare(b.address.toLowerCase()),
+    );
+    await viem.assertions.revertWithCustomError(
+      names.write.claim([unorderedClaim, concatHex(orderedSignatures.toReversed().map(({ signature }) => signature))]),
+      names,
+      "InvalidVerifierSignature",
+    );
+
+    for (const [label, pair] of [
+      ["a-c", [safeOwnerA, safeOwnerC]],
+      ["b-c", [safeOwnerB, safeOwnerC]],
+    ] as const) {
+      const pairClaim = {
+        nameKey: deriveNameKeyV1("got", `@safe-pair-${label}`),
+        account: namedRecipient.account.address,
+        deadline,
+      };
+      const pairDigest = hashTypedData({ domain, types, primaryType: "Claim", message: pairClaim });
+      const pairSignatures = await signSafeMessage(encodeAbiParameters([{ type: "bytes32" }], [pairDigest]), [...pair]);
+      await names.write.claim([pairClaim, pairSignatures.combined]);
+      assert.equal(
+        getAddress(await names.read.accountOf([pairClaim.nameKey])),
+        getAddress(namedRecipient.account.address),
+      );
+    }
+
     await names.write.claim([claim, verifierSignature]);
     assert.equal(getAddress(await names.read.accountOf([nameKey])), getAddress(namedRecipient.account.address));
     await viem.assertions.revertWithCustomError(names.write.claim([claim, verifierSignature]), names, "AlreadyClaimed");
@@ -482,7 +622,7 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       names.write.claim(
         [
           {
-            nameKey: id("GOT_NAME_KEY_V1", "got:@expired-claim"),
+            nameKey: deriveNameKeyV1("got", "@expired-claim"),
             account: namedRecipient.account.address,
             deadline: Number(await networkHelpers.time.latest()) - 1,
           },
@@ -493,14 +633,79 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       names,
       "ClaimExpired",
     );
+
+    const currentSafeOwners = await publicClient.readContract({
+      address: safe,
+      abi: safeAbi,
+      functionName: "getOwners",
+    });
+    const oldOwner = getAddress(safeOwnerC.account.address);
+    const oldOwnerIndex = currentSafeOwners.map((owner) => getAddress(owner)).indexOf(oldOwner);
+    assert.notEqual(oldOwnerIndex, -1);
+    const sentinelOwner = getAddress("0x0000000000000000000000000000000000000001");
+    const previousOwner = oldOwnerIndex === 0 ? sentinelOwner : getAddress(currentSafeOwners[oldOwnerIndex - 1]);
+    const rotationData = encodeFunctionData({
+      abi: safeAbi,
+      functionName: "swapOwner",
+      args: [previousOwner, oldOwner, rotatedSafeOwner.account.address],
+    });
+    const safeNonce = await publicClient.readContract({ address: safe, abi: safeAbi, functionName: "nonce" });
+    const rotationHash = await publicClient.readContract({
+      address: safe,
+      abi: safeAbi,
+      functionName: "getTransactionHash",
+      args: [safe, 0n, rotationData, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, safeNonce],
+    });
+    for (const owner of [safeOwnerA, safeOwnerB]) {
+      await owner.writeContract({
+        address: safe,
+        abi: safeAbi,
+        functionName: "approveHash",
+        args: [rotationHash],
+      });
+    }
+    const approvedHashSignatures = concatHex(
+      [safeOwnerA.account.address, safeOwnerB.account.address]
+        .toSorted((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+        .map((owner) => concatHex([padHex(owner, { size: 32 }), ZERO_KEY, "0x01"])),
+    );
+    await deployer.writeContract({
+      address: safe,
+      abi: safeAbi,
+      functionName: "execTransaction",
+      args: [safe, 0n, rotationData, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, approvedHashSignatures],
+    });
+    const rotatedOwners = (
+      await publicClient.readContract({ address: safe, abi: safeAbi, functionName: "getOwners" })
+    ).map((owner) => getAddress(owner));
+    assert.equal(rotatedOwners.includes(oldOwner), false);
+    assert.equal(rotatedOwners.includes(getAddress(rotatedSafeOwner.account.address)), true);
+
+    const postRotationClaim = {
+      nameKey: deriveNameKeyV1("got", "@post-rotation"),
+      account: migratedRecipient.account.address,
+      deadline,
+    };
+    const postRotationDigest = hashTypedData({ domain, types, primaryType: "Claim", message: postRotationClaim });
+    const postRotationSignatures = await signSafeMessage(
+      encodeAbiParameters([{ type: "bytes32" }], [postRotationDigest]),
+      [safeOwnerA, rotatedSafeOwner],
+    );
+    await names.write.claim([postRotationClaim, postRotationSignatures.combined]);
+    const namedRecipientBefore = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [namedRecipient.account.address],
+    });
     await factory.write.deployAndExecute([namedConfig], { account: resolver.account });
     assert.equal(
-      await publicClient.readContract({
+      (await publicClient.readContract({
         address: USDC,
         abi: usdcAbi,
         functionName: "balanceOf",
         args: [namedRecipient.account.address],
-      }),
+      })) - namedRecipientBefore,
       namedConfig.amount,
     );
 
@@ -511,15 +716,21 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       amount: 50_000_000n,
     });
     const migratedIntent = await factory.read.previewAddress([migratedConfig]);
+    const migratedRecipientBefore = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [migratedRecipient.account.address],
+    });
     await mintCanonicalUsdc(migratedIntent, migratedConfig.amount);
     await factory.write.deployAndExecute([migratedConfig], { account: resolver.account });
     assert.equal(
-      await publicClient.readContract({
+      (await publicClient.readContract({
         address: USDC,
         abi: usdcAbi,
         functionName: "balanceOf",
         args: [migratedRecipient.account.address],
-      }),
+      })) - migratedRecipientBefore,
       migratedConfig.amount,
     );
   });
@@ -531,13 +742,48 @@ describe("GOT production profile on a Base mainnet fork", async function () {
       encodeAbiParameters([{ type: "address" }], [subscriberOwner.account.address]),
       encodeAbiParameters([{ type: "address" }], [SPEND_PERMISSION_MANAGER]),
     ];
-    const smartWallet = await publicClient.readContract({
+    let smartWalletNonce = forkStateNonce("got-coinbase-smart-wallet-v1");
+    let smartWallet = await publicClient.readContract({
       address: COINBASE_SMART_WALLET_FACTORY,
       abi: coinbaseFactoryAbi,
       functionName: "getAddress",
-      args: [owners, 0n],
+      args: [owners, smartWalletNonce],
     });
+    for (let attempt = 1; (await publicClient.getCode({ address: smartWallet })) !== undefined; attempt++) {
+      assert.ok(attempt < 32, "could not derive an unused Coinbase Smart Wallet nonce from fork state");
+      smartWalletNonce = forkStateNonce("got-coinbase-smart-wallet-v1", attempt);
+      smartWallet = await publicClient.readContract({
+        address: COINBASE_SMART_WALLET_FACTORY,
+        abi: coinbaseFactoryAbi,
+        functionName: "getAddress",
+        args: [owners, smartWalletNonce],
+      });
+    }
     assert.equal(await publicClient.getCode({ address: smartWallet }), undefined);
+
+    const counterfactualOwnerConfig = directIntent("base-fork-counterfactual-smart-wallet-owner", {
+      ownerSource: smartWallet,
+      amount: 1_000_000n,
+    });
+    const counterfactualOwnerIntent = await factory.read.previewAddress([counterfactualOwnerConfig]);
+    const smartWalletBeforeDirectSettlement = await publicClient.readContract({
+      address: USDC,
+      abi: usdcAbi,
+      functionName: "balanceOf",
+      args: [smartWallet],
+    });
+    await mintCanonicalUsdc(counterfactualOwnerIntent, counterfactualOwnerConfig.amount);
+    await factory.write.deployAndExecute([counterfactualOwnerConfig], { account: resolver.account });
+    assert.equal(await publicClient.getCode({ address: smartWallet }), undefined);
+    assert.equal(
+      (await publicClient.readContract({
+        address: USDC,
+        abi: usdcAbi,
+        functionName: "balanceOf",
+        args: [smartWallet],
+      })) - smartWalletBeforeDirectSettlement,
+      counterfactualOwnerConfig.amount,
+    );
 
     const subscription = await viem.deployContract("GOTSubscription", [factory.address, SPEND_PERMISSION_MANAGER]);
     const amount = 29_000_000n;
@@ -645,7 +891,7 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     const factoryCallData = encodeFunctionData({
       abi: coinbaseFactoryAbi,
       functionName: "createAccount",
-      args: [owners, 0n],
+      args: [owners, smartWalletNonce],
     });
     const erc6492Signature = concatHex([
       encodeAbiParameters(
@@ -770,7 +1016,7 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     const unresolvedStart = await networkHelpers.time.latest();
     const unresolvedConfig = directIntent("base-fork-unresolved-subscription", {
       ownerSource: unresolvedNames.address,
-      ownerKey: id("GOT_NAME_KEY_V1", "got:@unresolved-subscription"),
+      ownerKey: deriveNameKeyV1("got", "@unresolved-subscription"),
       authorizedResolver: subscription.address,
       amount,
       initialDeadline: BigInt(unresolvedStart),

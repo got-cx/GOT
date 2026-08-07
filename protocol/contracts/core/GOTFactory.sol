@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.36;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IGOTFactory } from "./interfaces/IGOTFactory.sol";
