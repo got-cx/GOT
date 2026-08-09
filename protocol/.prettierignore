@@ -1,0 +1,19 @@
+# Node modules and package manager outputs
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+
+# Hardhat build artifacts and caches
+artifacts/
+cache/
+
+# Typechain outputs (if present)
+typechain/
+typechain-types/
+
+# Coverage reports
+coverage/
+
+# Misc
+.DS_Store
+.env

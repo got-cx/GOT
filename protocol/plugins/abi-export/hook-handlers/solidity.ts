@@ -19,9 +19,7 @@ function isContractArtifact(value: unknown): value is ContractArtifact {
 
   const artifact = value as Partial<ContractArtifact>;
   return (
-    Array.isArray(artifact.abi) &&
-    typeof artifact.contractName === "string" &&
-    typeof artifact.sourceName === "string"
+    Array.isArray(artifact.abi) && typeof artifact.contractName === "string" && typeof artifact.sourceName === "string"
   );
 }
 
@@ -59,9 +57,7 @@ export default async (): Promise<Partial<SolidityHooks>> => ({
     const abiDirectory = path.join(context.config.paths.root, ABI_DIRECTORY);
     await mkdir(abiDirectory, { recursive: true });
 
-    const generatedFiles = new Set(
-      sortedExports.map(({ contractName }) => `${contractName}.json`),
-    );
+    const generatedFiles = new Set(sortedExports.map(({ contractName }) => `${contractName}.json`));
     generatedFiles.add(MANIFEST_FILE);
 
     for (const entry of await readdir(abiDirectory, { withFileTypes: true })) {
@@ -72,22 +68,13 @@ export default async (): Promise<Partial<SolidityHooks>> => ({
 
     await Promise.all(
       sortedExports.map(({ abi, contractName }) =>
-        writeFile(
-          path.join(abiDirectory, `${contractName}.json`),
-          `${JSON.stringify(abi, null, 2)}\n`,
-        ),
+        writeFile(path.join(abiDirectory, `${contractName}.json`), `${JSON.stringify(abi, null, 2)}\n`),
       ),
     );
 
     const manifest = Object.fromEntries(
-      sortedExports.map(({ contractName, sourceName }) => [
-        contractName,
-        { abi: `${contractName}.json`, sourceName },
-      ]),
+      sortedExports.map(({ contractName, sourceName }) => [contractName, { abi: `${contractName}.json`, sourceName }]),
     );
-    await writeFile(
-      path.join(abiDirectory, MANIFEST_FILE),
-      `${JSON.stringify(manifest, null, 2)}\n`,
-    );
+    await writeFile(path.join(abiDirectory, MANIFEST_FILE), `${JSON.stringify(manifest, null, 2)}\n`);
   },
 });

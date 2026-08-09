@@ -47,6 +47,11 @@
   },
   {
     "inputs": [],
+    "name": "NoAccountChange",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
     "type": "error"
   },
@@ -181,7 +186,7 @@
             "type": "uint48"
           }
         ],
-        "internalType": "struct GOTName.Claim",
+        "internalType": "struct IGOTName.Claim",
         "name": "claimData",
         "type": "tuple"
       },
@@ -194,6 +199,25 @@
     "name": "claim",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "canonicalIdentity",
+        "type": "string"
+      }
+    ],
+    "name": "deriveNameKey",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {

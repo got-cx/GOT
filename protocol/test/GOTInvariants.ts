@@ -32,26 +32,13 @@ const key = (label: string) => keccak256(stringToHex(label));
 
 describe("GOT invariants", async function () {
   const { viem, networkHelpers } = await network.create();
-  const [
-    deployer,
-    treasury,
-    ownerA,
-    ownerB,
-    partnerA,
-    partnerB,
-    executor,
-    restrictedResolver,
-    stranger,
-  ] = await viem.getWalletClients();
+  const [deployer, treasury, ownerA, ownerB, partnerA, partnerB, executor, restrictedResolver, stranger] =
+    await viem.getWalletClients();
   const publicClient = await viem.getPublicClient();
 
   async function deployCore() {
     const token = await viem.deployContract("MockERC20");
-    const implementation = await viem.deployContract("GOTIntent", [
-      treasury.account.address,
-      2_000,
-      2_500,
-    ]);
+    const implementation = await viem.deployContract("GOTIntent", [treasury.account.address, 2_000, 2_500]);
     const factory = await viem.deployContract("GOTFactory", [
       implementation.address,
       treasury.account.address,
@@ -62,10 +49,7 @@ describe("GOT invariants", async function () {
     return { token, implementation, factory };
   }
 
-  function directConfig(
-    token: Address,
-    overrides: Partial<IntentConfig> = {},
-  ): IntentConfig {
+  function directConfig(token: Address, overrides: Partial<IntentConfig> = {}): IntentConfig {
     return {
       intentId: key("GOT_TS_SECURITY_INTENT"),
       ownerSource: ownerA.account.address,
@@ -88,9 +72,7 @@ describe("GOT invariants", async function () {
 
     const first = await factory.read.previewAddress([config]);
     const second = await factory.read.previewAddress([config]);
-    const changed = await factory.read.previewAddress([
-      { ...config, metadataHash: key("different metadata") },
-    ]);
+    const changed = await factory.read.previewAddress([{ ...config, metadataHash: key("different metadata") }]);
     assert.equal(first, second);
     assert.notEqual(first, changed);
     assert.equal(await publicClient.getCode({ address: first }), undefined);
@@ -106,8 +88,7 @@ describe("GOT invariants", async function () {
   });
 
   it("INV-3/4/5: direct ownership is standalone, explicit, and fully immutable", async function () {
-    const { token, implementation, factory } =
-      await networkHelpers.loadFixture(deployCore);
+    const { token, implementation, factory } = await networkHelpers.loadFixture(deployCore);
     const resolverSource = await viem.deployContract("MockOwnerResolver");
     await resolverSource.write.setOwner([ownerB.account.address]);
     const config = directConfig(token.address, {
@@ -124,34 +105,19 @@ describe("GOT invariants", async function () {
     const intent = await viem.getContractAt("GOTIntent", predicted);
 
     // A zero key is direct mode even if ownerSource happens to implement the resolver interface.
-    assert.equal(
-      getAddress(await intent.read.owner()),
-      getAddress(resolverSource.address),
-    );
+    assert.equal(getAddress(await intent.read.owner()), getAddress(resolverSource.address));
     assert.equal(await intent.read.intentId(), config.intentId);
-    assert.equal(
-      getAddress(await intent.read.ownerSource()),
-      getAddress(config.ownerSource),
-    );
+    assert.equal(getAddress(await intent.read.ownerSource()), getAddress(config.ownerSource));
     assert.equal(await intent.read.ownerKey(), config.ownerKey);
     assert.equal(getAddress(await intent.read.token()), getAddress(config.token));
-    assert.equal(
-      getAddress(await intent.read.partner()),
-      getAddress(config.partner),
-    );
-    assert.equal(
-      getAddress(await intent.read.authorizedResolver()),
-      getAddress(config.authorizedResolver),
-    );
+    assert.equal(getAddress(await intent.read.partner()), getAddress(config.partner));
+    assert.equal(getAddress(await intent.read.authorizedResolver()), getAddress(config.authorizedResolver));
     assert.equal(await intent.read.amount(), config.amount);
     assert.equal(await intent.read.initialDeadline(), config.initialDeadline);
     assert.equal(await intent.read.period(), config.period);
     assert.equal(await intent.read.feeBps(), config.feeBps);
     assert.equal(await intent.read.metadataHash(), config.metadataHash);
-    assert.equal(
-      getAddress(await intent.read.factory()),
-      getAddress(factory.address),
-    );
+    assert.equal(getAddress(await intent.read.factory()), getAddress(factory.address));
 
     await viem.assertions.revertWithCustomError(
       implementation.read.owner(),
@@ -161,8 +127,7 @@ describe("GOT invariants", async function () {
   });
 
   it("INV-6/7/9/10/16: unresolved ownership fails closed, rolls back, then follows migration", async function () {
-    const { token, implementation, factory } =
-      await networkHelpers.loadFixture(deployCore);
+    const { token, implementation, factory } = await networkHelpers.loadFixture(deployCore);
     const resolver = await viem.deployContract("MockOwnerResolver");
     const config = directConfig(token.address, {
       ownerSource: resolver.address,
@@ -191,26 +156,18 @@ describe("GOT invariants", async function () {
     const intent = await viem.getContractAt("GOTIntent", predicted);
     await resolver.write.setOwner([ownerB.account.address]);
     await token.write.mint([predicted, 77n]);
-    await viem.assertions.emitWithArgs(
-      intent.write.settle({ account: ownerB.account }),
-      intent,
-      "TransferProcessed",
-      [
-        ownerB.account.address,
-        ownerB.account.address,
-        zeroAddress,
-        77n,
-        77n,
-        0n,
-        0n,
-        0n,
-        177n,
-      ],
-    );
-    assert.equal(
-      getAddress(await intent.read.owner()),
-      getAddress(ownerB.account.address),
-    );
+    await viem.assertions.emitWithArgs(intent.write.settle({ account: ownerB.account }), intent, "TransferProcessed", [
+      ownerB.account.address,
+      ownerB.account.address,
+      zeroAddress,
+      77n,
+      77n,
+      0n,
+      0n,
+      0n,
+      177n,
+    ]);
+    assert.equal(getAddress(await intent.read.owner()), getAddress(ownerB.account.address));
   });
 
   it("INV-8/18: one cached owner controls payout and event despite mid-execution migration", async function () {
@@ -258,16 +215,12 @@ describe("GOT invariants", async function () {
     assert.equal(await token.read.callbackSucceeded(), true);
     assert.equal(await token.read.balanceOf([ownerA.account.address]), 99_000n);
     assert.equal(await token.read.balanceOf([ownerB.account.address]), 0n);
-    assert.equal(
-      getAddress(await intent.read.owner()),
-      getAddress(ownerB.account.address),
-    );
+    assert.equal(getAddress(await intent.read.owner()), getAddress(ownerB.account.address));
     assert.equal(await implementation.read.OWNER_RESOLVER_GAS_LIMIT(), 50_000n);
   });
 
   it("INV-9/16: restricted resolver failure is atomic and cannot block owner sovereignty", async function () {
-    const { token, implementation, factory } =
-      await networkHelpers.loadFixture(deployCore);
+    const { token, implementation, factory } = await networkHelpers.loadFixture(deployCore);
     const config = directConfig(token.address, {
       authorizedResolver: restrictedResolver.account.address,
     });
@@ -322,8 +275,7 @@ describe("GOT invariants", async function () {
   });
 
   it("INV-12: cumulative positive-fee allocation is invariant to funding partitions", async function () {
-    const { token, implementation, factory } =
-      await networkHelpers.loadFixture(deployCore);
+    const { token, implementation, factory } = await networkHelpers.loadFixture(deployCore);
     const oneConfig = directConfig(token.address, {
       intentId: key("one partition"),
       ownerSource: ownerA.account.address,
@@ -442,8 +394,7 @@ describe("GOT invariants", async function () {
   });
 
   it("INV-19: every implementation selector prefix is rejected so native funding remains payable", async function () {
-    const { token, implementation, factory } =
-      await networkHelpers.loadFixture(deployCore);
+    const { token, implementation, factory } = await networkHelpers.loadFixture(deployCore);
     const functions = implementation.abi.filter((item) => item.type === "function");
     assert.ok(functions.length > 0);
 
@@ -451,9 +402,7 @@ describe("GOT invariants", async function () {
       const selector = toFunctionSelector(abiFunction);
       const intentId = `${selector}${"00".repeat(28)}` as Hex;
       await viem.assertions.revertWithCustomError(
-        factory.read.previewAddress([
-          directConfig(token.address, { intentId }),
-        ]),
+        factory.read.previewAddress([directConfig(token.address, { intentId })]),
         factory,
         "InvalidConfiguration",
       );

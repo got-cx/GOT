@@ -59,7 +59,7 @@ Canonical got.cx USDC transfers use `feeBps == 0`. With a blacklistable token, a
 
 ## Install and verify
 
-Requirements: Node.js 22+, npm, and a platform supported by Hardhat 3.
+Requirements: Node.js 22+, npm, and a platform supported by Hardhat 3. Contracts compile with Solidity 0.8.36 and explicitly target Cancun.
 
 ```sh
 npm install
@@ -71,11 +71,16 @@ npm test
 Useful focused commands:
 
 ```sh
-npm run test:solidity
+npm run test
 npm run test:integration
+npm run test:integration:tip
 npm run build:production
 npm run coverage
 ```
+
+`npm run test:integration` runs the reproducible deployment-grade suite against Base Mainnet block `49,650,000`. Set `BASE_RPC_URL` to a reliable archival Base RPC endpoint; it defaults to `https://mainnet.base.org`, whose public service may be rate-limited. Override the release block only deliberately with `BASE_FORK_BLOCK`. `npm run test:integration:tip` runs the same assertions at the moving chain tip as a compatibility check.
+
+The fork suite uses canonical Base USDC, Coinbase's deployed Spend Permission Manager with a real counterfactual Coinbase Smart Wallet/ERC-6492 signature, and a freshly deployed 2-of-3 Safe verifier. CREATE2 nonces are derived from fork state and the predicted accounts are verified absent before deployment. Token settlement assertions use balance deltas so unrelated live-state dust cannot make the suite flaky.
 
 Solidity tests cover unit, adversarial, rollback, and fuzz properties. TypeScript/viem tests exercise all numbered core security invariants plus got.cx and third-party business workflows: zero-fee transfers, exact-net partner invoices, reconciliation, named routes, and recurring SaaS subscriptions.
 
@@ -103,7 +108,11 @@ maxFeeBps
 
 The treasury and share values must exactly match the implementation. All basis-point values are strictly between `0` and `10_000`; an individual intent's `feeBps` may be zero and may not exceed `maxFeeBps`.
 
-`GOTName` takes one immutable claim verifier. The production profile should use a separately operated threshold Safe. That verifier controls every first claim and must verify both the external identity and destination-account control offchain. Subsequent name transfers are immediate and irreversible; there is no pending-owner acceptance or verifier recovery.
+The published package exports `normalizeGOTIdentity`, `parseCanonicalGOTIdentity`, `deriveIdentifierKey`, and `deriveNameKeyV1` from `@got-cx/protocol` and `@got-cx/protocol/nameKeys`. Applications must use this API rather than reproducing normalization locally.
+
+`GOTName` takes one immutable claim verifier. The production profile should use an independently operated Safe with at least a 2-of-3 threshold. That verifier controls every first claim and must verify both the external identity and destination-account control offchain. Subsequent name transfers are immediate and irreversible; there is no pending-owner acceptance or verifier recovery. Public name keys must hash the GOT Links Model's single canonical identity string according to [`docs/NAME_KEYS.md`](../docs/NAME_KEYS.md); private routes use independent CSPRNG-generated `bytes32` keys.
+
+Native currency sent to an already deployed intent must use a full-gas call. Solidity `send` and `transfer` generally fail because the clone delegates through a cold implementation and cannot execute within their 2,300-gas stipend.
 
 `GOTSubscription` takes immutable GOT factory and Spend Permission Manager addresses. Its interface is pinned to Coinbase's `coinbase/spend-permissions` commit `e0004e63edc4e17de7aa978293800ac7a16892e5`; deployments must verify the target chain's canonical manager code and address. Permissions require an explicit exclusive `end` greater than `start`; zero does not mean unlimited, while `type(uint48).max` can represent a practically unbounded permission.
 

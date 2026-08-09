@@ -70,15 +70,15 @@ contract CounterTest is Test {
 
 The `vm` object (from `forge-std/Test.sol`) exposes cheatcodes for EVM state manipulation. Commonly used ones:
 
-| Cheatcode | Effect |
-| --- | --- |
-| `vm.prank(addr)` | Sets `msg.sender` for the next call only |
-| `vm.startPrank(addr)` / `vm.stopPrank()` | Sets `msg.sender` for a range of calls |
-| `vm.deal(addr, amount)` | Sets an account's ETH balance |
-| `vm.warp(timestamp)` | Sets `block.timestamp` |
-| `vm.roll(blockNum)` | Sets `block.number` |
-| `vm.expectRevert(...)` | Asserts the next call reverts |
-| `vm.expectEmit(...)` | Asserts the next call emits a specific event |
+| Cheatcode                                | Effect                                       |
+| ---------------------------------------- | -------------------------------------------- |
+| `vm.prank(addr)`                         | Sets `msg.sender` for the next call only     |
+| `vm.startPrank(addr)` / `vm.stopPrank()` | Sets `msg.sender` for a range of calls       |
+| `vm.deal(addr, amount)`                  | Sets an account's ETH balance                |
+| `vm.warp(timestamp)`                     | Sets `block.timestamp`                       |
+| `vm.roll(blockNum)`                      | Sets `block.number`                          |
+| `vm.expectRevert(...)`                   | Asserts the next call reverts                |
+| `vm.expectEmit(...)`                     | Asserts the next call emits a specific event |
 
 ## TypeScript tests and the network connection
 

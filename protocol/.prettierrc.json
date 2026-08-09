@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "plugins": ["prettier-plugin-solidity"],
+  "printWidth": 120,
+  "tabWidth": 2,
+  "useTabs": false,
+  "singleQuote": false,
+  "bracketSpacing": true,
+  "semi": true,
+  "overrides": [
+    {
+      "files": ["*.sol"],
+      "options": {
+        "printWidth": 120,
+        "tabWidth": 4
+      }
+    }
+  ]
+}
