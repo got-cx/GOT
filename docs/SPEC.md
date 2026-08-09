@@ -1545,7 +1545,7 @@ The TypeScript package API is the normative normalization implementation:
 import { deriveNameKeyV1, normalizeGOTIdentity } from "@got-cx/protocol";
 ```
 
-`GOTName.deriveNameKey` only hashes an already-canonical string so Solidity and TypeScript can verify the same vectors. It does not normalize untrusted text onchain. Frontends, APIs, the claim service, and Safe signer tooling MUST use the package normalizer first.
+`GOTName.deriveNameKey` only hashes an already-canonical string so Solidity and TypeScript can verify the same vectors. It MUST NOT be used to normalize untrusted text onchain. Frontends, APIs, the claim service, and Safe signer tooling MUST derive keys through `deriveNameKeyV1`, or explicitly canonicalize inputs with `normalizeGOTIdentity` before hashing or calling `GOTName.deriveNameKey`.
 
 Canonical namespace identifiers are:
 
