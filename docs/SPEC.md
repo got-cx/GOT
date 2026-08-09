@@ -11,7 +11,7 @@
 **Primary launch asset:** canonical USDC  
 **Primary account layer:** Base Account  
 **Target protocol networks:** Cancun-compatible Ethereum/EVM networks supporting `CREATE2` and `MCOPY`
-**Document revision:** `0.2.2-links-sync`  
+**Document revision:** `0.2.3-name-keys`  
 **Status:** Review-remediation candidate; independent audit closure pending  
 **Date:** 2026-08-07
 
@@ -1531,13 +1531,23 @@ Required properties:
 
 # 32. Name Keys and Namespaces
 
-Canonical public derivation hashes the single normalized identity string defined by the GOT Links Model:
+GOTName keys use the single canonical identity string defined by GOT Links Model normalization version `got-links-v1`:
 
 ```solidity
 bytes32 nameKey = keccak256(bytes(canonicalIdentity));
 ```
 
-Recommended namespace identifiers:
+Examples are `got:dima`, `x:vitalik`, `telegram:dima`, `email:alice@example.com`, and `phone:+491234567890`. The URL presentation `@` is removed before hashing. Applications MUST NOT ABI-encode the namespace and identifier separately.
+
+The TypeScript package API is the normative normalization implementation:
+
+```ts
+import { deriveNameKeyV1, normalizeGOTIdentity } from "@got-cx/protocol";
+```
+
+`GOTName.deriveNameKey` only hashes an already-canonical string so Solidity and TypeScript can verify the same vectors. It does not normalize untrusted text onchain. Frontends, APIs, the claim service, and Safe signer tooling MUST use the package normalizer first.
+
+Canonical namespace identifiers are:
 
 ```text
 got
@@ -1551,21 +1561,59 @@ domain
 custom:<application-id>
 ```
 
-Normalization rules MUST be versioned, deterministic, injective and published. The normative version is `got-links-v1`. Identifiers MUST NOT contain `:`, built-in namespaces MUST come from the list above, and custom namespaces MUST have exactly the form `custom:<application-id>`. Unknown namespaces are invalid.
+Normalization rules MUST be versioned, deterministic, injective and published. The normative version is `got-links-v1`. Applications MUST NOT silently change normalization rules for an existing namespace version.
 
-The complete handle, email, phone, ENSIP-15, IDNA domain, and custom-namespace rules plus negative and cross-language golden vectors are normative in `docs/NAME_KEYS.md`. The URL presentation `@` is removed from native and social handles, and the `tg` route alias canonicalizes to `telegram`, before hashing.
+## 32.1 Injective Encoding
 
-Examples:
+The `:` separator is unambiguous because identifiers may never contain `:` and the namespace set is closed. Built-in namespaces contain no separator. A custom namespace has exactly the form `custom:<application-id>`, so it contains exactly one separator before the identifier is appended.
 
-```text
-got:alice
-x:vitalik
-telegram:alice
-email:alice@example.com
-ens:alice.eth
-```
+Consequently, inputs such as `("custom:shop", "a:b")`, `("custom", "shop:a:b")`, unknown namespaces, and additional custom namespace components are rejected rather than mapped to a key.
 
-Applications MUST NOT silently change normalization rules for an existing namespace version.
+## 32.2 Link Normalization
+
+| GOT link                          | Canonical identity        |
+| --------------------------------- | ------------------------- |
+| `got.cx/@dima`                    | `got:dima`                |
+| `got.cx/x:@vitalik`               | `x:vitalik`               |
+| `got.cx/tg:@dima`                 | `telegram:dima`           |
+| `got.cx/#email:alice@example.com` | `email:alice@example.com` |
+| `got.cx/#phone:+491234567890`     | `phone:+491234567890`     |
+
+`got.cx/0x...` is a direct deterministic intent-address route. It is not a GOTName identity and MUST NOT be hashed into a `nameKey`.
+
+All inputs are trimmed and normalized to Unicode NFC at the input boundary. The remaining rules are namespace-specific:
+
+| Namespace                 | Canonical rule                                                                                                                                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `got`                     | Remove at most one leading `@`; Unicode lowercase; 1–64 Unicode letters/digits plus internal `.`, `_`, or `-`; no leading/trailing punctuation.                                                                                    |
+| `x`                       | Remove at most one leading `@`; lowercase ASCII letters, digits, or `_`; 1–15 characters.                                                                                                                                          |
+| `telegram` (`tg` route)   | Canonical namespace is `telegram`; remove at most one leading `@`; lowercase ASCII letters, digits, or `_`; 1–32 characters.                                                                                                       |
+| `github`                  | Remove at most one leading `@`; lowercase ASCII letters, digits, or `-`; 1–39 characters; no leading/trailing or consecutive `-`.                                                                                                  |
+| `email`                   | Exactly one `@`; ASCII dot-atom local part of at most 64 characters is case-preserving; domain uses the `domain` rules. Quoted and internationalized local parts are unsupported. Provider-specific rewrites are forbidden.        |
+| `phone`                   | E.164: `+` followed by 8–15 ASCII digits, starting with a nonzero country-code digit.                                                                                                                                              |
+| `ens`                     | ENSIP-15 normalization via the pinned viem normalizer; the result must contain at least two labels.                                                                                                                                |
+| `domain`                  | WHATWG/UTS-46 conversion to lowercase ASCII IDNA form, valid DNS labels, at least two labels, and at most 253 characters; trailing root dots are rejected.                                                                         |
+| `custom:<application-id>` | Application ID is a lowercase DNS-style label of 1–63 characters. The case-sensitive identifier is 1–128 ASCII URI-unreserved characters (`A-Z`, `a-z`, digits, `.`, `_`, `~`, `-`) with an alphanumeric first and last character. |
+
+Malformed values such as `@@Alice`, `a@@Example.COM`, formatted phone numbers, and noncanonical direct-hash inputs are rejected. These rules are immutable for `got-links-v1`; an incompatible change requires a new published version and migration plan.
+
+## 32.3 Cross-Language Golden Vectors
+
+| Canonical identity             | Name key                                                             |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `got:dima`                     | `0x30a06aaeff91473d7ee33abc0fd5df8035d396a6e08eb8e897dc2f0e7c76017d` |
+| `x:vitalik`                    | `0x0461b719c64cee37778c51d241ff9483fd7d9bef4988591915639d1f03cb9e7c` |
+| `telegram:dima`                | `0x87c11a9c517d43f19d31777500762d8ad70c05e5b504936ff0fd246a34c65cdf` |
+| `email:alice@example.com`      | `0x3425d4006b9f3db86dbe07521c674f43120dd17e73e7d338dff954ac5202b822` |
+| `phone:+491234567890`          | `0x1e5212a74a3334ae59243952efcec237f894f7b448e58ba1bee84764aa369cde` |
+| `github:octocat`               | `0x9b438a8ea6d6a299d7833a3776f46b18a99186160d98ebceeb41028eb3a6a3b7` |
+| `ens:alice.eth`                | `0xa96e7a476dbfca9801a9ac0211c2cccdc08ad58e8b3432133d860dc8b5277de4` |
+| `domain:xn--bcher-kva.example` | `0x77d0bb7017b33c0b3da8b68bd1da930c492a1aa30837596fe5ad39dda8fbb054` |
+| `custom:shop:order-123`        | `0x9271bae65fa0f8dbe2a69fe28f554718563f751ed7c339b9dce87ef532143aab` |
+
+The Solidity and TypeScript test suites MUST assert the same vectors.
+
+Private opaque routes do not use public identity derivation. Applications MUST generate their `bytes32` keys with a cryptographically secure random-number generator and keep the identifier-to-key mapping offchain.
 
 ---
 
@@ -1573,7 +1621,7 @@ Applications MUST NOT silently change normalization rules for an existing namesp
 
 ## 33.1 Deterministic identity mode
 
-Canonical GOT names, social handles, email addresses and phone numbers use the versioned normalization rules in `docs/NAME_KEYS.md` and are deterministically hashed into `nameKey`.
+Canonical GOT names, social handles, email addresses and phone numbers use the versioned `got-links-v1` normalization rules in Section 32 and are deterministically hashed into `nameKey`.
 
 Public path routes are appropriate for public identifiers such as GOT names and social handles:
 
@@ -2128,7 +2176,7 @@ got.cx/0x...
     deterministic intent address
 ```
 
-The `@` presentation marker is removed during identity normalization. The `tg` route alias canonicalizes to the `telegram` namespace. Email and phone normalization MUST follow `docs/NAME_KEYS.md`.
+The `@` presentation marker is removed during identity normalization. The `tg` route alias canonicalizes to the `telegram` namespace. Email and phone normalization MUST follow the normative `got-links-v1` rules in Section 32.
 
 The `got.cx/0x...` route MUST contain a valid 20-byte EVM address and represents the deterministic intent address itself. It MUST NOT be interpreted as a `transferId`. A processed `transferId` remains an infrastructure and receipt identifier derived from chain and log coordinates.
 
@@ -3242,6 +3290,7 @@ Changes from Final Unified System Specification v0.1:
 14. Added and synchronized the canonical GOT Links Model: `@`, `x:`, `tg:`, fragment-based `email:`/`phone:`, and direct `0x...` intent-address routes; removed canonical `/t/<transferLinkId>` routing.
 15. Added 2-of-3 Safe verifier operations for GOTName.
 16. Updated tests, threats, audit scope and deployment artifacts.
+17. Merged the complete normative `got-links-v1` name-key normalization, injective encoding rules and cross-language golden vectors into Section 32 so this specification is self-contained.
 
 ---
 
