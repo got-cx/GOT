@@ -15,11 +15,13 @@
     },
     "./abi/*": "./abi/*",
     "./contracts/*": "./contracts/*",
+    "./deployments/base.json": "./deployments/base.json",
     "./package.json": "./package.json"
   },
   "files": [
     "abi",
     "contracts",
+    "deployments/base.json",
     "dist"
   ],
   "scripts": {
@@ -31,6 +33,8 @@
     "test:nodejs": "hardhat test nodejs",
     "test:integration": "GOT_BASE_FORK_MODE=pinned hardhat --build-profile production --network baseFork test nodejs integration/GOTBaseFork.ts",
     "test:integration:tip": "GOT_BASE_FORK_MODE=tip hardhat --build-profile production --network baseForkTip test nodejs integration/GOTBaseFork.ts",
+    "deploy:baseFork": "USE_GOT_DEPLOY_ACCOUNT=true hardhat --build-profile production --network baseFork run scripts/deploy.ts",
+    "deploy:base": "hardhat --build-profile production --network base run scripts/deploy.ts",
     "coverage": "hardhat test --coverage",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"**/*.{sol,ts,js,json,md,yml,yaml}\"",

@@ -29,3 +29,6 @@
 
 # Snapshot cheatcodes output
 /snapshots
+
+# Fork deployment output
+/deployments/base-fork.json
