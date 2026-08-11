@@ -8,7 +8,8 @@ const packageJson = require("../package.json") as {
 };
 
 const DEFAULT_EXECUTION_SHARE_BPS = 2_000;
-const DEFAULT_PARTNER_SHARE_BPS = 2_500;
+// Partner share is applied after the 20% executor share: 37.5% of 80% = 30% of the total fee.
+const DEFAULT_PARTNER_SHARE_BPS = 3_750;
 const DEFAULT_MAX_FEE_BPS = 1_000;
 const DEFAULT_CONFIRMATIONS = 1;
 const DEFAULT_PACKAGE_NAME = packageJson.name;

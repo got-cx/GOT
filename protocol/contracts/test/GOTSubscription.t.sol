@@ -27,8 +27,8 @@ contract GOTSubscriptionTest is Test {
     function setUp() public {
         token = new MockERC20();
         permissionManager = new MockSpendPermissionManager();
-        implementation = new GOTIntent(TREASURY, 2_000, 2_500);
-        factory = new GOTFactory(address(implementation), TREASURY, 2_000, 2_500, 1_000);
+        implementation = new GOTIntent(TREASURY, 2_000, 3_750);
+        factory = new GOTFactory(address(implementation), TREASURY, 2_000, 3_750, 1_000);
         subscription = new GOTSubscription(address(factory), address(permissionManager));
         token.mint(SUBSCRIBER, 1_000_000);
         vm.prank(SUBSCRIBER);
@@ -75,8 +75,8 @@ contract GOTSubscriptionTest is Test {
             .execute(permission, "", config);
 
         assertEq(ownerAmount, 990);
-        assertEq(treasuryFee, 6);
-        assertEq(partnerReward, 2);
+        assertEq(treasuryFee, 5);
+        assertEq(partnerReward, 3);
         assertEq(executionReward, 2);
         assertEq(token.balanceOf(KEEPER), 2);
         assertEq(token.balanceOf(address(subscription)), 0);

@@ -8,7 +8,7 @@
     "treasury": "",
     "gotNameClaimVerifier": "",
     "executionShareBps": 2000,
-    "partnerShareBps": 2500,
+    "partnerShareBps": 3750,
     "maxFeeBps": 1000
   },
   "dependencies": {

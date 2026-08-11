@@ -230,12 +230,12 @@ describe("GOT production profile on a Base mainnet fork", async function () {
   }
 
   async function deployProtocol() {
-    const implementation = await viem.deployContract("GOTIntent", [treasury.account.address, 2_000, 2_500]);
+    const implementation = await viem.deployContract("GOTIntent", [treasury.account.address, 2_000, 3_750]);
     const factory = await viem.deployContract("GOTFactory", [
       implementation.address,
       treasury.account.address,
       2_000,
-      2_500,
+      3_750,
       1_000,
     ]);
     return { implementation, factory };
@@ -404,7 +404,7 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     const totalFee = grossQuotedAmount - recipientTargetAmount;
     const executionReward = (totalFee * 2_000n) / 10_000n;
     const nonExecutionFee = totalFee - executionReward;
-    const partnerReward = (nonExecutionFee * 2_500n) / 10_000n;
+    const partnerReward = (nonExecutionFee * 3_750n) / 10_000n;
     const treasuryFee = nonExecutionFee - partnerReward;
     assert.equal(
       (await publicClient.readContract({

@@ -19,7 +19,7 @@ contract GOTClonesHarness {
 
 contract GOTCoreTest is Test {
     uint16 internal constant EXECUTION_SHARE_BPS = 2_000;
-    uint16 internal constant PARTNER_SHARE_BPS = 2_500;
+    uint16 internal constant PARTNER_SHARE_BPS = 3_750;
     uint16 internal constant MAX_FEE_BPS = 1_000;
 
     address internal constant TREASURY = address(0xA11CE);
@@ -145,12 +145,12 @@ contract GOTCoreTest is Test {
 
         assertEq(ownerAmount, 99_000);
         assertEq(executionReward, 200);
-        assertEq(partnerReward, 200);
-        assertEq(treasuryFee, 600);
+        assertEq(partnerReward, 300);
+        assertEq(treasuryFee, 500);
         assertEq(token.balanceOf(OWNER), 99_000);
         assertEq(token.balanceOf(STRANGER), 200);
-        assertEq(token.balanceOf(PARTNER), 200);
-        assertEq(token.balanceOf(TREASURY), 600);
+        assertEq(token.balanceOf(PARTNER), 300);
+        assertEq(token.balanceOf(TREASURY), 500);
     }
 
     function test_PositiveFeeWithoutPartnerLeavesPartnerShareAtTreasury() public {

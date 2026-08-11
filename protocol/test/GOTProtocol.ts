@@ -54,12 +54,12 @@ describe("GOT protocol product and integrator examples", async function () {
 
   async function deployProtocol() {
     const token = await viem.deployContract("MockERC20");
-    const implementation = await viem.deployContract("GOTIntent", [protocolTreasury.account.address, 2_000, 2_500]);
+    const implementation = await viem.deployContract("GOTIntent", [protocolTreasury.account.address, 2_000, 3_750]);
     const factory = await viem.deployContract("GOTFactory", [
       implementation.address,
       protocolTreasury.account.address,
       2_000,
-      2_500,
+      3_750,
       1_000,
     ]);
     return { token, implementation, factory };
@@ -131,7 +131,7 @@ describe("GOT protocol product and integrator examples", async function () {
     const totalFee = displayedServiceFee;
     const executionReward = (totalFee * 2_000n) / 10_000n;
     const nonExecutionFee = totalFee - executionReward;
-    const partnerReward = (nonExecutionFee * 2_500n) / 10_000n;
+    const partnerReward = (nonExecutionFee * 3_750n) / 10_000n;
     const treasuryFee = nonExecutionFee - partnerReward;
     assert.equal(await token.read.balanceOf([merchant.account.address]), recipientTargetAmount);
     assert.equal(await token.read.balanceOf([integratorTreasury.account.address]), partnerReward);
