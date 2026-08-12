@@ -4,7 +4,7 @@ Solidity implementation of GOT — Global Onchain Transfers — protocol version
 
 GOT provides deterministic intent addresses that can receive an ERC-20 before contract deployment. Once ownership is resolvable, anyone allowed by the intent can atomically deploy the canonical clone and process its entire configured-token balance. The normative design is in [`../docs/SPEC.md`](../docs/SPEC.md).
 
-This iteration implements the core and initial periphery. Deployment modules, network configuration, release manifests, and address publication are intentionally deferred to the next phase.
+This iteration implements the core, initial periphery, and the Base Mainnet deployment path. Release address publication remains deferred until the production treasury and GOTName claim verifier are configured and the deployment is executed.
 
 ## Contracts
 
@@ -78,6 +78,18 @@ npm run build:production
 npm run coverage
 ```
 
+## Base deployment
+
+The Base profile deploys `GOTIntent` and `GOTFactory` deterministically through CreateX using a fork-mined salt that predicts a factory address beginning with `0x60700`. It then deploys `GOTName` and `GOTSubscription`, verifies every immutable constructor value, and writes the completed addresses and code hashes to `deployments/base.json`.
+
+Before production deployment, set `treasury` and `gotNameClaimVerifier` in `scripts/config.ts`. The canonical Base USDC and Coinbase Spend Permission Manager addresses and runtime code hashes are already pinned. Provide the deployment private key through the Hardhat `GOT_DEPLOYER` configuration variable, then run:
+
+```sh
+npm run deploy:base
+```
+
+Use `npm run deploy:baseFork` for a local rehearsal against the pinned Base block. After the fork mines a salt, copy its `create2Salt`, `create2GuardedSalt`, constructor arguments, and creation-code hashes into `deployments/base.json`. `npm run deploy:base` requires that prepared salt and verifies that its constructor values still match before sending transactions; it never searches for a new salt on production. `GOTName` and `GOTSubscription` are ordinary deployments and can still have different addresses between the fork and Base.
+
 `npm run test:integration` runs the reproducible deployment-grade suite against Base Mainnet block `49,650,000`. Set `BASE_RPC_URL` to a reliable archival Base RPC endpoint; it defaults to `https://mainnet.base.org`, whose public service may be rate-limited. Override the release block only deliberately with `BASE_FORK_BLOCK`. `npm run test:integration:tip` runs the same assertions at the moving chain tip as a compatibility check.
 
 The fork suite uses canonical Base USDC, Coinbase's deployed Spend Permission Manager with a real counterfactual Coinbase Smart Wallet/ERC-6492 signature, and a freshly deployed 2-of-3 Safe verifier. CREATE2 nonces are derived from fork state and the predicted accounts are verified absent before deployment. Token settlement assertions use balance deltas so unrelated live-state dust cannot make the suite flaky.
@@ -127,4 +139,4 @@ Both compiler profiles explicitly target Cancun because the pinned OpenZeppelin 
 
 ## Next phase
 
-Deployment work should add deterministic implementation/factory deployment, Base Sepolia and Base Mainnet profiles, canonical USDC and Spend Permission Manager verification, published code hashes and deterministic vectors, contract verification, and a release manifest. Release testing must exercise the exact pinned manager with Coinbase Smart Wallet/ERC-6492 fixtures and the threshold Safe name verifier rather than only local mocks. No deployment script is included in this iteration.
+Deployment work should add a Base profile, contract verification, deterministic release vectors, and a published release manifest. Release testing must continue to exercise the exact pinned manager with Coinbase Smart Wallet/ERC-6492 fixtures and the threshold Safe name verifier rather than only local mocks.

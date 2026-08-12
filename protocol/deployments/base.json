@@ -1,0 +1,35 @@
+{
+  "chainId": 8453,
+  "chainKey": "base",
+  "network": "base",
+  "deployer": "0x238450b3ba48903b0e03b7a0d635cffc15f15bef",
+  "create2Salt": "0xd7d11e7715e9719989f2d3e5403dfb31450262a19147f67308771d16b9b06630",
+  "create2GuardedSalt": "0xc89c849d9c74fbe5da162c1b5d048010b277a94bbf6777df7b15082e243c1754",
+  "constructorArguments": {
+    "treasury": "0xca87066dA08fF49efF7C19244ADD4036991ba811",
+    "gotNameClaimVerifier": "0x979deB2d30978686eE2b2e3494472D740d5a3117",
+    "executionShareBps": 2000,
+    "partnerShareBps": 3750,
+    "maxFeeBps": 1000
+  },
+  "dependencies": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "spendPermissionManager": "0xf85210B21cC50302F477BA56686d2019dC9b67Ad"
+  },
+  "contracts": {
+    "gotIntent": "0x9da08A8680978fb802A97F0445962F616FA6b598",
+    "gotFactory": "0x60700c99a58fD21022bf1f4d2b318C663e6F2E27",
+    "gotName": "0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af",
+    "gotSubscription": "0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0"
+  },
+  "creationCodeHashes": {
+    "gotIntent": "0x2190093af0d79023a6827e338397977ffa24bca561a2ce3ed70d6e74508a881f",
+    "gotFactory": "0xbccb30c63c14e6f244c7e92f5da27b53fee3990066481c575ddd221da22981d6"
+  },
+  "runtimeCodeHashes": {
+    "gotIntent": "0xe819e937fabd8ca0b074effc0cbcc7282576139637deeef2c5e82ab07419ad19",
+    "gotFactory": "0x0d70e10766f647e4573956db4bd3610f5c9ee24f7618197c47d056bc3d44e2cd",
+    "gotName": "0x8cbabd0bdb42a8f0f2aa4db381c9ba63a49fb80dfcf5610c0ec62609e65b99bc",
+    "gotSubscription": "0xc82e86fb6ec20504992aa41231b0081aa4e5278054deb68a74ec94b44a160725"
+  }
+}

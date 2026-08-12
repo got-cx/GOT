@@ -38,12 +38,12 @@ describe("GOT invariants", async function () {
 
   async function deployCore() {
     const token = await viem.deployContract("MockERC20");
-    const implementation = await viem.deployContract("GOTIntent", [treasury.account.address, 2_000, 2_500]);
+    const implementation = await viem.deployContract("GOTIntent", [treasury.account.address, 2_000, 3_750]);
     const factory = await viem.deployContract("GOTFactory", [
       implementation.address,
       treasury.account.address,
       2_000,
-      2_500,
+      3_750,
       1_000,
     ]);
     return { token, implementation, factory };
@@ -206,8 +206,8 @@ describe("GOT invariants", async function () {
         partnerA.account.address,
         100_000n,
         99_000n,
-        600n,
-        200n,
+        500n,
+        300n,
         200n,
         100_000n,
       ],
@@ -268,8 +268,8 @@ describe("GOT invariants", async function () {
       account: executor.account,
     });
     assert.equal(await token.read.balanceOf([ownerB.account.address]), 99_000n);
-    assert.equal(await token.read.balanceOf([treasury.account.address]), 600n);
-    assert.equal(await token.read.balanceOf([partnerA.account.address]), 200n);
+    assert.equal(await token.read.balanceOf([treasury.account.address]), 500n);
+    assert.equal(await token.read.balanceOf([partnerA.account.address]), 300n);
     assert.equal(await token.read.balanceOf([executor.account.address]), 200n);
     assert.equal(await token.read.balanceOf([feeIntent]), 0n);
   });

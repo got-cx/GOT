@@ -146,8 +146,8 @@ contract GOTNameTest is Test {
     function test_ClaimAfterCounterfactualFundingUnlocksAllNamedIntents() public {
         GOTName names = new GOTName(verifier);
         MockERC20 token = new MockERC20();
-        GOTIntent implementation = new GOTIntent(address(0x111), 2_000, 2_500);
-        GOTFactory factory = new GOTFactory(address(implementation), address(0x111), 2_000, 2_500, 1_000);
+        GOTIntent implementation = new GOTIntent(address(0x111), 2_000, 3_750);
+        GOTFactory factory = new GOTFactory(address(implementation), address(0x111), 2_000, 3_750, 1_000);
         bytes32 key = keccak256("email:opaque-key");
         IGOTFactory.IntentConfig memory config = IGOTFactory.IntentConfig({
             intentId: keccak256("named-intent"),
