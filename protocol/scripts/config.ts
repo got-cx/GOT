@@ -57,8 +57,8 @@ const CHAIN_CONFIGS: Record<ChainKey, ChainConfigTemplate> = {
   base: {
     key: "base",
     chainId: 8_453,
-    treasury: undefined,
-    gotNameClaimVerifier: undefined,
+    treasury: "0xca87066dA08fF49efF7C19244ADD4036991ba811",
+    gotNameClaimVerifier: "0x979deB2d30978686eE2b2e3494472D740d5a3117",
     usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     usdcCodeHash: "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
     spendPermissionManager: "0xf85210B21cC50302F477BA56686d2019dC9b67Ad",

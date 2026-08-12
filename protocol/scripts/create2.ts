@@ -250,6 +250,9 @@ export async function deployCreate2Contract({
     account: walletClient.account,
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations });
+  if (receipt.status !== "success") {
+    throw new Error(`CreateX deployment transaction ${hash} reverted`);
+  }
 
   for (const log of receipt.logs) {
     if (log.address.toLowerCase() !== CREATE_X_ADDRESS.toLowerCase()) {

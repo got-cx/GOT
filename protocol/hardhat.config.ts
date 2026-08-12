@@ -17,6 +17,11 @@ export default defineConfig({
   coverage: {
     skipFiles: ["contracts/core/GOTIntent.sol"],
   },
+  verify: {
+    etherscan: {
+      apiKey: configVariable("ETHERSCAN_API_KEY"),
+    },
+  },
   solidity: {
     profiles: {
       default: {

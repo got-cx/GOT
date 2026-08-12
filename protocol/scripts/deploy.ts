@@ -1,12 +1,15 @@
 import hre from "hardhat";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
 import { getDeployConfig } from "./config.js";
 import { deployCreate2Contract, ensureCreateXFactory, resolveGOTSalt } from "./create2.js";
 
 const DEPLOYMENTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../deployments");
+const POST_DEPLOY_CODE_ATTEMPTS = 30;
+const POST_DEPLOY_CODE_INTERVAL_MS = 1_000;
 
 function deploymentKey(chainKey: string, networkName: string): string {
   if (networkName === "baseFork") return "base-fork";
@@ -116,12 +119,19 @@ async function requireCode(
   publicClient: { getCode: (args: { address: Address }) => Promise<Hex | undefined> },
   address: Address,
   label: string,
+  attempts = 1,
 ): Promise<Hex> {
-  const code = await publicClient.getCode({ address });
-  if (code === undefined || code === "0x") {
-    throw new Error(`${label} has no code at ${address}`);
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const code = await publicClient.getCode({ address });
+    if (code !== undefined && code !== "0x") {
+      return code;
+    }
+    if (attempt < attempts) {
+      await delay(POST_DEPLOY_CODE_INTERVAL_MS);
+    }
   }
-  return code;
+
+  throw new Error(`${label} has no code at ${address} after ${attempts} RPC checks`);
 }
 
 async function verifyDependency(
@@ -157,7 +167,7 @@ async function reuseOrDeployCreate2({
   if (deployedAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
     throw new Error(`Unexpected ${label} address ${deployedAddress}; expected ${expectedAddress}`);
   }
-  await requireCode(publicClient, deployedAddress, label);
+  await requireCode(publicClient, deployedAddress, label, POST_DEPLOY_CODE_ATTEMPTS);
   console.log(`${label}: ${deployedAddress}`);
   return deployedAddress;
 }
@@ -179,7 +189,7 @@ async function reuseOrDeploy({
   }
 
   const deployed = await deploy();
-  await requireCode(publicClient, deployed.address, label);
+  await requireCode(publicClient, deployed.address, label, POST_DEPLOY_CODE_ATTEMPTS);
   console.log(`${label}: ${deployed.address}`);
   return deployed.address;
 }
