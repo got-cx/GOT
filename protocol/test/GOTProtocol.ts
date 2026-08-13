@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { deriveNameKeyV1 } from "../src/nameKeys.js";
+import { deriveNameKeyV1 } from "../sdk/nameKeys.js";
 import { encodeAbiParameters, keccak256, stringToHex, zeroAddress, type Address, type Hex } from "viem";
 
 type IntentConfig = {

@@ -11,6 +11,9 @@ cache/
 typechain/
 typechain-types/
 
+# Wagmi CLI output
+sdk/wagmi.ts
+
 # Coverage reports
 coverage/
 
