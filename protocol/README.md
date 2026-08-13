@@ -12,6 +12,18 @@ npm install @got-cx/protocol @wagmi/core viem
 
 The package is ESM-only and its generated actions use `@wagmi/core`.
 
+### Agent skill 🤖
+
+Install the GOT Protocol skill:
+
+```sh
+npx @got-cx/protocol
+```
+
+The command writes `.agents/skills/got-protocol/SKILL.md`. To install it elsewhere, run `npx @got-cx/protocol install <project-directory>`.
+
+The installed skill can use the same command to inspect deployments and ABIs, derive name keys, read contracts, and prepare unsigned transaction calldata. Run `npx @got-cx/protocol help` for the command reference.
+
 ## Quick start on Base
 
 ```ts

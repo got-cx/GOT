@@ -20,7 +20,13 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
+  "bin": {
+    "got-protocol": "./dist/skill.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -51,6 +57,7 @@
   },
   "files": [
     "README.md",
+    "SKILL.md",
     "abi",
     "contracts",
     "deployments/base.json",
