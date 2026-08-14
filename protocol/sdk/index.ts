@@ -1,3 +1,5 @@
+export * from "./deployments.js";
+export * from "./wagmi.js";
 export {
   GOT_NAME_KEY_NORMALIZATION_VERSION,
   deriveIdentifierKey,

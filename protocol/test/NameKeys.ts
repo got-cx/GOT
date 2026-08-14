@@ -6,7 +6,7 @@ import {
   deriveNameKeyV1,
   normalizeGOTIdentity,
   parseCanonicalGOTIdentity,
-} from "../src/nameKeys.js";
+} from "../sdk/nameKeys.js";
 
 describe("GOT Links Model name keys", function () {
   const vectors = [

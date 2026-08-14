@@ -1,17 +1,54 @@
 {
   "name": "@got-cx/protocol",
   "version": "0.2.0",
+  "description": "GOT Protocol SDK",
+  "keywords": [
+    "fintech",
+    "onchain",
+    "stablecoins"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/got-cx/GOT.git",
+    "directory": "protocol"
+  },
+  "bugs": {
+    "url": "https://github.com/got-cx/GOT/issues"
+  },
+  "homepage": "https://got.cx",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
+  "bin": {
+    "got-protocol": "./dist/skill.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./deployments": {
+      "types": "./dist/deployments.d.ts",
+      "import": "./dist/deployments.js",
+      "default": "./dist/deployments.js"
+    },
+    "./wagmi": {
+      "types": "./dist/wagmi.d.ts",
+      "import": "./dist/wagmi.js",
+      "default": "./dist/wagmi.js"
     },
     "./nameKeys": {
       "types": "./dist/nameKeys.d.ts",
-      "import": "./dist/nameKeys.js"
+      "import": "./dist/nameKeys.js",
+      "default": "./dist/nameKeys.js"
     },
     "./abi/*": "./abi/*",
     "./contracts/*": "./contracts/*",
@@ -19,15 +56,19 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "README.md",
+    "SKILL.md",
     "abi",
     "contracts",
     "deployments/base.json",
     "dist"
   ],
   "scripts": {
+    "prebuild": "npm run format && npm run typecheck",
     "build": "hardhat build && npm run build:package",
     "build:production": "hardhat build --build-profile production && npm run build:package",
-    "build:package": "tsc -p tsconfig.package.json",
+    "build:package": "node ./scripts/clean-sdk.js && npm run sdk:generate && tsc -p tsconfig.package.json",
+    "sdk:generate": "wagmi generate --config wagmi.config.ts",
     "test": "hardhat test",
     "test:solidity": "hardhat test solidity",
     "test:nodejs": "hardhat test nodejs",
@@ -42,17 +83,23 @@
     "prepack": "npm run build:package"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "5.6.1",
+    "@openzeppelin/contracts": "5.6.1"
+  },
+  "peerDependencies": {
+    "@wagmi/core": "^3.4.1",
     "viem": "^2.55.11"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
     "@nomicfoundation/hardhat-verify": "^3.0.22",
     "@types/node": "^22.20.1",
+    "@wagmi/cli": "2.5.1",
+    "@wagmi/core": "3.4.1",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.12.0",
     "prettier": "^3.9.6",
     "prettier-plugin-solidity": "^2.4.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "viem": "^2.55.11"
   }
 }

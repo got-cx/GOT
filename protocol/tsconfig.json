@@ -2,7 +2,9 @@
   "compilerOptions": {
     "lib": ["es2023"],
     "module": "node20",
+    "moduleResolution": "node16",
     "target": "es2023",
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "outDir": "dist",
     "types": ["node"],
