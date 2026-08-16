@@ -2715,8 +2715,8 @@ Interface:   got.cx
 Testing:
 
 ```text
-Chain:       Base Sepolia
-Asset:       approved test USDC
+Chain:       Base Fork
+Asset:       canonical USDC
 ```
 
 Core SHOULD remain deployable on Ethereum and compatible EVM chains.
@@ -2855,69 +2855,69 @@ Every release MUST include:
 
 ## Repository
 
-- [ ] authoritative `docs/SPEC.md`;
+- [x] authoritative `docs/SPEC.md`;
 - [ ] core/periphery/interface/infra boundaries;
 - [ ] security and contribution policies;
-- [ ] generated ABIs and types;
+- [x] generated ABIs and types;
 - [ ] deterministic and quote vectors.
 
 ## GOTFactory
 
-- [ ] zero mutable storage;
-- [ ] no admin, pause or upgrade;
-- [ ] `GOT_PROTOCOL_V0_2`;
-- [ ] exact 226-byte layout;
-- [ ] zero fee accepted;
-- [ ] fee above maximum rejected;
-- [ ] preview has no external calls;
-- [ ] all intent function-selector prefixes rejected;
-- [ ] token code required only at execution;
-- [ ] atomic deployment and execution;
-- [ ] exact external executor forwarded;
-- [ ] quote helpers tested.
+- [x] zero mutable storage;
+- [x] no admin, pause or upgrade;
+- [x] `GOT_PROTOCOL_V0_2`;
+- [x] exact 226-byte layout;
+- [x] zero fee accepted;
+- [x] fee above maximum rejected;
+- [x] preview has no external calls;
+- [x] all intent function-selector prefixes rejected;
+- [x] token code required only at execution;
+- [x] atomic deployment and execution;
+- [x] exact external executor forwarded;
+- [x] quote helpers tested.
 
 ## GOTIntent
 
-- [ ] direct implementation blocked;
-- [ ] one mutable slot;
-- [ ] direct and resolver modes;
-- [ ] bounded resolver calls;
-- [ ] unresolved owner safe;
-- [ ] one owner read;
-- [ ] owner settlement always available;
-- [ ] open and restricted resolver exact;
-- [ ] zero-fee owner receives full balance;
-- [ ] positive cumulative fee math;
-- [ ] partner reward to immutable partner;
-- [ ] configured token protected;
-- [ ] complete balance cleared;
-- [ ] lock correct;
-- [ ] events exact.
+- [x] direct implementation blocked;
+- [x] one mutable slot;
+- [x] direct and resolver modes;
+- [x] bounded resolver calls;
+- [x] unresolved owner safe;
+- [x] one owner read;
+- [x] owner settlement always available;
+- [x] open and restricted resolver exact;
+- [x] zero-fee owner receives full balance;
+- [x] positive cumulative fee math;
+- [x] partner reward to immutable partner;
+- [x] configured token protected;
+- [x] complete balance cleared;
+- [x] lock correct;
+- [x] events exact.
 
 ## GOTName
 
-- [ ] immutable 2-of-3 Safe verifier;
-- [ ] EIP-712 and ERC-1271;
-- [ ] one-time claim;
-- [ ] no verifier overwrite;
-- [ ] current-owner transfer;
-- [ ] namespace versions;
-- [ ] deterministic canonical identity mode;
+- [x] immutable 2-of-3 Safe verifier;
+- [x] EIP-712 and ERC-1271;
+- [x] one-time claim;
+- [x] no verifier overwrite;
+- [x] current-owner transfer;
+- [x] namespace versions;
+- [x] deterministic canonical identity mode;
 - [ ] optional random opaque private mode;
 - [ ] evidence audit logs.
 
 ## GOTSubscription
 
-- [ ] immutable;
-- [ ] exact binding;
-- [ ] exact allowance and period;
-- [ ] explicit `end > start` compatible with the pinned manager;
-- [ ] atomic account spend and settlement;
-- [ ] zero-fee reference profile;
-- [ ] execution reward forwarding;
-- [ ] revocation handling;
-- [ ] no arbitrary destination;
-- [ ] reentrancy guard.
+- [x] immutable;
+- [x] exact binding;
+- [x] exact allowance and period;
+- [x] explicit `end > start` compatible with the pinned manager;
+- [x] atomic account spend and settlement;
+- [x] zero-fee reference profile;
+- [x] execution reward forwarding;
+- [x] revocation handling;
+- [x] no arbitrary destination;
+- [x] reentrancy guard.
 
 ## got.cx
 
