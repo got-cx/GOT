@@ -67,7 +67,7 @@
     "prebuild": "npm run format && npm run typecheck",
     "build": "hardhat build && npm run build:package",
     "build:production": "hardhat build --build-profile production && npm run build:package",
-    "build:package": "node ./scripts/clean-sdk.js && npm run sdk:generate && tsc -p tsconfig.package.json",
+    "build:package": "npm audit --audit-level=high && node ./scripts/clean-sdk.js && npm run sdk:generate && tsc -p tsconfig.package.json",
     "sdk:generate": "wagmi generate --config wagmi.config.ts",
     "test": "hardhat test",
     "test:solidity": "hardhat test solidity",
