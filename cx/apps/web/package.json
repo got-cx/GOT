@@ -1,0 +1,38 @@
+{
+  "name": "@got-cx/web",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm audit --audit-level=high && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@base-org/account": "2.5.5",
+    "@got-cx/sdk": "*",
+    "@tanstack/react-query": "^5.101.4",
+    "@workspace/ui": "*",
+    "geist": "1.7.2",
+    "lucide-react": "^1.31.0",
+    "next": "16.3.1",
+    "next-themes": "^0.4.6",
+    "qrcode": "1.5.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "viem": "2.55.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^9",
+    "typescript": "^5"
+  }
+}

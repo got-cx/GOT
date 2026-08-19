@@ -1,0 +1,57 @@
+{
+  "name": "@got-cx/sdk",
+  "version": "0.1.0",
+  "description": "Typed got.cx product SDK",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./src/api.ts",
+      "development": "./src/api.ts",
+      "import": "./dist/api.js",
+      "default": "./dist/api.js"
+    },
+    "./links": {
+      "types": "./src/links.ts",
+      "development": "./src/links.ts",
+      "import": "./dist/links.js",
+      "default": "./dist/links.js"
+    },
+    "./protocol": {
+      "types": "./src/protocol.ts",
+      "development": "./src/protocol.ts",
+      "import": "./dist/protocol.js",
+      "default": "./dist/protocol.js"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "development": "./src/types.ts",
+      "import": "./dist/types.js",
+      "default": "./dist/types.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "lint": "eslint src",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@got-cx/protocol": "0.2.0",
+    "viem": "2.55.11"
+  },
+  "devDependencies": {
+    "@workspace/eslint-config": "*",
+    "@workspace/typescript-config": "*",
+    "eslint": "^9",
+    "prettier": "^3.8.3",
+    "typescript": "^5"
+  }
+}
