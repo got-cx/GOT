@@ -1,10 +1,7 @@
-import {
-  GOTFactoryAbi,
-  GOTIntentAbi,
-  baseDeployment,
-} from "@got-cx/protocol"
+import { GOTFactoryAbi, GOTIntentAbi, baseDeployment } from "@got-cx/protocol"
 import {
   createPublicClient,
+  encodeAbiParameters,
   encodeFunctionData,
   getAddress,
   http,
@@ -61,6 +58,22 @@ function randomHex32(): Hex {
 
 export function createIntentId(): Hex {
   return randomHex32()
+}
+
+const intentIdNamespace = keccak256(stringToHex("GOT_APPLICATION_INTENT_V2"))
+
+export function deriveIntentId(id: string, account: Address): Hex {
+  const normalizedId = id.trim()
+  if (!normalizedId) throw new Error("ID is required.")
+  if (normalizedId.length > 120)
+    throw new Error("ID must be 120 characters or fewer.")
+
+  return keccak256(
+    encodeAbiParameters(
+      [{ type: "bytes32" }, { type: "address" }, { type: "string" }],
+      [intentIdNamespace, getAddress(account), normalizedId]
+    )
+  )
 }
 
 export function createIdempotencyKey(): string {

@@ -36,6 +36,7 @@ export type Transfer = {
   ownerAmount: string
   feeAmount: string
   reference: string | null
+  requestId?: string | null
   note: string | null
   createdAt: string
   status: TransferStatus
@@ -121,7 +122,7 @@ export type APIAuthToken = APIAuth & {
   token: string
 }
 
-export type TransferRequestInput = {
+type TransferInput = {
   chainId: ChainId
   recipient: string
   recipientTargetAmount: string
@@ -133,8 +134,13 @@ export type TransferRequestInput = {
   intentConfig?: SerializedIntentConfig
 }
 
-export type CreateTransferInput = TransferRequestInput & {
+export type TransferRequestInput = TransferInput & {
+  requestId: string
+}
+
+export type CreateTransferInput = TransferInput & {
   direction: TransferDirection
+  requestId?: string
 }
 
 export type IntentConfig = {
@@ -163,21 +169,4 @@ export type SerializedIntentConfig = {
   period: number
   feeBps: number
   metadataHash: Hex
-}
-
-export type IntentEnvelopeRequest = {
-  recipient: string
-  sender: string | null
-  reference: string | null
-  note: string | null
-  dueAt: string | null
-  createdAt: string
-}
-
-export type IntentEnvelope = {
-  version: 1
-  chainId: ChainId
-  intentAddress: Address
-  config: IntentConfig
-  request: IntentEnvelopeRequest
 }

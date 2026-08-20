@@ -5,8 +5,8 @@ import { GeistMono } from "geist/font/mono"
 import { GeistSans } from "geist/font/sans"
 
 import "@workspace/ui/globals.css"
-import { AppProviders } from "@/components/app-providers"
-import { ThemeProvider } from "@/components/theme-provider"
+import { AppProviders } from "@/components/providers/app-providers"
+import { ThemeProvider } from "@/components/providers/theme-provider"
 import { cn } from "@workspace/ui/lib/utils"
 
 export const metadata: Metadata = {

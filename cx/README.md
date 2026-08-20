@@ -13,13 +13,12 @@ The product SDK delegates normalization, name-key derivation, ABIs, and deployme
 
 ## Configuration
 
-The web app sends a workspace-scoped `got_live_…` bearer token to the API. Base Account sign-in issues and stores that token in the browser, and the Developers dashboard shows it for integrations and automation. Local frontend development against production can set `NEXT_PUBLIC_GOT_API_URL=https://api.got.cx` and `NEXT_PUBLIC_GOT_API_TOKEN`; because this environment variable is shipped to the browser, use a dedicated revocable token.
+The web app authenticates to the API only with an `HttpOnly`, `Secure`, `SameSite` cookie. Base Account sign-in creates the cookie-backed session; no authentication token is returned to or stored.
+The API accepts either the secure session cookie or an `Authorization: Bearer got_live_…` header. Cookie-authenticated browser requests require exact-origin credentialed CORS, origin validation, and JSON-only state-changing endpoints.
 
-Configure the X app callback URL as `https://api.got.cx/auth/callback/twitter`. X is an identity-ownership proof only: its NextAuth callback records the claim while the API bearer token remains the got.cx login credential.
+For local web development, developers can set `NEXT_PUBLIC_GOT_API_URL` and `NEXT_PUBLIC_GOT_API_TOKEN` to use a custom API endpoint and token. Development token mode sends a bearer header without cookies, while production remains cookie-only.
 
-Signed-out visitors can open dashboard routes and see each page's native empty state without requesting account data. The interface never substitutes sample records when the API is unavailable.
-
-Incoming transfer requests use a self-contained `intent` query parameter. The envelope carries the complete immutable protocol configuration and display metadata, while the address remains the canonical route. Public funding derives and verifies the address directly against `GOTFactory.previewAddress`; Supabase is an optional index and legacy-link fallback, not a recovery dependency. The requesting browser also keeps the envelope locally and the Transfers dashboard can import any self-contained link.
+Incoming transfer requests use the canonical intent address as a short link. The API stores transfer metadata, while live balances and contract state are read directly from Base. Each incoming request requires a user-defined ID; got.cx combines it with the requesting Base Account to derive the protocol `intentId`. The same ID and transfer parameters recreate the same deterministic address.
 
 ## Commands
 
@@ -37,7 +36,7 @@ npm run build
 - `/x:{@handle}` — reusable X identity.
 - `/tg:{@handle}` — reusable Telegram identity.
 - `/#email:{address}` and `/#phone:{number}` — fragment-based identity routes.
-- `/0x…?intent=…` — self-contained deterministic intent request.
+- `/0x…` — deterministic intent request.
 - `/transfers/new/send` and `/transfers/new/request` — authenticated creation flows.
 - `/transfers/requests/{id}` — created request summary.
 - `/receipt/{transferId}` — indexed transfer receipt.

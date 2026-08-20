@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 
-import { Receipt } from "@/components/receipt"
+import { Receipt } from "@/components/transfers/receipt"
 
 export const metadata: Metadata = { title: "Transfer receipt" }
 

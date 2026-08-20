@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Copy, RefreshCw } from "lucide-react"
+import { Check, Copy, Eye, RefreshCw } from "lucide-react"
 import { useState } from "react"
 
 import {
@@ -8,10 +8,10 @@ import {
   GOT_BASE_NAME,
   GOT_BASE_USDC,
 } from "@got-cx/sdk/protocol"
-import { useAuth } from "@/components/app-providers"
-import { CopyButton } from "@/components/copy-button"
-import { PageHeader } from "@/components/page-header"
+import { CopyButton } from "@/components/shared/copy-button"
+import { PageHeader } from "@/components/shared/page-header"
 import { appConfig } from "@/lib/app-config"
+import { requestBearerToken } from "@/lib/base-auth"
 import { shortAddress } from "@/lib/format"
 import {
   AlertDialog,
@@ -67,15 +67,34 @@ function ResponsiveAddress({ address }: { address: string }) {
 }
 
 export function DevelopersDashboard() {
-  const { apiToken, error, isSigningIn, signIn } = useAuth()
   const [tab, setTab] = useState<Tab>("SDK")
   const [copied, setCopied] = useState(false)
+  const [apiToken, setAPIToken] = useState<string | null>(null)
+  const [tokenError, setTokenError] = useState<string | null>(null)
+  const [isRequestingToken, setIsRequestingToken] = useState(false)
   const [isRegenerateOpen, setIsRegenerateOpen] = useState(false)
 
   async function copy() {
     await navigator.clipboard.writeText(developerTabs[tab].example)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
+  }
+
+  async function revealAPIToken(rotate = false) {
+    setIsRequestingToken(true)
+    setTokenError(null)
+    try {
+      const result = await requestBearerToken({ rotate })
+      setAPIToken(result.token)
+    } catch (reason) {
+      setTokenError(
+        reason instanceof Error
+          ? reason.message
+          : "Unable to issue an API token."
+      )
+    } finally {
+      setIsRequestingToken(false)
+    }
   }
 
   return (
@@ -106,8 +125,8 @@ export function DevelopersDashboard() {
               <div className="border-b p-5">
                 <h2 className="font-medium">API token</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Use this bearer token for the web app, integrations, and
-                  automation.
+                  Create a bearer token for integrations and automation. The
+                  got.cx web session never uses or stores this token.
                 </p>
               </div>
               <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
@@ -117,6 +136,13 @@ export function DevelopersDashboard() {
                       {apiToken}
                     </code>
                     <CopyButton value={apiToken} label="Copy token" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setAPIToken(null)}
+                    >
+                      Hide
+                    </Button>
                     <AlertDialog
                       open={isRegenerateOpen}
                       onOpenChange={setIsRegenerateOpen}
@@ -126,12 +152,12 @@ export function DevelopersDashboard() {
                           <Button
                             type="button"
                             variant="outline"
-                            disabled={isSigningIn}
+                            disabled={isRequestingToken}
                           />
                         }
                       >
                         <RefreshCw />
-                        {isSigningIn ? "Regenerating…" : "Regenerate"}
+                        {isRequestingToken ? "Regenerating…" : "Regenerate"}
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -149,7 +175,7 @@ export function DevelopersDashboard() {
                           <AlertDialogAction
                             onClick={() => {
                               setIsRegenerateOpen(false)
-                              void signIn({ rotateToken: true })
+                              void revealAPIToken(true)
                             }}
                           >
                             Regenerate token
@@ -160,33 +186,36 @@ export function DevelopersDashboard() {
                   </>
                 ) : (
                   <>
-                    <p className="flex-1 text-sm text-muted-foreground">
-                      Sign in with Base Account to retrieve your workspace API
-                      token. The previous browser copy is not required.
-                    </p>
-                    <Button
-                      variant="outline"
-                      disabled={isSigningIn}
-                      onClick={() => void signIn()}
+                    <code
+                      aria-hidden="true"
+                      className="min-w-0 flex-1 select-none overflow-hidden rounded-lg border bg-background px-3 py-2 text-xs blur-sm"
                     >
-                      <RefreshCw />
-                      {isSigningIn ? "Retrieving…" : "Get token"}
+                      got_live_7f3a9c2e8b4d6f1a0c5e9b2d8f4a6c3e
+                    </code>
+                    <Button
+                      aria-label="Reveal API token"
+                      variant="outline"
+                      size="icon"
+                      disabled={isRequestingToken}
+                      onClick={() => void revealAPIToken()}
+                    >
+                      <Eye />
                     </Button>
                   </>
                 )}
               </div>
-              {error && (
+              {tokenError && (
                 <p
                   className="border-t px-5 py-3 text-xs text-destructive"
                   role="alert"
                 >
-                  {error}
+                  {tokenError}
                 </p>
               )}
               <p className="border-t bg-muted/40 px-5 py-3 text-xs text-muted-foreground">
-                For local frontend development, set NEXT_PUBLIC_GOT_API_TOKEN.
-                This value is exposed to the browser. Regenerating the token
-                replaces it everywhere it is used.
+                The revealed value exists only on this page. Copy it to a
+                secret manager; leaving the page removes the browser copy.
+                Regenerating invalidates the previous token everywhere.
               </p>
             </section>
           )}

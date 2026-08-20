@@ -2,65 +2,30 @@
 
 import { ArrowLeft, Check, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { useMemo } from "react"
 
-import {
-  decodeIntentEnvelope,
-  transferRequestFromEnvelope,
-} from "@got-cx/sdk"
-import { APIMessage } from "@/components/api-message"
-import { Brand } from "@/components/brand"
-import { CopyButton } from "@/components/copy-button"
+import { APIMessage } from "@/components/shared/api-message"
+import { Brand } from "@/components/shared/brand"
+import { CopyButton } from "@/components/shared/copy-button"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { formatMoney } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
 import { transferPaymentLink } from "@/lib/transfer-envelope"
 import { Button } from "@workspace/ui/components/button"
 
-export function RequestCreated({
-  transferId,
-  intentPayload,
-}: {
-  transferId: string
-  intentPayload: string | null
-}) {
+export function RequestCreated({ transferId }: { transferId: string }) {
   const client = getGOTClient()
-  const recovered = useMemo(() => {
-    if (!intentPayload) return { envelope: null, error: null }
-    try {
-      return { envelope: decodeIntentEnvelope(intentPayload), error: null }
-    } catch (error) {
-      return {
-        envelope: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "The recovery data is invalid.",
-      }
-    }
-  }, [intentPayload])
-  const recoveredRequest = recovered.envelope
-    ? transferRequestFromEnvelope(recovered.envelope)
-    : null
   const load = async () => {
     return client.transfers.getByIntent(transferId)
   }
-  const {
-    data: indexedData,
-    error,
-    isLoading,
-    retry,
-  } = useAPIResource(
+  const { data, error, isLoading, retry } = useAPIResource(
     ["transfer-request", transferId],
-    load,
-    !recoveredRequest && !recovered.error
+    load
   )
-  const data = recoveredRequest ?? indexedData
 
-  if (recovered.error || error)
+  if (error)
     return (
       <main className="mx-auto max-w-xl p-6 pt-24">
-        <APIMessage error={recovered.error ?? error} onRetry={retry} />
+        <APIMessage error={error} onRetry={retry} />
       </main>
     )
   if (isLoading || !data)
@@ -113,6 +78,15 @@ export function RequestCreated({
             <dt className="text-muted-foreground">Network</dt>
             <dd className="font-medium">Base</dd>
           </div>
+          {data.requestId && (
+            <div className="flex items-center justify-between gap-4 px-4 py-3">
+              <dt className="text-muted-foreground">ID</dt>
+              <dd className="flex items-center gap-2 font-mono text-xs">
+                <span className="max-w-52 truncate">{data.requestId}</span>
+                <CopyButton value={data.requestId} label="Copy" />
+              </dd>
+            </div>
+          )}
           {data.reference && (
             <div className="flex justify-between px-4 py-3">
               <dt className="text-muted-foreground">Reference</dt>
@@ -120,8 +94,15 @@ export function RequestCreated({
             </div>
           )}
         </dl>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Keep the ID with the transfer details to recreate this address.
+        </p>
         <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          <Button render={<a href={transferUrl} />} nativeButton={false} className="h-10">
+          <Button
+            render={<a href={transferUrl} />}
+            nativeButton={false}
+            className="h-10"
+          >
             Open transfer page <ExternalLink data-icon="inline-end" />
           </Button>
           <Button

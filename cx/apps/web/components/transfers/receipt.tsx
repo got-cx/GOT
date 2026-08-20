@@ -3,13 +3,11 @@
 import { Check, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useMemo } from "react"
 
-import { decodeIntentEnvelope, transferRequestFromEnvelope } from "@got-cx/sdk"
-import { APIMessage } from "@/components/api-message"
-import { Brand } from "@/components/brand"
-import { CopyButton } from "@/components/copy-button"
-import { StatusBadge } from "@/components/status-badge"
+import { APIMessage } from "@/components/shared/api-message"
+import { Brand } from "@/components/shared/brand"
+import { CopyButton } from "@/components/shared/copy-button"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { formatDate, formatMoney, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
@@ -18,45 +16,18 @@ import { Button } from "@workspace/ui/components/button"
 export function Receipt({ transferId }: { transferId: string }) {
   const searchParams = useSearchParams()
   const client = getGOTClient()
-  const intentPayload = searchParams.get("intent")
-  const recovered = useMemo(() => {
-    if (!intentPayload) return { request: null, error: null }
-    try {
-      return {
-        request: transferRequestFromEnvelope(
-          decodeIntentEnvelope(intentPayload)
-        ),
-        error: null,
-      }
-    } catch (error) {
-      return {
-        request: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "The recovery data is invalid.",
-      }
-    }
-  }, [intentPayload])
   const load = async () => {
     return client.transfers.get(transferId)
   }
-  const {
-    data: indexedData,
-    error,
-    isLoading,
-    retry,
-  } = useAPIResource(
+  const { data, error, isLoading, retry } = useAPIResource(
     ["transfer", transferId],
-    load,
-    !recovered.request && !recovered.error
+    load
   )
-  const data = recovered.request ?? indexedData
 
-  if (recovered.error || error)
+  if (error)
     return (
       <main className="mx-auto max-w-xl p-6 pt-24">
-        <APIMessage error={recovered.error ?? error} onRetry={retry} />
+        <APIMessage error={error} onRetry={retry} />
       </main>
     )
   if (isLoading || !data)
@@ -66,10 +37,12 @@ export function Receipt({ transferId }: { transferId: string }) {
 
   const transaction = data.transactionHash ?? searchParams.get("transaction")
   const complete = data.status === "settled" || data.status === "overpaid"
+  const recipient =
+    data.direction === "incoming" ? (data.recipient ?? data.party) : data.party
   const receiptText = [
     "GOT transfer receipt",
     formatMoney(data.value, 2),
-    `Recipient: ${data.party}`,
+    `Recipient: ${recipient}`,
     `Transfer ID: ${data.id}`,
     transaction ? `Transaction: ${transaction}` : null,
   ]
@@ -93,12 +66,12 @@ export function Receipt({ transferId }: { transferId: string }) {
           {formatMoney(data.value, 2)}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          to <strong className="text-foreground">{data.party}</strong>
+          to <strong className="text-foreground">{recipient}</strong>
         </p>
         <dl className="mt-8 divide-y rounded-xl border text-left text-sm">
           <div className="flex justify-between gap-5 px-4 py-3.5">
             <dt className="text-muted-foreground">Recipient</dt>
-            <dd className="font-medium">{data.party}</dd>
+            <dd className="font-medium">{recipient}</dd>
           </div>
           <div className="flex justify-between gap-5 px-4 py-3.5">
             <dt className="text-muted-foreground">Network</dt>

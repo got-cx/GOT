@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { SettingsDashboard } from "@/components/settings-dashboard"
+import { SettingsDashboard } from "@/components/dashboard/settings-dashboard"
 
 export const metadata: Metadata = { title: "Settings" }
 

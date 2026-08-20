@@ -5,6 +5,9 @@ export const appConfig = {
   apiUrl: new URL(
     process.env.NEXT_PUBLIC_GOT_API_URL || "https://api.got.cx"
   ).origin,
-  apiToken: process.env.NEXT_PUBLIC_GOT_API_TOKEN || null,
+  apiToken:
+    process.env.NODE_ENV === "development"
+      ? process.env.NEXT_PUBLIC_GOT_API_TOKEN || null
+      : null,
   baseRpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined,
 } as const

@@ -5,41 +5,23 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 
-import {
-  createGOTProtocolClient,
-  decodeIntentEnvelope,
-  formatIdentityLabel,
-  formatIntentEnvelopeLink,
-  GOT_BASE_USDC,
-  parseGOTLink,
-  transferRequestFromEnvelope,
-} from "@got-cx/sdk"
-import { useAuth } from "@/components/app-providers"
-import { APIMessage } from "@/components/api-message"
-import { Brand } from "@/components/brand"
-import { CopyButton } from "@/components/copy-button"
-import { QRCodeImage } from "@/components/qr-code"
-import { StatusBadge } from "@/components/status-badge"
+import { formatIdentityLabel, GOT_BASE_USDC, parseGOTLink } from "@got-cx/sdk"
+import { useAuth } from "@/components/auth/auth-provider"
+import { APIMessage } from "@/components/shared/api-message"
+import { Brand } from "@/components/shared/brand"
+import { CopyButton } from "@/components/shared/copy-button"
+import { QRCodeImage } from "@/components/shared/qr-code"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { formatMoney, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
-import { appConfig } from "@/lib/app-config"
+import { transferUSDC } from "@/lib/base-transactions"
 import { Button } from "@workspace/ui/components/button"
 
-export function PublicRoute({
-  route,
-  intentPayload,
-}: {
-  route: string
-  intentPayload: string | null
-}) {
+export function PublicRoute({ route }: { route: string }) {
   const router = useRouter()
-  const { transferUSDC } = useAuth()
+  const { account } = useAuth()
   const api = getGOTClient()
-  const protocol = useMemo(
-    () => createGOTProtocolClient(appConfig.baseRpcUrl),
-    []
-  )
   const parsed = useMemo(() => {
     try {
       return { link: parseGOTLink(route), error: null }
@@ -52,55 +34,22 @@ export function PublicRoute({
   }, [route])
   const intentAddress =
     parsed.link?.kind === "intent" ? parsed.link.address : null
-  const recovered = useMemo(() => {
-    if (!intentPayload) return { envelope: null, error: null }
-    try {
-      const envelope = decodeIntentEnvelope(intentPayload)
-      if (
-        intentAddress &&
-        envelope.intentAddress.toLowerCase() !== intentAddress.toLowerCase()
-      ) {
-        throw new Error(
-          "The transfer address does not match its self-contained recovery data."
-        )
-      }
-      return { envelope, error: null }
-    } catch (error) {
-      return {
-        envelope: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "The recovery data is invalid.",
-      }
-    }
-  }, [intentAddress, intentPayload])
   const load = async () => {
-    if (recovered.envelope) {
-      const preview = await protocol.previewIntent(recovered.envelope.config)
-      if (
-        preview.toLowerCase() !== recovered.envelope.intentAddress.toLowerCase()
-      )
-        throw new Error(
-          "The self-contained configuration does not derive this transfer address."
-        )
-      return transferRequestFromEnvelope(recovered.envelope)
-    }
     if (!intentAddress) throw new Error("A transfer address is required.")
     return api.transfers.getByIntent(intentAddress)
   }
   const { data, error, isLoading, retry } = useAPIResource(
-    ["transfer-intent", intentAddress, intentPayload],
+    ["transfer-intent", intentAddress],
     load,
-    Boolean(intentAddress && !recovered.error)
+    Boolean(intentAddress)
   )
   const [transferError, setTransferError] = useState<string | null>(null)
   const [isTransferring, setIsTransferring] = useState(false)
 
-  if (parsed.error || recovered.error || !parsed.link)
+  if (parsed.error || !parsed.link)
     return (
       <main className="mx-auto max-w-xl p-6 pt-24">
-        <APIMessage error={parsed.error ?? recovered.error} />
+        <APIMessage error={parsed.error} />
       </main>
     )
 
@@ -156,10 +105,6 @@ export function PublicRoute({
   const alreadySettled =
     request.status === "settled" || request.status === "overpaid"
   const gross = { ...request.value, amount: request.grossQuotedAmount }
-  const portableTransferLink = recovered.envelope
-    ? formatIntentEnvelopeLink(recovered.envelope, appConfig.siteUrl)
-    : request.intentAddress
-
   async function transfer() {
     if (!configurationValid) return
     setIsTransferring(true)
@@ -167,10 +112,10 @@ export function PublicRoute({
     try {
       const hash = await transferUSDC(
         request.intentAddress,
-        request.grossQuotedAmount
+        request.grossQuotedAmount,
+        account
       )
       const receiptParams = new URLSearchParams({ transaction: hash })
-      if (intentPayload) receiptParams.set("intent", intentPayload)
       router.push(`/receipt/${encodeURIComponent(request.id)}?${receiptParams}`)
     } catch (reason) {
       setTransferError(
@@ -188,7 +133,7 @@ export function PublicRoute({
       <header className="flex h-18 items-center justify-between border-b border-white/15 px-5 sm:px-8">
         <Brand inverse compact />
         <span className="flex items-center gap-2 text-xs text-white/60">
-          <span className="size-1.5 rounded-full bg-emerald-400" />
+          <span className="size-1.5 rounded-full bg-blue-600" />
           Base network
         </span>
       </header>
@@ -264,7 +209,7 @@ export function PublicRoute({
                 Onchain underneath.
               </h2>
             </div>
-            <QRCodeImage value={portableTransferLink} size={86} inverse />
+            <QRCodeImage value={request.intentAddress} size={86} inverse />
           </div>
           <dl className="mt-8 divide-y divide-white/15 text-xs">
             <div className="flex items-center justify-between gap-4 py-4">

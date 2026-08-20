@@ -2,11 +2,11 @@
 
 import { RefreshCw } from "lucide-react"
 
-import { APIMessage } from "@/components/api-message"
-import { useAuth } from "@/components/app-providers"
-import { EmptyState } from "@/components/empty-state"
-import { PageHeader } from "@/components/page-header"
-import { StatusBadge } from "@/components/status-badge"
+import { useAuth } from "@/components/auth/auth-provider"
+import { APIMessage } from "@/components/shared/api-message"
+import { EmptyState } from "@/components/shared/empty-state"
+import { PageHeader } from "@/components/shared/page-header"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"

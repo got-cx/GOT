@@ -3,7 +3,7 @@
 import { KeyRound, LogOut } from "lucide-react"
 import Link from "next/link"
 
-import { useAuth } from "@/components/app-providers"
+import { useAuth } from "@/components/auth/auth-provider"
 import { shortAddress } from "@/lib/format"
 import { Button } from "@workspace/ui/components/button"
 
@@ -16,7 +16,15 @@ export function BaseAccountButton({
   compact = true,
   href,
 }: BaseAccountButtonProps) {
-  const { account, error, isLoading, isSigningIn, signIn, signOut } = useAuth()
+  const {
+    account,
+    error,
+    isLoading,
+    isSigningIn,
+    isSigningOut,
+    signIn,
+    signOut,
+  } = useAuth()
 
   if (isLoading) {
     return (
@@ -42,9 +50,14 @@ export function BaseAccountButton({
     }
 
     return (
-      <Button variant="outline" onClick={() => void signOut()} title="Sign out">
+      <Button
+        variant="outline"
+        onClick={() => void signOut()}
+        disabled={isSigningOut}
+        title="Sign out"
+      >
         <span className="size-2 rounded-full bg-emerald-600" />
-        {shortAddress(account)}
+        {isSigningOut ? "Signing out…" : shortAddress(account)}
         <LogOut data-icon="inline-end" />
       </Button>
     )

@@ -3,7 +3,7 @@
 import { AtSign } from "lucide-react"
 import { useState } from "react"
 
-import { useAuth } from "@/components/app-providers"
+import { useAuth } from "@/components/auth/auth-provider"
 import { getGOTClient } from "@/lib/got-client"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"

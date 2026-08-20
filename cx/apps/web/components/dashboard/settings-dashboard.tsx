@@ -3,7 +3,7 @@
 import { Check, Moon, Monitor, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
-import { PageHeader } from "@/components/page-header"
+import { PageHeader } from "@/components/shared/page-header"
 
 const themes = [
   { id: "system", label: "System", icon: Monitor },

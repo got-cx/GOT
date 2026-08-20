@@ -17,7 +17,7 @@ import {
   parseGOTLink,
   serializeIntentConfig,
 } from "@got-cx/sdk"
-import { Brand } from "@/components/brand"
+import { Brand } from "@/components/shared/brand"
 import { appConfig } from "@/lib/app-config"
 import { getGOTClient } from "@/lib/got-client"
 import { Button } from "@workspace/ui/components/button"
@@ -196,7 +196,7 @@ export function SendTransferForm() {
               onClick={() => setAdvanced((value) => !value)}
               className="flex w-full items-center justify-between text-xs text-muted-foreground"
             >
-              Advanced protocol options{" "}
+              Advanced options{" "}
               <ChevronDown
                 className={`size-4 ${advanced ? "rotate-180" : ""}`}
               />

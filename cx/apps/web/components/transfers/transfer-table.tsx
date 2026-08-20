@@ -2,9 +2,9 @@ import type { Transfer } from "@got-cx/sdk"
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 
-import { CopyButton } from "@/components/copy-button"
-import { EmptyState } from "@/components/empty-state"
-import { StatusBadge } from "@/components/status-badge"
+import { CopyButton } from "@/components/shared/copy-button"
+import { EmptyState } from "@/components/shared/empty-state"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { formatDate, formatMoney } from "@/lib/format"
 import { transferPaymentLink } from "@/lib/transfer-envelope"
 

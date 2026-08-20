@@ -2,11 +2,12 @@ import type { Money } from "@got-cx/sdk"
 import { formatUnits } from "viem"
 
 export function formatMoney(value: Money, minimumFractionDigits = 0): string {
-  const amount = Number(formatUnits(BigInt(value.amount), value.decimals))
-  return `${new Intl.NumberFormat(undefined, {
+  const amount = formatUnits(BigInt(value.amount), value.decimals)
+  const formatter = new Intl.NumberFormat(undefined, {
     minimumFractionDigits,
     maximumFractionDigits: Math.min(value.decimals, 2),
-  }).format(amount)} ${value.symbol}`
+  }) as Intl.NumberFormat & { format(value: string): string }
+  return `${formatter.format(amount)} ${value.symbol}`
 }
 
 export function formatDate(value: string, withTime = false): string {

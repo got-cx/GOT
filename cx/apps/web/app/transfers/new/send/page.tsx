@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 
-import { SendTransferForm } from "@/components/send-transfer-form"
+import { SendTransferForm } from "@/components/transfers/send-transfer-form"
 
 export const metadata: Metadata = { title: "Create a transfer" }
 

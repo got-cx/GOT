@@ -14,8 +14,25 @@ import type {
 export type GOTClientOptions = {
   baseUrl: string
   fetch?: typeof globalThis.fetch
+  credentials?: RequestCredentials
   getAccessToken?: () => string | null | Promise<string | null>
 }
+
+export type AuthTokenDelivery = "bearer" | "cookie"
+
+type SignedAuthChallenge = {
+  address: string
+  message: string
+  nonce: string
+  signature: string
+  rotate?: boolean
+}
+
+export type AuthTokenCredentials = SignedAuthChallenge &
+  ({ delivery: "cookie" } | { delivery?: "bearer" })
+
+type AuthTokenResult<TCredentials extends AuthTokenCredentials> =
+  TCredentials extends { delivery: "cookie" } ? APIAuth : APIAuthToken
 
 export type ListTransfersOptions = {
   direction?: "incoming" | "outgoing"
@@ -38,12 +55,14 @@ export class GOTAPIError extends Error {
 export class GOTClient {
   readonly #baseUrl: string
   readonly #fetch: typeof globalThis.fetch
+  readonly #credentials: RequestCredentials
   readonly #getAccessToken?: GOTClientOptions["getAccessToken"]
 
   constructor(options: GOTClientOptions) {
     if (!options.baseUrl.trim()) throw new Error("GOT API baseUrl is required")
     this.#baseUrl = options.baseUrl.replace(/\/$/, "")
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
+    this.#credentials = options.credentials ?? "omit"
     this.#getAccessToken = options.getAccessToken
   }
 
@@ -55,7 +74,7 @@ export class GOTClient {
     if (token) headers.set("Authorization", `Bearer ${token}`)
 
     const response = await this.#fetch(`${this.#baseUrl}${path}`, {
-      credentials: "omit",
+      credentials: this.#credentials,
       ...init,
       headers,
     })
@@ -89,18 +108,21 @@ export class GOTClient {
         method: "POST",
         body: JSON.stringify({ address }),
       }),
-    token: (credentials: {
-      address: string
-      message: string
-      nonce: string
-      signature: string
-      rotate?: boolean
-    }) =>
-      this.#request<APIAuthToken>("/auth/token", {
+    token: <TCredentials extends AuthTokenCredentials>(
+      credentials: TCredentials
+    ) =>
+      this.#request<AuthTokenResult<TCredentials>>("/auth/token", {
         method: "POST",
+        ...(credentials.delivery === "cookie"
+          ? { credentials: "include" as const }
+          : {}),
         body: JSON.stringify(credentials),
       }),
     session: () => this.#request<APIAuth>("/auth/session"),
+    logout: () =>
+      this.#request<void>("/auth/logout", {
+        method: "POST",
+      }),
   }
 
   overview = () => this.#request<DashboardOverview>("/overview")

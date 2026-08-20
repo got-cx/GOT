@@ -39,8 +39,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "lint": "eslint src",
-    "test": "npm run build && node --test test/*.test.mjs",
+    "lint": "eslint src test",
+    "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -48,10 +48,12 @@
     "viem": "2.55.11"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "eslint": "^9",
     "prettier": "^3.8.3",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

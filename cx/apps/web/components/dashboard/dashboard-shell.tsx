@@ -13,9 +13,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
 
-import { BaseAccountButton } from "@/components/base-account-button"
-import { Brand } from "@/components/brand"
-import { useAuth } from "@/components/app-providers"
+import { BaseAccountButton } from "@/components/auth/base-account-button"
+import { useAuth } from "@/components/auth/auth-provider"
+import { Brand } from "@/components/shared/brand"
 import { Button } from "@workspace/ui/components/button"
 import {
   Sheet,

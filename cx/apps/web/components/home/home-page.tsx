@@ -3,12 +3,12 @@
 import { Code2, Globe2, Link2, MoveRight, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { formatIdentityLabel, parseGOTLink, type GOTLink } from "@got-cx/sdk"
-import { BaseAccountButton } from "@/components/base-account-button"
-import { Brand } from "@/components/brand"
-import { CreateTransferMenu } from "@/components/create-transfer-menu"
+import { BaseAccountButton } from "@/components/auth/base-account-button"
+import { Brand } from "@/components/shared/brand"
+import { CreateTransferMenu } from "@/components/transfers/create-transfer-menu"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
@@ -29,26 +29,31 @@ function getSendHref(value: string) {
 export function HomePage() {
   const router = useRouter()
   const [recipient, setRecipient] = useState("")
-  const [fragmentResult] = useState<{
-    link: GOTLink | null
-    error: string | null
-  }>(() => {
-    if (typeof window === "undefined" || !window.location.hash)
-      return { link: null, error: null }
-    try {
-      return { link: parseGOTLink(window.location.hash), error: null }
-    } catch (reason) {
-      return {
-        link: null,
-        error:
-          reason instanceof Error
-            ? reason.message
-            : "This GOT link is invalid.",
+  const [fragmentLink, setFragmentLink] = useState<GOTLink | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    function syncFragment() {
+      if (!window.location.hash) {
+        setFragmentLink(null)
+        setError(null)
+        return
+      }
+      try {
+        setFragmentLink(parseGOTLink(window.location.hash))
+        setError(null)
+      } catch (reason) {
+        const message =
+          reason instanceof Error ? reason.message : "This GOT link is invalid."
+        setFragmentLink(null)
+        setError(message)
       }
     }
-  })
-  const [error, setError] = useState<string | null>(fragmentResult.error)
-  const fragmentLink = fragmentResult.link
+
+    syncFragment()
+    window.addEventListener("hashchange", syncFragment)
+    return () => window.removeEventListener("hashchange", syncFragment)
+  }, [])
 
   function continueToTransfer(value: string) {
     try {

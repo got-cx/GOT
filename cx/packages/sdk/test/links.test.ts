@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 
-import { formatGOTLink, parseGOTLink } from "../dist/links.js"
+import { formatGOTLink, parseGOTLink } from "../src/links"
 
 const vectors = [
   [
@@ -29,7 +29,7 @@ const vectors = [
     "/#phone:+491234567890",
     "0x1e5212a74a3334ae59243952efcec237f894f7b448e58ba1bee84764aa369cde",
   ],
-]
+] as const
 
 describe("GOT Links Model v1", () => {
   for (const [input, route, nameKey] of vectors) {

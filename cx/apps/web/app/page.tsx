@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { HomePage } from "@/components/home-page"
+import { HomePage } from "@/components/home/home-page"
 
 export const metadata: Metadata = { title: "Global transfers for Everyone" }
 
