@@ -24,7 +24,7 @@ export function TransferTable({ transfers }: { transfers: Transfer[] }) {
         <div className="grid grid-cols-[1.5fr_1fr_1fr_.9fr_.7fr_.7fr] gap-4 border-b bg-muted/50 px-5 py-3 text-[11px] font-medium text-muted-foreground">
           <span>Party</span>
           <span>Amount</span>
-          <span>Reference</span>
+          <span>ID</span>
           <span>Date</span>
           <span>Status</span>
           <span>Link</span>
@@ -56,7 +56,7 @@ export function TransferTable({ transfers }: { transfers: Transfer[] }) {
               </span>
               <strong>{formatMoney(transfer.value, 2)}</strong>
               <span className="truncate text-muted-foreground">
-                {transfer.reference ?? "—"}
+                {transfer.requestId ?? "—"}
               </span>
               <span className="text-muted-foreground">
                 {formatDate(transfer.createdAt)}

@@ -16,7 +16,12 @@ import {
 import { base } from "viem/chains"
 
 import { parseGOTLink } from "./links"
-import type { ChainId, IntentConfig, SerializedIntentConfig } from "./types"
+import {
+  TransferStatus,
+  type ChainId,
+  type IntentConfig,
+  type SerializedIntentConfig,
+} from "./types"
 
 export const GOT_BASE_CHAIN_ID: ChainId = 8453
 export const GOT_BASE_USDC = getAddress(baseDeployment.dependencies.usdc)
@@ -78,6 +83,35 @@ export function deriveIntentId(id: string, account: Address): Hex {
 
 export function createIdempotencyKey(): string {
   return globalThis.crypto.randomUUID()
+}
+
+export function remainingTransferAmount(
+  target: bigint,
+  processed: bigint,
+  pendingBalance: bigint
+): bigint {
+  if (target < 0n || processed < 0n || pendingBalance < 0n) {
+    throw new Error("Transfer amounts cannot be negative.")
+  }
+  const committed = processed + pendingBalance
+  return committed >= target ? 0n : target - committed
+}
+
+export function transferStatusFromChain(
+  target: bigint,
+  processed: bigint,
+  pendingBalance: bigint
+): TransferStatus {
+  if (target < 0n || processed < 0n || pendingBalance < 0n) {
+    throw new Error("Transfer amounts cannot be negative.")
+  }
+  const funded = processed + pendingBalance
+  if (funded > target) return TransferStatus.Overpaid
+  if (processed >= target && target > 0n) return TransferStatus.Settled
+  if (funded === target && pendingBalance > 0n)
+    return TransferStatus.FundingDetected
+  if (funded > 0n) return TransferStatus.Partial
+  return TransferStatus.AddressReady
 }
 
 export function buildRequestIntent(
@@ -173,7 +207,8 @@ export function createGOTProtocolClient(rpcUrl?: string) {
       })
     },
     async readIntentState(
-      intentAddress: Address
+      intentAddress: Address,
+      options: { blockNumber?: bigint } = {}
     ): Promise<GOTIntentChainState> {
       const [
         balanceResult,
@@ -182,6 +217,7 @@ export function createGOTProtocolClient(rpcUrl?: string) {
         factoryResult,
       ] = await client.multicall({
         allowFailure: true,
+        blockNumber: options.blockNumber,
         contracts: [
           {
             address: GOT_BASE_USDC,

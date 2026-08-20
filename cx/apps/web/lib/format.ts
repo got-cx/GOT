@@ -1,5 +1,5 @@
 import type { Money } from "@got-cx/sdk"
-import { formatUnits } from "viem"
+import { formatUnits, type Address } from "viem"
 
 export function formatMoney(value: Money, minimumFractionDigits = 0): string {
   const amount = formatUnits(BigInt(value.amount), value.decimals)
@@ -17,7 +17,10 @@ export function formatDate(value: string, withTime = false): string {
   }).format(new Date(value))
 }
 
-export function shortAddress(value: string, size = 5): string {
+export function shortAddress(value: Address | string, size = 5): string {
+  if(value.length <= size * 2 + 3) {
+    return value
+  }
   return `${value.slice(0, size + 2)}…${value.slice(-size)}`
 }
 

@@ -10,19 +10,23 @@ export type Money = {
 
 export type TransferDirection = "incoming" | "outgoing"
 
+export const TransferStatus = {
+  Created: "created",
+  AddressReady: "address_ready",
+  FundingDetected: "funding_detected",
+  Unresolved: "unresolved",
+  Processing: "processing",
+  Settled: "settled",
+  Partial: "partial",
+  Overpaid: "overpaid",
+  Failed: "failed",
+  Reorged: "reorged",
+  Expired: "expired",
+  Canceled: "canceled",
+} as const
+
 export type TransferStatus =
-  | "created"
-  | "address_ready"
-  | "funding_detected"
-  | "unresolved"
-  | "processing"
-  | "settled"
-  | "partial"
-  | "overpaid"
-  | "failed"
-  | "reorged"
-  | "expired"
-  | "canceled"
+  (typeof TransferStatus)[keyof typeof TransferStatus]
 
 export type Transfer = {
   id: string
@@ -32,6 +36,7 @@ export type Transfer = {
   value: Money
   recipientTargetAmount: string
   grossQuotedAmount: string
+  fundedAmount: string
   processedAmount: string
   ownerAmount: string
   feeAmount: string

@@ -16,6 +16,7 @@ export type GOTClientOptions = {
   fetch?: typeof globalThis.fetch
   credentials?: RequestCredentials
   getAccessToken?: () => string | null | Promise<string | null>
+  indexerKey?: string
 }
 
 export type AuthTokenDelivery = "bearer" | "cookie"
@@ -57,6 +58,7 @@ export class GOTClient {
   readonly #fetch: typeof globalThis.fetch
   readonly #credentials: RequestCredentials
   readonly #getAccessToken?: GOTClientOptions["getAccessToken"]
+  readonly #indexerKey?: string
 
   constructor(options: GOTClientOptions) {
     if (!options.baseUrl.trim()) throw new Error("GOT API baseUrl is required")
@@ -64,6 +66,7 @@ export class GOTClient {
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
     this.#credentials = options.credentials ?? "omit"
     this.#getAccessToken = options.getAccessToken
+    this.#indexerKey = options.indexerKey
   }
 
   async #request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -72,6 +75,7 @@ export class GOTClient {
     headers.set("Accept", "application/json")
     if (init.body) headers.set("Content-Type", "application/json")
     if (token) headers.set("Authorization", `Bearer ${token}`)
+    if (this.#indexerKey) headers.set("X-GOT-Indexer-Key", this.#indexerKey)
 
     const response = await this.#fetch(`${this.#baseUrl}${path}`, {
       credentials: this.#credentials,
@@ -122,6 +126,7 @@ export class GOTClient {
     logout: () =>
       this.#request<void>("/auth/logout", {
         method: "POST",
+        body: JSON.stringify({}),
       }),
   }
 
@@ -144,6 +149,21 @@ export class GOTClient {
       this.#request<TransferRequest>(
         `/intents/${encodeURIComponent(intentAddress)}`
       ),
+    remove: (id: string) =>
+      this.#request<void>(`/transfers/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        body: JSON.stringify({}),
+      }),
+    recordFunding: (id: string, transactionHash: string) =>
+      this.#request<Transfer>(`/transfers/${encodeURIComponent(id)}/funding`, {
+        method: "POST",
+        body: JSON.stringify({ transactionHash }),
+      }),
+    sync: (id: string) =>
+      this.#request<Transfer>(`/transfers/${encodeURIComponent(id)}/sync`, {
+        method: "POST",
+        ...(this.#indexerKey ? {} : { body: JSON.stringify({}) }),
+      }),
     createRequest: (input: TransferRequestInput, idempotencyKey: string) =>
       this.#request<TransferRequest>("/transfers", {
         method: "POST",
@@ -173,6 +193,7 @@ export class GOTClient {
       }>("/names/claims/x", {
         method: "POST",
         credentials: "include",
+        body: JSON.stringify({}),
       }),
   }
   subscriptions = {

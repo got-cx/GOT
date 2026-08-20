@@ -2,6 +2,7 @@
 
 import { ArrowLeftRight, Search } from "lucide-react"
 import { useState } from "react"
+import { useInfiniteQuery } from "@tanstack/react-query"
 
 import type { TransferDirection } from "@got-cx/sdk"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -10,8 +11,8 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { PageHeader } from "@/components/shared/page-header"
 import { CreateTransferMenu } from "@/components/transfers/create-transfer-menu"
 import { TransferTable } from "@/components/transfers/transfer-table"
-import { useAPIResource } from "@/hooks/use-api-resource"
 import { getGOTClient } from "@/lib/got-client"
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
 type Filter = "all" | TransferDirection
@@ -21,18 +22,28 @@ export function TransfersDashboard() {
   const client = getGOTClient()
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")
-  const load = async () => {
-    if (!client) throw new Error("GOT API is not configured.")
-    return client.transfers.list({
-      direction: filter === "all" ? undefined : filter,
-      query: query || undefined,
-    })
-  }
-  const { data, error, isLoading, retry } = useAPIResource(
-    ["transfers", filter, query],
-    load,
-    Boolean(client && account && !isAuthLoading)
-  )
+  const {
+    data,
+    error,
+    isLoading,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["got-api", "transfers", filter, query],
+    queryFn: ({ pageParam }) =>
+      client.transfers.list({
+        direction: filter === "all" ? undefined : filter,
+        query: query || undefined,
+        cursor: pageParam ?? undefined,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: Boolean(account && !isAuthLoading),
+    refetchInterval: 15_000,
+  })
+  const transfers = data?.pages.flatMap((page) => page.items) ?? []
 
   return (
     <div>
@@ -61,7 +72,7 @@ export function TransfersDashboard() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search party, reference, or ID"
+              placeholder="Search From or ID"
               className="h-9 pl-9"
             />
           </label>
@@ -75,14 +86,31 @@ export function TransfersDashboard() {
           title="No transfers yet"
           description="Incoming and outgoing transfers will appear here after you sign in."
         />
-      ) : !client ? (
-        <APIMessage />
       ) : error ? (
-        <APIMessage error={error} onRetry={retry} />
+        <APIMessage
+          error={
+            error instanceof Error ? error.message : "Unable to load transfers."
+          }
+          onRetry={() => void refetch()}
+        />
       ) : isLoading || !data ? (
         <div className="h-72 animate-pulse rounded-xl border bg-muted" />
       ) : (
-        <TransferTable transfers={data.items} />
+        <>
+          <TransferTable transfers={transfers} />
+          {hasNextPage && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                {isFetchingNextPage ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

@@ -3,16 +3,23 @@
 import {
   ArrowLeft,
   CheckCircle2,
+  Ellipsis,
   ExternalLink,
   RefreshCw,
+  Trash2,
   WalletCards,
 } from "lucide-react"
 import Link from "next/link"
-import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { getAddress, isAddress, type Address, type Hash } from "viem"
 
-import { createGOTProtocolClient, deserializeIntentConfig } from "@got-cx/sdk"
+import {
+  createGOTProtocolClient,
+  deserializeIntentConfig,
+  transferStatusFromChain,
+} from "@got-cx/sdk"
 import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
 import { CopyButton } from "@/components/shared/copy-button"
@@ -23,22 +30,27 @@ import { deployAndResolveIntent, resolveIntent } from "@/lib/base-transactions"
 import { formatDate, formatMoney, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
 import { transferPaymentLink } from "@/lib/transfer-envelope"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
 import { Button } from "@workspace/ui/components/button"
-
-function liveStatus(
-  balance: bigint,
-  totalProcessed: bigint,
-  target: bigint,
-  deployed: boolean
-) {
-  if (balance > 0n) return "ready_to_resolve"
-  if (totalProcessed > target) return "overpaid"
-  if (totalProcessed === target && target > 0n) return "settled"
-  if (totalProcessed > 0n) return "partial"
-  return deployed ? "deployed" : "awaiting_funding"
-}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 
 export function TransferDetails({ intentAddress }: { intentAddress: string }) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const client = getGOTClient()
   const { account, isLoading: isAuthLoading } = useAuth()
   const protocol = useMemo(
@@ -77,9 +89,64 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
     enabled: Boolean(transfer),
     refetchInterval: 15_000,
   })
+  const lastSyncAttempt = useRef<string | null>(null)
+  const syncMutation = useMutation({
+    mutationFn: (id: string) => client.transfers.sync(id),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["got-api", "transfer-intent", routeAddress],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "transfers"] }),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "overview"] }),
+      ])
+    },
+  })
+  const detectedStatus =
+    transfer && chainQuery.data
+      ? transferStatusFromChain(
+          BigInt(transfer.recipientTargetAmount),
+          chainQuery.data.totalProcessed,
+          chainQuery.data.balance
+        )
+      : null
+  const needsSync = Boolean(
+    transfer &&
+    chainQuery.data &&
+    (detectedStatus !== transfer.status ||
+      chainQuery.data.totalProcessed.toString() !== transfer.processedAmount ||
+      chainQuery.data.totalProcessed + chainQuery.data.balance >
+        BigInt(transfer.fundedAmount))
+  )
+
+  useEffect(() => {
+    if (!transfer || !chainQuery.data || !needsSync || syncMutation.isPending) {
+      return
+    }
+    const fingerprint = [
+      transfer.id,
+      detectedStatus,
+      chainQuery.data.balance,
+      chainQuery.data.totalProcessed,
+      chainQuery.dataUpdatedAt,
+    ].join(":")
+    if (lastSyncAttempt.current === fingerprint) return
+    lastSyncAttempt.current = fingerprint
+    syncMutation.mutate(transfer.id)
+  }, [
+    chainQuery.data,
+    chainQuery.dataUpdatedAt,
+    detectedStatus,
+    needsSync,
+    syncMutation,
+    transfer,
+  ])
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [isActing, setIsActing] = useState(false)
   const [transactionHash, setTransactionHash] = useState<Hash | null>(null)
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
 
   async function resolveFunds() {
     if (!transfer?.intentConfig || !chainQuery.data) return
@@ -104,6 +171,32 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
       )
     } finally {
       setIsActing(false)
+    }
+  }
+
+  async function removeTransfer() {
+    if (!transfer) return
+    setIsRemoving(true)
+    setRemoveError(null)
+    try {
+      await client.transfers.remove(transfer.id)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["got-api", "transfers"] }),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "overview"] }),
+      ])
+      queryClient.removeQueries({
+        queryKey: ["got-api", "transfer-intent", routeAddress],
+      })
+      setIsRemoveOpen(false)
+      router.replace("/dashboard/transfers")
+    } catch (reason) {
+      setRemoveError(
+        reason instanceof Error
+          ? reason.message
+          : "Unable to remove the transfer."
+      )
+    } finally {
+      setIsRemoving(false)
     }
   }
 
@@ -137,7 +230,7 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
   const chain = chainQuery.data
   const target = BigInt(transfer.recipientTargetAmount)
   const currentStatus = chain
-    ? liveStatus(chain.balance, chain.totalProcessed, target, chain.deployed)
+    ? transferStatusFromChain(target, chain.totalProcessed, chain.balance)
     : transfer.status
   const configuredResolver = transfer.intentConfig
     ? getAddress(transfer.intentConfig.authorizedResolver)
@@ -158,12 +251,16 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
         Transfers
       </Link>
       <PageHeader
-        eyebrow="TRANSFER"
+        eyebrow={
+          <span className="flex items-center gap-3">
+            <span>TRANSFER</span>
+            <StatusBadge status={currentStatus} />
+          </span>
+        }
         title={formatMoney(transfer.value, 2)}
         description={`${transfer.direction === "incoming" ? "From" : "To"} ${transfer.party}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={currentStatus} />
             <CopyButton value={paymentLink} label="Copy link" />
             <Button
               size="sm"
@@ -173,6 +270,64 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
             >
               Open link <ExternalLink data-icon="inline-end" />
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="outline"
+                    aria-label="More transfer actions"
+                  />
+                }
+              >
+                <Ellipsis />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="mt-1">
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="py-1 text-sm"
+                  onClick={() => setIsRemoveOpen(true)}
+                >
+                  <Trash2 />
+                  Remove
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialog
+              open={isRemoveOpen}
+              onOpenChange={(open) => {
+                setIsRemoveOpen(open)
+                if (!open) setRemoveError(null)
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove this transfer?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently removes the transfer from got.cx and
+                    disables its payment link. It does not reverse Base
+                    transactions, recover funds, or remove a deployed contract.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {removeError && (
+                  <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                    {removeError}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isRemoving}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={isRemoving}
+                    onClick={() => void removeTransfer()}
+                  >
+                    {isRemoving ? "Removing…" : "Remove transfer"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         }
       />
@@ -183,6 +338,8 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
             <h2 className="text-sm font-medium">Onchain state</h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               Read directly from Base. This does not depend on the indexer.
+              {syncMutation.isPending &&
+                " Syncing this state to the dashboard…"}
             </p>
           </div>
           <Button
@@ -245,6 +402,13 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
               </dd>
             </div>
           </dl>
+        )}
+
+        {syncMutation.error && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-400">
+            The live Base state is shown, but it could not be synced to the
+            dashboard yet. It will retry after the next refresh.
+          </p>
         )}
 
         {chain && transfer.direction === "incoming" && (
@@ -352,7 +516,7 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
           <div>
             <dt className="text-muted-foreground">Recipient</dt>
             <dd className="mt-1 font-medium">
-              {transfer.recipient ?? transfer.party}
+              {transfer.recipient ? shortAddress(transfer.recipient, 8) : "—"}
             </dd>
           </div>
           <div>

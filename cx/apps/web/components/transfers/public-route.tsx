@@ -4,8 +4,17 @@ import { ArrowRight, ExternalLink, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 
-import { formatIdentityLabel, GOT_BASE_USDC, parseGOTLink } from "@got-cx/sdk"
+import {
+  createGOTProtocolClient,
+  deserializeIntentConfig,
+  formatIdentityLabel,
+  GOT_BASE_USDC,
+  parseGOTLink,
+  remainingTransferAmount,
+  transferStatusFromChain,
+} from "@got-cx/sdk"
 import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
 import { Brand } from "@/components/shared/brand"
@@ -13,6 +22,7 @@ import { CopyButton } from "@/components/shared/copy-button"
 import { QRCodeImage } from "@/components/shared/qr-code"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
+import { appConfig } from "@/lib/app-config"
 import { formatMoney, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
 import { transferUSDC } from "@/lib/base-transactions"
@@ -22,6 +32,10 @@ export function PublicRoute({ route }: { route: string }) {
   const router = useRouter()
   const { account } = useAuth()
   const api = getGOTClient()
+  const protocol = useMemo(
+    () => createGOTProtocolClient(appConfig.baseRpcUrl),
+    []
+  )
   const parsed = useMemo(() => {
     try {
       return { link: parseGOTLink(route), error: null }
@@ -43,6 +57,21 @@ export function PublicRoute({ route }: { route: string }) {
     load,
     Boolean(intentAddress)
   )
+  const chainQuery = useQuery({
+    queryKey: ["got-chain", "public-intent", data?.intentAddress],
+    queryFn: async () => {
+      if (!data?.intentConfig)
+        throw new Error("The transfer recovery configuration is missing.")
+      const config = deserializeIntentConfig(data.intentConfig)
+      const preview = await protocol.previewIntent(config)
+      if (preview.toLowerCase() !== data.intentAddress.toLowerCase()) {
+        throw new Error("The transfer configuration does not match this link.")
+      }
+      return protocol.readIntentState(data.intentAddress)
+    },
+    enabled: Boolean(data?.intentConfig),
+    refetchInterval: 15_000,
+  })
   const [transferError, setTransferError] = useState<string | null>(null)
   const [isTransferring, setIsTransferring] = useState(false)
 
@@ -101,20 +130,52 @@ export function PublicRoute({ route }: { route: string }) {
   const configurationValid =
     request.chainId === 8453 &&
     request.token.toLowerCase() === GOT_BASE_USDC.toLowerCase() &&
-    request.intentAddress.toLowerCase() === parsed.link.address.toLowerCase()
-  const alreadySettled =
-    request.status === "settled" || request.status === "overpaid"
-  const gross = { ...request.value, amount: request.grossQuotedAmount }
+    request.intentAddress.toLowerCase() === parsed.link.address.toLowerCase() &&
+    Boolean(request.intentConfig)
+  const target = BigInt(request.recipientTargetAmount)
+  const remaining = chainQuery.data
+    ? remainingTransferAmount(
+        target,
+        chainQuery.data.totalProcessed,
+        chainQuery.data.balance
+      )
+    : target
+  const amountDue = { ...request.value, amount: remaining.toString() }
+  const fullyFunded = Boolean(chainQuery.data && remaining === 0n)
+  const currentStatus = chainQuery.data
+    ? transferStatusFromChain(
+        target,
+        chainQuery.data.totalProcessed,
+        chainQuery.data.balance
+      )
+    : data.status
   async function transfer() {
     if (!configurationValid) return
     setIsTransferring(true)
     setTransferError(null)
     try {
+      const refreshed = await chainQuery.refetch()
+      if (refreshed.error || !refreshed.data) {
+        throw refreshed.error ?? new Error("Unable to verify the live balance.")
+      }
+      const currentAmount = remainingTransferAmount(
+        target,
+        refreshed.data.totalProcessed,
+        refreshed.data.balance
+      )
+      if (currentAmount === 0n) {
+        throw new Error("This transfer is already fully funded.")
+      }
       const hash = await transferUSDC(
         request.intentAddress,
-        request.grossQuotedAmount,
+        currentAmount.toString(),
         account
       )
+      const receipt = await protocol.waitForTransaction(hash)
+      if (receipt.status !== "success") {
+        throw new Error("The Base transaction did not succeed.")
+      }
+      await api.transfers.recordFunding(request.id, hash)
       const receiptParams = new URLSearchParams({ transaction: hash })
       router.push(`/receipt/${encodeURIComponent(request.id)}?${receiptParams}`)
     } catch (reason) {
@@ -144,10 +205,12 @@ export function PublicRoute({ route }: { route: string }) {
           </span>
           <p className="mt-4 text-sm text-neutral-500">
             Transfer to{" "}
-            <strong className="text-[#111]">{data.recipient}</strong>
+            <strong className="font-mono text-[#111]">
+              {shortAddress(data.intentAddress)}
+            </strong>
           </p>
           <h1 className="mt-7 text-5xl font-semibold tracking-[-0.065em] sm:text-6xl">
-            {formatMoney(gross, 2).replace(` ${gross.symbol}`, "")}
+            {formatMoney(amountDue, 2).replace(` ${amountDue.symbol}`, "")}
           </h1>
           <p className="mt-2 text-sm font-medium text-neutral-500">
             USDC · Base 🟦
@@ -177,6 +240,13 @@ export function PublicRoute({ route }: { route: string }) {
               cannot be funded here.
             </p>
           )}
+          {chainQuery.error && (
+            <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-700">
+              {chainQuery.error instanceof Error
+                ? chainQuery.error.message
+                : "Unable to verify the live transfer balance."}
+            </p>
+          )}
           {transferError && (
             <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-700">
               {transferError}
@@ -184,14 +254,22 @@ export function PublicRoute({ route }: { route: string }) {
           )}
           <Button
             className="mt-5 h-12 w-full bg-[#111] text-white hover:bg-neutral-800"
-            disabled={!configurationValid || alreadySettled || isTransferring}
+            disabled={
+              !configurationValid ||
+              !chainQuery.data ||
+              Boolean(chainQuery.error) ||
+              fullyFunded ||
+              isTransferring
+            }
             onClick={() => void transfer()}
           >
-            {alreadySettled
-              ? "Transfer complete"
-              : isTransferring
-                ? "Confirming with Base…"
-                : `Transfer ${formatMoney(gross)}`}
+            {fullyFunded
+              ? "Transfer fully funded"
+              : chainQuery.isLoading
+                ? "Checking live balance…"
+                : isTransferring
+                  ? "Confirming with Base…"
+                  : `Transfer ${formatMoney(amountDue)}`}
             <ArrowRight data-icon="inline-end" />
           </Button>
           <p className="mt-3 flex items-center justify-center gap-2 text-[11px] text-neutral-500">
@@ -234,7 +312,7 @@ export function PublicRoute({ route }: { route: string }) {
             <div className="flex justify-between py-4">
               <dt className="text-white/45">Status</dt>
               <dd>
-                <StatusBadge status={data.status} />
+                <StatusBadge status={currentStatus} />
               </dd>
             </div>
           </dl>

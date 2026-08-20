@@ -17,6 +17,7 @@ import {
   parseGOTLink,
   serializeIntentConfig,
 } from "@got-cx/sdk"
+import { useAuth } from "@/components/auth/auth-provider"
 import { Brand } from "@/components/shared/brand"
 import { appConfig } from "@/lib/app-config"
 import { getGOTClient } from "@/lib/got-client"
@@ -28,6 +29,13 @@ export function SendTransferForm() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
+  const {
+    account,
+    error: authError,
+    isLoading: isAuthLoading,
+    isSigningIn,
+    signIn,
+  } = useAuth()
   const api = getGOTClient()
   const protocol = useMemo(
     () => createGOTProtocolClient(appConfig.baseRpcUrl),
@@ -46,6 +54,10 @@ export function SendTransferForm() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!account) {
+      await signIn()
+      return
+    }
     if (!api) {
       setError("The got.cx API is unavailable.")
       return
@@ -221,17 +233,31 @@ export function SendTransferForm() {
                 </span>
               </div>
             )}
-            {error && (
+            {(error || authError) && (
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                {error}
+                {error ?? authError}
               </p>
             )}
             <Button
-              type="submit"
+              type={account ? "submit" : "button"}
               className="h-11 w-full"
-              disabled={!api || !recipient || !amount || isSubmitting}
+              onClick={account ? undefined : () => void signIn()}
+              disabled={
+                !api ||
+                !recipient ||
+                !amount ||
+                isAuthLoading ||
+                isSigningIn ||
+                isSubmitting
+              }
             >
-              {isSubmitting ? "Creating transfer…" : "Create transfer"}
+              {isSigningIn
+                ? "Authenticating…"
+                : !account
+                  ? "Continue with Base passkey"
+                  : isSubmitting
+                    ? "Creating transfer…"
+                    : "Create transfer"}
               <ArrowRight data-icon="inline-end" />
             </Button>
           </form>

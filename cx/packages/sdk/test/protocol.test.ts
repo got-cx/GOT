@@ -1,7 +1,12 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 
-import { deriveIntentId } from "../src/protocol"
+import {
+  deriveIntentId,
+  remainingTransferAmount,
+  transferStatusFromChain,
+} from "../src/protocol"
+import { TransferStatus } from "../src/types"
 
 const account = "0xafE0D4b0C259eb4826e40cD8Bc044759A357CE76"
 
@@ -28,5 +33,38 @@ describe("intent ID derivation", () => {
   it("requires a short, non-empty user ID", () => {
     assert.throws(() => deriveIntentId("  ", account), /ID is required/)
     assert.throws(() => deriveIntentId("x".repeat(121), account), /120/)
+  })
+})
+
+describe("remaining transfer amount", () => {
+  it("subtracts processed and pending funds from the target", () => {
+    assert.equal(remainingTransferAmount(100n, 20n, 30n), 50n)
+  })
+
+  it("never asks for more once the target is funded", () => {
+    assert.equal(remainingTransferAmount(100n, 100n, 0n), 0n)
+    assert.equal(remainingTransferAmount(100n, 80n, 30n), 0n)
+  })
+})
+
+describe("live transfer status", () => {
+  it("reports received funding before the intent is resolved", () => {
+    assert.equal(
+      transferStatusFromChain(100n, 0n, 100n),
+      TransferStatus.FundingDetected
+    )
+    assert.equal(transferStatusFromChain(100n, 0n, 40n), TransferStatus.Partial)
+  })
+
+  it("reports processed and overpaid transfers", () => {
+    assert.equal(transferStatusFromChain(100n, 40n, 0n), TransferStatus.Partial)
+    assert.equal(
+      transferStatusFromChain(100n, 100n, 0n),
+      TransferStatus.Settled
+    )
+    assert.equal(
+      transferStatusFromChain(100n, 100n, 1n),
+      TransferStatus.Overpaid
+    )
   })
 })

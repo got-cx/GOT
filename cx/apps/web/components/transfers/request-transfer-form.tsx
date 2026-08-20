@@ -16,6 +16,7 @@ import {
   serializeIntentConfig,
 } from "@got-cx/sdk"
 import { useAuth } from "@/components/auth/auth-provider"
+import { BaseAccountButton } from "@/components/auth/base-account-button"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
 import { useAPIResource } from "@/hooks/use-api-resource"
@@ -126,8 +127,9 @@ export function RequestTransferForm() {
       const config = buildConfig()
       const intentAddress =
         previewAddress ?? (await protocol.previewIntent(config))
-      const recipientLabel =
-        choices.find((choice) => choice.value === selected)?.label ?? selected
+      const recipient = selected.startsWith("wallet:")
+        ? selected.slice(7)
+        : selected.slice(9)
       const dueAtValue = dueAt
         ? new Date(`${dueAt}T23:59:59`).toISOString()
         : null
@@ -135,7 +137,7 @@ export function RequestTransferForm() {
         {
           chainId: GOT_BASE_CHAIN_ID,
           requestId: requestId.trim(),
-          recipient: recipientLabel,
+          recipient,
           recipientTargetAmount: config.amount.toString(),
           token: GOT_BASE_USDC,
           sender: sender || undefined,
@@ -195,10 +197,7 @@ export function RequestTransferForm() {
           Back
         </Link>
         <Brand compact />
-        <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
-          <ShieldCheck className="size-4" />
-          Secure transfer request
-        </span>
+        <BaseAccountButton compact={false} />
       </header>
       <main className="mx-auto grid max-w-5xl gap-12 px-5 py-12 md:grid-cols-[1.2fr_.8fr] md:py-16">
         <section>

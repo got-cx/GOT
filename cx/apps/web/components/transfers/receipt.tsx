@@ -4,6 +4,7 @@ import { Check, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
+import { TransferStatus } from "@got-cx/sdk"
 import { APIMessage } from "@/components/shared/api-message"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
@@ -36,7 +37,9 @@ export function Receipt({ transferId }: { transferId: string }) {
     )
 
   const transaction = data.transactionHash ?? searchParams.get("transaction")
-  const complete = data.status === "settled" || data.status === "overpaid"
+  const complete =
+    data.status === TransferStatus.Settled ||
+    data.status === TransferStatus.Overpaid
   const recipient =
     data.direction === "incoming" ? (data.recipient ?? data.party) : data.party
   const receiptText = [
