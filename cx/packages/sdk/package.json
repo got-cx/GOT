@@ -1,6 +1,6 @@
 {
   "name": "@got-cx/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "got.cx product SDK",
   "keywords": [
     "fintech",
@@ -11,7 +11,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/got-cx/GOT.git",
-    "directory": "cx/packages"
+    "directory": "cx/packages/sdk"
   },
   "bugs": {
     "url": "https://github.com/got-cx/GOT/issues"
@@ -24,6 +24,11 @@
     "node": ">=22"
   },
   "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "src"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -60,6 +65,7 @@
     "build": "npm audit --audit-level=high && tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint src test",
+    "prepack": "tsc -p tsconfig.build.json",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
