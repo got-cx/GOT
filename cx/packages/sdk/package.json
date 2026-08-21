@@ -37,7 +37,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm audit --audit-level=high && tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint src test",
     "test": "tsx --test test/*.test.ts",
