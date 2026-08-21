@@ -1,8 +1,28 @@
 {
   "name": "@got-cx/sdk",
   "version": "0.1.0",
-  "description": "Typed got.cx product SDK",
+  "description": "got.cx product SDK",
+  "keywords": [
+    "fintech",
+    "onchain",
+    "stablecoins"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/got-cx/GOT.git",
+    "directory": "cx/packages"
+  },
+  "bugs": {
+    "url": "https://github.com/got-cx/GOT/issues"
+  },
+  "homepage": "https://got.cx",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
