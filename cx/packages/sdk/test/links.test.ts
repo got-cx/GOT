@@ -39,6 +39,10 @@ describe("GOT Links Model v1", () => {
       assert.equal(link.route, route)
       assert.equal(link.nameKey, nameKey)
       assert.equal(formatGOTLink(link), `https://got.cx${route}`)
+      assert.equal(
+        parseGOTLink(route).canonicalIdentity,
+        link.canonicalIdentity
+      )
     })
   }
 
@@ -47,5 +51,11 @@ describe("GOT Links Model v1", () => {
     assert.equal(link.kind, "intent")
     assert.equal(link.nameKey, null)
     assert.equal(link.address, "0x60700c99a58fD21022bf1f4d2b318C663e6F2E27")
+  })
+
+  it("parses an identity fragment on the home route", () => {
+    const link = parseGOTLink("https://got.cx/#email:alice@example.com")
+    assert.equal(link.kind, "identity")
+    assert.equal(link.canonicalIdentity, "email:alice@example.com")
   })
 })

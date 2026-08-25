@@ -72,7 +72,7 @@ export function TransfersDashboard() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search From or ID"
+              placeholder="Search id or note"
               className="h-9 pl-9"
             />
           </label>

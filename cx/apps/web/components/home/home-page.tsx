@@ -1,214 +1,468 @@
 "use client"
 
-import { Code2, Globe2, Link2, MoveRight, ShieldCheck } from "lucide-react"
+import {
+  ArrowRight,
+  Code2,
+  Link2,
+  ListChecks,
+  MoveRight,
+  QrCode,
+  ShieldCheck,
+  UserRound,
+  XIcon,
+} from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 
-import { formatIdentityLabel, parseGOTLink, type GOTLink } from "@got-cx/sdk"
+import { useAuth } from "@/components/auth/auth-provider"
 import { BaseAccountButton } from "@/components/auth/base-account-button"
 import { Brand } from "@/components/shared/brand"
 import { CreateTransferMenu } from "@/components/transfers/create-transfer-menu"
+import { PublicRoute } from "@/components/transfers/public-route"
 import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
 
-function getSendHref(value: string) {
-  const recipient = value.trim()
-  if (!recipient) return "/transfers/new/send"
-
-  try {
-    const parsed = parseGOTLink(recipient)
-    return parsed.kind === "intent"
-      ? parsed.route
-      : `/transfers/new/send?recipient=${encodeURIComponent(formatIdentityLabel(parsed))}`
-  } catch {
-    return `/transfers/new/send?recipient=${encodeURIComponent(recipient)}`
-  }
+enum TransferHashPrefix {
+  Email = "#email:",
+  Phone = "#phone:",
 }
 
+const transferHashPrefixes = Object.values(TransferHashPrefix)
+
+function subscribeToHashChange(onStoreChange: () => void) {
+  window.addEventListener("hashchange", onStoreChange)
+  return () => window.removeEventListener("hashchange", onStoreChange)
+}
+
+function getHash() {
+  return window.location.hash
+}
+
+function getServerHash() {
+  return ""
+}
+
+function isTransferHash(hash: string) {
+  const normalizedHash = hash.toLowerCase()
+  return transferHashPrefixes.some((prefix) =>
+    normalizedHash.startsWith(prefix)
+  )
+}
+
+const steps = [
+  {
+    number: "01",
+    title: "Create a transfer",
+    copy: "Choose who it is for, an amount, and optional context.",
+    icon: UserRound,
+  },
+  {
+    number: "02",
+    title: "Share a link",
+    copy: "Send one simple GOT link or QR code anywhere.",
+    icon: Link2,
+  },
+  {
+    number: "03",
+    title: "Receive the transfer",
+    copy: "Funds move directly onchain to the destination.",
+    icon: MoveRight,
+  },
+] as const
+
+const capabilities = [
+  {
+    title: "Transfer links",
+    copy: "Create and share a link for any transfer.",
+    icon: Link2,
+  },
+  {
+    title: "QR transfers",
+    copy: "Scan and transfer instantly.",
+    icon: QrCode,
+  },
+  {
+    title: "Human-readable recipients",
+    copy: "Use names and identities instead of addresses.",
+    icon: UserRound,
+  },
+  {
+    title: "Direct transfers",
+    copy: "Funds move directly onchain.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Transfer records",
+    copy: "Track transfers with human-readable context.",
+    icon: ListChecks,
+  },
+  {
+    title: "Integrate GOT",
+    copy: "Add transfers with the SDK or API.",
+    icon: Code2,
+  },
+] as const
+
+const audiences = [
+  "Apps",
+  "Fintech",
+  "Games",
+  "SaaS",
+  "Merchants",
+  "Wallets",
+  "Platforms",
+  "AI agents",
+] as const
+
+const landingNavigation = [
+  { label: "Transfers", href: "#transfers" },
+  { label: "Names", href: "#names" },
+  { label: "Developers", href: "#developers" },
+] as const
+
+const dashboardNavigation = [
+  { label: "Transfers", href: "/dashboard/transfers" },
+  { label: "Names", href: "/dashboard/names" },
+  { label: "Developers", href: "/dashboard/developers" },
+] as const
+
 export function HomePage() {
-  const router = useRouter()
-  const [recipient, setRecipient] = useState("")
-  const [fragmentLink, setFragmentLink] = useState<GOTLink | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { account } = useAuth()
+  const hash = useSyncExternalStore(
+    subscribeToHashChange,
+    getHash,
+    getServerHash
+  )
+  const navigation = account ? dashboardNavigation : landingNavigation
 
-  useEffect(() => {
-    function syncFragment() {
-      if (!window.location.hash) {
-        setFragmentLink(null)
-        setError(null)
-        return
-      }
-      try {
-        setFragmentLink(parseGOTLink(window.location.hash))
-        setError(null)
-      } catch (reason) {
-        const message =
-          reason instanceof Error ? reason.message : "This GOT link is invalid."
-        setFragmentLink(null)
-        setError(message)
-      }
-    }
-
-    syncFragment()
-    window.addEventListener("hashchange", syncFragment)
-    return () => window.removeEventListener("hashchange", syncFragment)
-  }, [])
-
-  function continueToTransfer(value: string) {
-    try {
-      const parsed = parseGOTLink(value)
-      setError(null)
-      if (parsed.kind === "intent") router.push(parsed.route)
-      else
-        router.push(
-          `/transfers/new/send?recipient=${encodeURIComponent(formatIdentityLabel(parsed))}`
-        )
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "This recipient is invalid."
-      )
-    }
-  }
-
-  if (fragmentLink?.kind === "identity") {
-    const label = formatIdentityLabel(fragmentLink)
-    return (
-      <main className="grid min-h-svh place-items-center bg-foreground p-5 text-background">
-        <section className="w-full max-w-md rounded-2xl bg-background p-7 text-foreground shadow-2xl sm:p-9">
-          <div className="mb-12">
-            <Brand />
-          </div>
-          <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
-            GOT RECIPIENT LINK
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">
-            Transfer to {label}
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Choose an amount, then confirm the transfer with your Base Account.
-          </p>
-          <Button
-            className="mt-8 h-11 w-full"
-            onClick={() => continueToTransfer(label)}
-          >
-            Continue
-          </Button>
-          <p className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3.5" />
-            Onchain. Direct. Non-custodial.
-          </p>
-        </section>
-      </main>
-    )
-  }
+  if (isTransferHash(hash)) return <PublicRoute route={hash} />
 
   return (
     <main className="min-h-svh px-5 sm:px-8">
-      <header className="mx-auto flex h-20 max-w-6xl items-center justify-between border-b">
+      <header className="mx-auto flex h-18 max-w-6xl items-center justify-between border-b sm:h-20">
         <Brand compact />
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
-          <Link href="/dashboard/transfers" className="hover:text-foreground">
-            Transfers
-          </Link>
-          <Link href="/dashboard/names" className="hover:text-foreground">
-            Names
-          </Link>
-          <Link href="/dashboard/developers" className="hover:text-foreground">
-            Developers
-          </Link>
+          {navigation.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="hover:text-foreground"
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
         <BaseAccountButton compact href="/dashboard" />
       </header>
 
-      <section className="mx-auto max-w-4xl py-24 text-center sm:py-32">
-        <p className="mb-5 text-[11px] font-semibold tracking-[0.16em] text-muted-foreground">
-          GLOBAL ONCHAIN TRANSFERS
+      <section className="mx-auto max-w-5xl py-14 text-center sm:py-24 lg:py-28">
+        <p className="mb-5 text-xs font-semibold tracking-[0.16em] text-muted-foreground">
+          ONCHAIN TRANSFER SOLUTIONS
         </p>
-        <h1 className="text-5xl leading-[.95] font-semibold tracking-[-0.065em] sm:text-7xl lg:text-[84px]">
-          Send it. GOT it.
+        <h1 className="text-5xl leading-[0.96] font-semibold tracking-[-0.065em] sm:text-7xl lg:text-[80px]">
+          Accept onchain transfers now
         </h1>
-        <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Enter who or what the transfer is for. GOT handles wallets,
-          deterministic addresses, and onchain details underneath.
+        <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+          Create a transfer link. Share it anywhere. Receive USDC directly
+          onchain.
         </p>
-        <form
-          className="mx-auto mt-9 flex max-w-2xl flex-col gap-2 rounded-xl border bg-card p-2 shadow-[0_18px_50px_rgba(0,0,0,.06)] sm:flex-row"
-          onSubmit={(event) => {
-            event.preventDefault()
-            continueToTransfer(recipient)
-          }}
-        >
-          <label className="flex min-h-11 flex-1 items-center gap-3 px-2">
-            <Globe2 className="size-4 text-muted-foreground" />
-            <span className="sr-only">Recipient</span>
-            <Input
-              value={recipient}
-              onChange={(event) => setRecipient(event.target.value)}
-              className="h-10 border-0 shadow-none focus-visible:ring-0"
-              placeholder="Name, social handle, email, phone or 0x…"
-            />
-          </label>
-          <CreateTransferMenu
-            triggerClassName="h-11 px-5"
-            sendHref={getSendHref(recipient)}
-          />
-        </form>
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        <p className="mt-4 text-xs text-muted-foreground">
-          Supports @name, x:@handle, tg:@handle, email, phone, deterministic 0x
-          transfer links.
-        </p>
+        <div className="mt-8 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+          <CreateTransferMenu triggerClassName="h-11 px-5" />
+          <Button
+            variant="outline"
+            className="h-11 px-5"
+            nativeButton={false}
+            render={<Link href="#developers" />}
+          >
+            For developers <ArrowRight data-icon="inline-end" />
+          </Button>
+        </div>
+        <p className="mt-7 font-medium italic">Send it. GOT it.</p>
       </section>
 
-      <section className="mx-auto grid max-w-6xl border-y md:grid-cols-3">
-        {[
-          {
-            number: "01",
-            title: "Create",
-            copy: "Enter a recipient and amount. GOT prepares the deterministic transfer address.",
-            icon: Code2,
-          },
-          {
-            number: "02",
-            title: "Share",
-            copy: "Send one human-readable recipient link or one specific transfer link.",
-            icon: Link2,
-          },
-          {
-            number: "03",
-            title: "Transfer",
-            copy: "Funds move directly on Base. GOT never takes custody.",
-            icon: MoveRight,
-          },
-        ].map((item) => {
-          const Icon = item.icon
-          return (
-            <article
-              key={item.number}
-              className="border-b py-8 last:border-b-0 md:border-r md:border-b-0 md:px-8 md:first:pl-0 md:last:border-r-0"
+      <section
+        id="transfers"
+        className="mx-auto max-w-6xl scroll-mt-6 border-y py-12 sm:py-16"
+      >
+        <div className="mb-10 sm:mb-12">
+          <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+            HOW IT WORKS
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+            Create → Share → Transfer
+          </h2>
+        </div>
+        <div className="grid md:grid-cols-3">
+          {steps.map((item) => {
+            const Icon = item.icon
+            return (
+              <article
+                key={item.number}
+                className="border-b py-7 last:border-b-0 md:border-r md:border-b-0 md:px-8 md:py-2 md:first:pl-0 md:last:border-r-0"
+              >
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{item.number}</span>
+                  <Icon className="size-4" />
+                </div>
+                <h3 className="mt-9 text-xl font-medium tracking-[-0.03em]">
+                  {item.title}
+                </h3>
+                <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
+                  {item.copy}
+                </p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="mx-auto my-16 grid max-w-6xl gap-10 rounded-3xl bg-foreground px-6 py-10 text-background sm:my-24 sm:px-10 sm:py-14 lg:grid-cols-[1.1fr_.9fr] lg:gap-20 lg:px-14">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.15em] text-background/70">
+            A HUMAN TRANSFER EXPERIENCE
+          </p>
+          <h2 className="mt-4 max-w-xl text-3xl font-semibold tracking-[-0.05em] sm:text-5xl">
+            Onchain transfers without the onchain complexity
+          </h2>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-background/75 sm:text-base sm:leading-7">
+            GOT keeps the infrastructure onchain and the experience human.
+          </p>
+        </div>
+        <div className="self-center rounded-2xl border border-background/15 p-5 sm:p-7">
+          <p className="text-sm text-background/70">For users</p>
+          <p className="mt-3 text-lg font-medium sm:text-xl">
+            Name → Amount → Transfer
+          </p>
+          <div className="my-6 border-t border-background/15" />
+          <p className="text-sm text-background/70">
+            Infrastructure underneath
+          </p>
+          <p className="mt-3 text-sm text-background/75">
+            Account → Network → Address → Transaction
+          </p>
+          <p className="mt-7 border-t border-background/15 pt-5 text-sm font-medium">
+            Human context first. Onchain details on demand.
+          </p>
+        </div>
+      </section>
+
+      <section
+        id="names"
+        className="mx-auto max-w-6xl scroll-mt-6 py-8 sm:py-12"
+      >
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+            WHAT YOU CAN DO
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+            Everything you need for simple onchain transfers.
+          </h2>
+        </div>
+        <div className="mt-10 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+          {capabilities.map((item) => {
+            const Icon = item.icon
+            return (
+              <article key={item.title} className="border-t py-6">
+                <Icon className="size-4 text-muted-foreground" />
+                <h3 className="mt-6 font-medium tracking-[-0.02em]">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {item.copy}
+                </p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="mx-auto grid max-w-6xl gap-12 border-y py-14 sm:py-20 lg:grid-cols-2 lg:gap-20">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+            ONE DESTINATION
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+            Share one destination. Receive from many sources.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+            Share one simple destination. Transfers can start from compatible
+            wallets, exchanges, fintech apps, and other products.
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+            BUILT FOR PRODUCTS
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+            Onchain transfers for any product.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+            Give your users a simple way to send and receive value globally
+            without building the transfer infrastructure yourself.
+          </p>
+          <ul
+            className="mt-7 flex flex-wrap gap-2"
+            aria-label="Example products"
+          >
+            {audiences.map((audience) => (
+              <li
+                key={audience}
+                className="rounded-full border px-3 py-1.5 text-sm font-medium"
+              >
+                {audience}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section
+        id="developers"
+        className="mx-auto grid max-w-6xl scroll-mt-6 gap-10 py-16 sm:py-24 lg:grid-cols-[.85fr_1.15fr] lg:gap-20"
+      >
+        <div>
+          <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+            FOR DEVELOPERS
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+            Add onchain transfers to your product.
+          </h2>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+            Use the GOT SDK or API to create transfer destinations, links, and
+            records without building the transfer infrastructure yourself.
+          </p>
+          <p className="mt-6 text-sm font-medium">
+            Onchain. Direct. Non-custodial.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-2">
+            <Button
+              className="h-10 px-4"
+              nativeButton={false}
+              render={<Link href="/dashboard/developers" />}
             >
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{item.number}</span>
-                <Icon className="size-4" />
-              </div>
-              <h2 className="mt-10 text-xl font-medium tracking-[-0.03em]">
-                {item.title}
-              </h2>
-              <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
-                {item.copy}
-              </p>
-            </article>
-          )
-        })}
+              Developer tools <ArrowRight data-icon="inline-end" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 px-4"
+              nativeButton={false}
+              render={
+                <a
+                  href="https://github.com/got-cx/GOT"
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
+            >
+              View GitHub
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-2xl border bg-card p-5 sm:p-7">
+          <div className="flex items-center justify-between border-b pb-4 text-sm text-muted-foreground">
+            <span>Transfer flow</span>
+            <span>Base · USDC</span>
+          </div>
+          <ol className="mt-2 divide-y">
+            {[
+              "Create destination",
+              "Share link, QR code, or identifier",
+              "Transfer USDC",
+              "Funds resolve onchain",
+            ].map((item, index) => (
+              <li key={item} className="flex items-center gap-4 py-4 text-sm">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="font-medium">{item}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="border-t pt-4 text-sm leading-6 text-muted-foreground">
+            Built on Base with an SDK, API, and open protocol.
+          </p>
+        </div>
       </section>
 
-      <footer className="mx-auto flex h-24 max-w-6xl items-center justify-between text-xs text-muted-foreground">
-        <span>Onchain. Direct. Non-custodial.</span>
-        <span>
-          {new Date().getFullYear()} ©{" "}
-          <strong className="text-foreground">got.cx</strong>
-        </span>
+      <section
+        id="protocol"
+        className="mx-auto max-w-6xl scroll-mt-6 border-y py-14 sm:py-20"
+      >
+        <div className="max-w-xl">
+          <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+            PRODUCT + PROTOCOL
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
+            A simple product on open infrastructure.
+          </h2>
+        </div>
+        <div className="mt-10 grid items-stretch gap-4 md:grid-cols-[1fr_auto_1fr]">
+          <article className="rounded-2xl border p-6 sm:p-8">
+            <p className="text-sm font-medium">GOT protocol 🌐</p>
+            <h3 className="mt-10 text-2xl font-semibold tracking-[-0.04em]">
+              Global onchain transfers infrastructure.
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Open infrastructure for creating and resolving onchain transfer
+              destinations.
+            </p>
+          </article>
+          <div
+            className="grid place-items-center py-1 text-muted-foreground"
+            aria-hidden="true"
+          >
+            <MoveRight className="size-5 rotate-90 md:rotate-0" />
+          </div>
+          <article className="rounded-2xl bg-foreground p-6 text-background sm:p-8">
+            <p className="text-sm font-medium">got.cx 🐐</p>
+            <h3 className="mt-10 text-2xl font-semibold tracking-[-0.04em]">
+              Onchain transfer solutions built on GOT.
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-background/75">
+              The product experience for creating, sharing, receiving, and
+              managing transfers.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl py-16 text-center sm:py-24">
+        <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
+          WHY GOT EXISTS
+        </p>
+        <h2 className="mx-auto mt-5 max-w-4xl text-3xl font-semibold tracking-[-0.05em] sm:text-5xl">
+          Global Onchain Transfers for Everyone
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-muted-foreground">
+          Our mission: Make global onchain transfers simple.
+        </p>
+        <div className="mx-auto mt-14 max-w-xl border-t pt-12">
+          <h2 className="text-3xl font-semibold tracking-[-0.05em]">
+            Accept onchain transfers now.
+          </h2>
+          <div className="mt-6 flex justify-center">
+            <CreateTransferMenu triggerClassName="h-11 px-5" />
+          </div>
+          <p className="mt-6 font-medium italic">Send it. GOT it.</p>
+        </div>
+      </section>
+
+      <footer className="mx-auto flex min-h-24 max-w-6xl flex-col items-center justify-between gap-3 border-t py-7 text-center text-sm text-muted-foreground sm:flex-row sm:text-left">
+        <span>in GOT we trust</span>
+        <div className="flex items-center gap-5">
+          <a
+            href="https://x.com/got_cx"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-foreground"
+          >
+            <XIcon className="size-3.5" aria-hidden="true" />
+            Product updates
+          </a>
+          <span>
+            {new Date().getFullYear()} ©{" "}
+            <strong className="text-foreground">got.cx</strong>
+          </span>
+        </div>
       </footer>
     </main>
   )

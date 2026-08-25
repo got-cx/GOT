@@ -9,10 +9,15 @@ export function CopyButton({
   value,
   label = "Copy",
   className,
+  variant = "outline",
+  children,
 }: {
   value: string
   label?: string
   className?: string
+  variant?:
+    "default" | "outline" | "secondary" | "ghost" | "destructive" | "link"
+  children?: React.ReactNode
 }) {
   const [copied, setCopied] = useState(false)
 
@@ -24,12 +29,12 @@ export function CopyButton({
 
   return (
     <Button
-      variant="outline"
+      variant={variant}
       size="sm"
       className={className}
       onClick={() => void copy()}
     >
-      {copied ? <Check /> : <Copy />}
+      {copied ? <Check /> : (children ?? <Copy />)}
       {copied ? "Copied" : label}
     </Button>
   )

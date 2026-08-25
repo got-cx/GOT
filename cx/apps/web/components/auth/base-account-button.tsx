@@ -1,11 +1,27 @@
 "use client"
 
-import { KeyRound, LogOut } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  CircleEllipsis,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+} from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
 
 import { useAuth } from "@/components/auth/auth-provider"
-import { shortAddress } from "@/lib/format"
 import { Button } from "@workspace/ui/components/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 
 type BaseAccountButtonProps = {
   compact?: boolean
@@ -16,6 +32,7 @@ export function BaseAccountButton({
   compact = true,
   href,
 }: BaseAccountButtonProps) {
+  const [copied, setCopied] = useState(false)
   const {
     account,
     error,
@@ -35,31 +52,69 @@ export function BaseAccountButton({
   }
 
   if (account) {
-    if (href) {
-      return (
-        <Button
-          variant="outline"
-          render={<Link href={href} />}
-          nativeButton={false}
-          title="Open account"
-        >
-          <span className="size-2 rounded-full bg-emerald-600" />
-          {shortAddress(account)}
-        </Button>
-      )
-    }
-
     return (
-      <Button
-        variant="outline"
-        onClick={() => void signOut()}
-        disabled={isSigningOut}
-        title="Sign out"
-      >
-        <span className="size-2 rounded-full bg-emerald-600" />
-        {isSigningOut ? "Signing out…" : shortAddress(account)}
-        <LogOut data-icon="inline-end" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={<Button variant="outline" aria-label="Base Account menu" />}
+        >
+          <KeyRound data-icon="inline-start" />
+          {isSigningOut ? "Signing out…" : "Base Account"}
+          <ChevronDown data-icon="inline-end" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52 p-1.5">
+          {href && (
+            <DropdownMenuItem
+              className="px-2 py-2"
+              render={<Link href={href} />}
+            >
+              <LayoutDashboard />
+              Open dashboard
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="px-2 py-2"
+            render={
+              <a href="https://base.app" target="_blank" rel="noreferrer" />
+            }
+          >
+            <ExternalLink />
+            Open in Base App
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-2 py-2"
+            onClick={() => {
+              void navigator.clipboard.writeText(account)
+              setCopied(true)
+              window.setTimeout(() => setCopied(false), 1_500)
+            }}
+          >
+            {copied ? <Check /> : <Copy />}
+            {copied ? "Address copied" : "Copy address"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-2 py-2"
+            render={
+              <a
+                href={`https://basescan.org/address/${account}`}
+                target="_blank"
+                rel="noreferrer"
+              />
+            }
+          >
+            <CircleEllipsis />
+            Onchain details
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="px-2 py-2"
+            disabled={isSigningOut}
+            onClick={() => void signOut()}
+          >
+            <LogOut />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     )
   }
 
@@ -75,7 +130,7 @@ export function BaseAccountButton({
           ? "Authenticating…"
           : compact
             ? "Sign in"
-            : "Continue with Base passkey"}
+            : "Continue with Base"}
       </Button>
       {error && !compact && (
         <span className="max-w-64 text-right text-[11px] text-destructive">

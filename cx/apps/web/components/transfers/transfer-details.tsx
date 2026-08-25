@@ -7,7 +7,6 @@ import {
   ExternalLink,
   RefreshCw,
   Trash2,
-  WalletCards,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -23,13 +22,19 @@ import {
 import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
 import { CopyButton } from "@/components/shared/copy-button"
+import { OnchainDetails } from "@/components/shared/onchain-details"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { appConfig } from "@/lib/app-config"
 import { deployAndResolveIntent, resolveIntent } from "@/lib/base-transactions"
-import { formatDate, formatMoney, shortAddress } from "@/lib/format"
+import {
+  formatDate,
+  formatMoney,
+  humanIdentity,
+  shortAddress,
+} from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
-import { transferPaymentLink } from "@/lib/transfer-envelope"
+import { transferLink } from "@/lib/transfer-envelope"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -239,7 +244,21 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
     transfer.direction === "incoming" &&
     configuredResolver === account &&
     Boolean(chain && chain.balance > 0n && transfer.intentConfig)
-  const paymentLink = transferPaymentLink(transfer)
+  const transferUrl = transferLink(transfer)
+  const fromLabel =
+    transfer.direction === "incoming"
+      ? humanIdentity(transfer.sender ?? transfer.party)
+      : "You"
+  const toLabel =
+    transfer.direction === "incoming"
+      ? humanIdentity(transfer.recipient)
+      : humanIdentity(transfer.recipient ?? transfer.party)
+  const recipientAddress = transfer.intentConfig?.ownerSource ?? null
+  const senderAddress =
+    transfer.sender && isAddress(transfer.sender, { strict: false })
+      ? getAddress(transfer.sender)
+      : null
+  const latestTransaction = transactionHash ?? transfer.transactionHash
 
   return (
     <div>
@@ -258,14 +277,14 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
           </span>
         }
         title={formatMoney(transfer.value, 2)}
-        description={`${transfer.direction === "incoming" ? "From" : "To"} ${transfer.party}`}
+        description={`${transfer.direction === "incoming" ? "From" : "To"} ${transfer.direction === "incoming" ? fromLabel : toLabel}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <CopyButton value={paymentLink} label="Copy link" />
+            <CopyButton value={transferUrl} label="Copy link" />
             <Button
               size="sm"
               variant="outline"
-              render={<a href={paymentLink} target="_blank" rel="noreferrer" />}
+              render={<a href={transferUrl} target="_blank" rel="noreferrer" />}
               nativeButton={false}
             >
               Open link <ExternalLink data-icon="inline-end" />
@@ -305,8 +324,8 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
                   <AlertDialogTitle>Remove this transfer?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This permanently removes the transfer from got.cx and
-                    disables its payment link. It does not reverse Base
-                    transactions, recover funds, or remove a deployed contract.
+                    disables its transfer link. It does not reverse completed
+                    transfers or recover funds.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 {removeError && (
@@ -333,13 +352,127 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
       />
 
       <section className="rounded-xl border bg-card p-5">
-        <div className="flex items-start justify-between gap-4">
+        <h2 className="text-sm font-medium">Transfer details</h2>
+        <dl className="mt-5 grid gap-x-8 gap-y-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <h2 className="text-sm font-medium">Onchain state</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Read directly from Base. This does not depend on the indexer.
-              {syncMutation.isPending &&
-                " Syncing this state to the dashboard…"}
+            <dt className="text-xs text-muted-foreground">From</dt>
+            <dd className="mt-1 font-medium">{fromLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">To</dt>
+            <dd className="mt-1 font-medium">{toLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Amount</dt>
+            <dd className="mt-1 font-medium">
+              {formatMoney(transfer.value, 2)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Status</dt>
+            <dd className="mt-1">
+              <StatusBadge status={currentStatus} />
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Created</dt>
+            <dd className="mt-1 font-medium">
+              {formatDate(transfer.createdAt, true)}
+            </dd>
+          </div>
+          {transfer.requestId && (
+            <div>
+              <dt className="text-xs text-muted-foreground">Transfer ID</dt>
+              <dd className="mt-1 flex items-center gap-2 font-medium">
+                <span className="max-w-48 truncate">{transfer.requestId}</span>
+                <CopyButton value={transfer.requestId} label="Copy" />
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-xs text-muted-foreground">Transfer link</dt>
+            <dd className="mt-1 flex items-center gap-2">
+              <a
+                href={transferUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium hover:underline"
+              >
+                Open link
+              </a>
+              <CopyButton value={transferUrl} label="Copy" />
+            </dd>
+          </div>
+          {(transfer.note || transfer.reference) && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <dt className="text-xs text-muted-foreground">Note</dt>
+              <dd className="mt-1 max-w-2xl font-medium">
+                {transfer.note ?? transfer.reference}
+                {transfer.note && transfer.reference
+                  ? ` · ${transfer.reference}`
+                  : ""}
+              </dd>
+            </div>
+          )}
+        </dl>
+
+        {chain && transfer.direction === "incoming" && (
+          <div className="mt-6 flex flex-col justify-between gap-4 rounded-xl bg-muted/60 p-4 sm:flex-row sm:items-center">
+            <div>
+              <strong className="block text-sm">
+                {chain.balance > 0n
+                  ? `${formatMoney(
+                      {
+                        amount: chain.balance.toString(),
+                        decimals: 6,
+                        symbol: "USDC",
+                      },
+                      2
+                    )} ready to receive`
+                  : chain.totalProcessed > 0n
+                    ? "Transfer received"
+                    : "Waiting for the sender"}
+              </strong>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {chain.balance > 0n
+                  ? "Receive the available funds in your Base Account."
+                  : chain.totalProcessed > 0n
+                    ? "The funds are in your Base Account."
+                    : "Share the transfer link when you’re ready."}
+              </span>
+            </div>
+            {chain.balance > 0n && (
+              <Button
+                className="h-10"
+                disabled={!canResolve || isActing}
+                onClick={() => void resolveFunds()}
+              >
+                {isActing ? "Receiving…" : "Receive funds"}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {transactionHash && (
+          <p className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="size-3.5" />
+            Funds received
+          </p>
+        )}
+        {resolveError && (
+          <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+            {resolveError}
+          </p>
+        )}
+      </section>
+
+      <OnchainDetails className="mt-5 rounded-xl border bg-card px-5">
+        <div className="flex items-start justify-between gap-4 border-t pt-4">
+          <div>
+            <h2 className="font-medium text-foreground">Live onchain state</h2>
+            <p className="mt-1 leading-5">
+              Read directly from Base.
+              {syncMutation.isPending && " Syncing with your activity feed…"}
             </p>
           </div>
           <Button
@@ -356,48 +489,38 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
         </div>
 
         {chainQuery.error ? (
-          <p className="mt-5 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+          <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive">
             {chainQuery.error instanceof Error
               ? chainQuery.error.message
               : "Unable to read Base state."}
           </p>
         ) : !chain ? (
-          <div className="mt-5 h-32 animate-pulse rounded-lg bg-muted" />
+          <div className="mt-4 h-24 animate-pulse rounded-lg bg-muted" />
         ) : (
-          <dl className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border p-4">
-              <dt className="text-[11px] text-muted-foreground">
-                Available balance
-              </dt>
-              <dd className="mt-1 text-lg font-semibold">
-                {formatMoney(
-                  {
-                    amount: chain.balance.toString(),
-                    decimals: 6,
-                    symbol: "USDC",
-                  },
-                  2
-                )}
+          <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border p-3">
+              <dt>Available balance</dt>
+              <dd className="mt-1 font-semibold text-foreground">
+                {formatMoney({
+                  amount: chain.balance.toString(),
+                  decimals: 6,
+                  symbol: "USDC",
+                })}
               </dd>
             </div>
-            <div className="rounded-lg border p-4">
-              <dt className="text-[11px] text-muted-foreground">
-                Total resolved
-              </dt>
-              <dd className="mt-1 text-lg font-semibold">
-                {formatMoney(
-                  {
-                    amount: chain.totalProcessed.toString(),
-                    decimals: 6,
-                    symbol: "USDC",
-                  },
-                  2
-                )}
+            <div className="rounded-lg border p-3">
+              <dt>Total resolved</dt>
+              <dd className="mt-1 font-semibold text-foreground">
+                {formatMoney({
+                  amount: chain.totalProcessed.toString(),
+                  decimals: 6,
+                  symbol: "USDC",
+                })}
               </dd>
             </div>
-            <div className="rounded-lg border p-4">
-              <dt className="text-[11px] text-muted-foreground">Contract</dt>
-              <dd className="mt-1 text-lg font-semibold">
+            <div className="rounded-lg border p-3">
+              <dt>Intent contract</dt>
+              <dd className="mt-1 font-semibold text-foreground">
                 {chain.deployed ? "Deployed" : "Not deployed"}
               </dd>
             </div>
@@ -405,130 +528,90 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
         )}
 
         {syncMutation.error && (
-          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-400">
-            The live Base state is shown, but it could not be synced to the
-            dashboard yet. It will retry after the next refresh.
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400">
+            The live state could not be synced to the activity feed yet.
           </p>
         )}
 
-        {chain && transfer.direction === "incoming" && (
-          <div className="mt-5 flex flex-col justify-between gap-3 rounded-lg border bg-muted/30 p-4 sm:flex-row sm:items-center">
-            <div>
-              <strong className="block text-sm">
-                {chain.balance > 0n
-                  ? chain.deployed
-                    ? "Resolve available USDC"
-                    : "Deploy intent and resolve USDC"
-                  : chain.totalProcessed > 0n
-                    ? "No unresolved balance"
-                    : "Waiting for the sender"}
-              </strong>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {chain.deployed
-                  ? "The intent contract already exists on Base."
-                  : "Deployment occurs only when you choose to receive the funds."}
-              </span>
-            </div>
-            <Button
-              disabled={!canResolve || isActing}
-              onClick={() => void resolveFunds()}
-            >
-              {isActing
-                ? "Confirming…"
-                : chain.deployed
-                  ? "Resolve"
-                  : "Deploy & resolve"}
-            </Button>
-          </div>
-        )}
-
-        {transactionHash && (
-          <a
-            href={`https://basescan.org/tx/${transactionHash}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-2 text-xs text-emerald-700 hover:underline dark:text-emerald-400"
-          >
-            <CheckCircle2 className="size-3.5" />
-            View transaction on Basescan
-            <ExternalLink className="size-3" />
-          </a>
-        )}
-        {resolveError && (
-          <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-            {resolveError}
-          </p>
-        )}
-      </section>
-
-      <section className="mt-5 rounded-xl border bg-card p-5">
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-lg bg-muted">
-            <WalletCards className="size-4" />
-          </span>
-          <h2 className="text-sm font-medium">Transfer details</h2>
-        </div>
-        <dl className="mt-5 grid gap-x-8 gap-y-4 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-5 grid gap-x-8 gap-y-4 border-t pt-5 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground">Intent address</dt>
-            <dd className="mt-1 flex items-center gap-2 font-mono">
+            <dt>Network</dt>
+            <dd className="mt-1 font-medium text-foreground">Base · 8453</dd>
+          </div>
+          <div>
+            <dt>Token</dt>
+            <dd className="mt-1 font-medium text-foreground">USDC</dd>
+          </div>
+          <div>
+            <dt>GOT intent address</dt>
+            <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
               {shortAddress(transfer.intentAddress, 8)}
               <CopyButton value={transfer.intentAddress} label="Copy" />
             </dd>
           </div>
+          {senderAddress && (
+            <div>
+              <dt>Sender address</dt>
+              <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
+                {shortAddress(senderAddress, 8)}
+                <CopyButton value={senderAddress} label="Copy" />
+              </dd>
+            </div>
+          )}
+          {recipientAddress && (
+            <div>
+              <dt>Recipient address</dt>
+              <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
+                {shortAddress(recipientAddress, 8)}
+                <CopyButton value={recipientAddress} label="Copy" />
+              </dd>
+            </div>
+          )}
           <div>
-            <dt className="text-muted-foreground">ID</dt>
-            <dd className="mt-1 flex items-center gap-2 font-mono">
-              <span className="max-w-48 truncate">
-                {transfer.requestId ?? "—"}
-              </span>
-              {transfer.requestId && (
-                <CopyButton value={transfer.requestId} label="Copy" />
-              )}
+            <dt>Internal transfer ID</dt>
+            <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
+              <span className="max-w-48 truncate">{transfer.id}</span>
+              <CopyButton value={transfer.id} label="Copy" />
             </dd>
           </div>
-          <div>
-            <dt className="text-muted-foreground">Protocol intent ID</dt>
-            <dd className="mt-1 flex items-center gap-2 font-mono">
-              {transfer.intentConfig
-                ? shortAddress(transfer.intentConfig.intentId, 8)
-                : "—"}
-              {transfer.intentConfig && (
+          {transfer.intentConfig && (
+            <div>
+              <dt>Protocol intent ID</dt>
+              <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
+                {shortAddress(transfer.intentConfig.intentId, 8)}
                 <CopyButton
                   value={transfer.intentConfig.intentId}
                   label="Copy"
                 />
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">API status</dt>
-            <dd className="mt-1">
-              <StatusBadge status={transfer.status} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Created</dt>
-            <dd className="mt-1 font-medium">
-              {formatDate(transfer.createdAt, true)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Recipient</dt>
-            <dd className="mt-1 font-medium">
-              {transfer.recipient ? shortAddress(transfer.recipient, 8) : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Reference</dt>
-            <dd className="mt-1 font-medium">{transfer.reference ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Network</dt>
-            <dd className="mt-1 font-medium">Base</dd>
-          </div>
+              </dd>
+            </div>
+          )}
+          {latestTransaction && (
+            <div>
+              <dt>Transaction hash</dt>
+              <dd className="mt-1">
+                <a
+                  href={`https://basescan.org/tx/${latestTransaction}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 font-mono font-medium text-foreground hover:underline"
+                >
+                  {shortAddress(latestTransaction, 8)}
+                  <ExternalLink className="size-3" />
+                </a>
+              </dd>
+            </div>
+          )}
+          {transfer.intentConfig && (
+            <div>
+              <dt>Protocol metadata</dt>
+              <dd className="mt-1 font-mono text-foreground">
+                {shortAddress(transfer.intentConfig.metadataHash, 8)}
+              </dd>
+            </div>
+          )}
         </dl>
-      </section>
+      </OnchainDetails>
     </div>
   )
 }

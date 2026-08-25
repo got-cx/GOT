@@ -7,6 +7,7 @@ import { NameClaimActions } from "@/components/dashboard/name-claim-actions"
 import { APIMessage } from "@/components/shared/api-message"
 import { CopyButton } from "@/components/shared/copy-button"
 import { EmptyState } from "@/components/shared/empty-state"
+import { OnchainDetails } from "@/components/shared/onchain-details"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
@@ -54,37 +55,47 @@ export function NamesDashboard() {
           description="Claim a GOT name or verify an X identity to make your Base Account easier to reach."
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-card">
-          <div className="min-w-[760px]">
-            <div className="grid grid-cols-[1.2fr_1fr_.8fr_.8fr_.7fr] gap-4 border-b bg-muted/50 px-5 py-3 text-[11px] text-muted-foreground">
-              <span>Identity</span>
-              <span>Base Account</span>
-              <span>Verified</span>
-              <span>Status</span>
-              <span>Link</span>
-            </div>
-            {data.items.map((name) => (
-              <div
-                key={name.id}
-                className="grid min-h-16 grid-cols-[1.2fr_1fr_.8fr_.8fr_.7fr] items-center gap-4 border-b px-5 text-xs last:border-b-0"
-              >
-                <span>
-                  <strong className="block">{name.label}</strong>
-                  <small className="text-muted-foreground capitalize">
-                    {name.kind}
+        <div className="divide-y overflow-hidden rounded-xl border bg-card">
+          {data.items.map((name) => (
+            <article key={name.id} className="px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="min-w-0">
+                  <strong className="block truncate text-sm">
+                    {name.label}
+                  </strong>
+                  <small className="mt-0.5 block text-muted-foreground capitalize">
+                    {name.kind} identity
+                    {name.verifiedAt
+                      ? ` · Verified ${formatDate(name.verifiedAt)}`
+                      : ""}
                   </small>
                 </span>
-                <span className="font-mono">
-                  {shortAddress(name.destination)}
+                <span className="flex shrink-0 items-center gap-3">
+                  <StatusBadge
+                    status={name.verified ? "verified" : "pending"}
+                  />
+                  <CopyButton value={name.url} label="Copy link" />
                 </span>
-                <span className="text-muted-foreground">
-                  {name.verifiedAt ? formatDate(name.verifiedAt) : "—"}
-                </span>
-                <StatusBadge status={name.verified ? "verified" : "pending"} />
-                <CopyButton value={name.url} label="Copy" />
               </div>
-            ))}
-          </div>
+              <OnchainDetails className="mt-3 border-t">
+                <dl className="grid gap-4 pt-2 sm:grid-cols-2">
+                  <div>
+                    <dt>Base Account address</dt>
+                    <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
+                      {shortAddress(name.destination, 8)}
+                      <CopyButton value={name.destination} label="Copy" />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Name key</dt>
+                    <dd className="mt-1 font-mono text-foreground">
+                      {shortAddress(name.nameKey, 8)}
+                    </dd>
+                  </div>
+                </dl>
+              </OnchainDetails>
+            </article>
+          ))}
         </div>
       )}
     </div>

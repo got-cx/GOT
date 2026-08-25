@@ -67,7 +67,7 @@ export function CreateTransferMenu({
               <ArrowDownLeft className="size-4" />
             </span>
             <span>
-              <strong className="block text-sm">Request</strong>
+              <strong className="block text-sm">Receive</strong>
               <small className="text-muted-foreground">
                 Create a link for someone to transfer funds to you
               </small>
