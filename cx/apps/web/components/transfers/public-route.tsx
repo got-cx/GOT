@@ -19,13 +19,19 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
+import { OnchainDetails } from "@/components/shared/onchain-details"
 import { QRCodeImage } from "@/components/shared/qr-code"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { appConfig } from "@/lib/app-config"
-import { formatMoney, shortAddress } from "@/lib/format"
-import { getGOTClient } from "@/lib/got-client"
 import { transferUSDC } from "@/lib/base-transactions"
+import {
+  formatMoney,
+  humanIdentity,
+  shortAddress,
+  BASE_ACCOUNT_LABEL,
+} from "@/lib/format"
+import { getGOTClient } from "@/lib/got-client"
 import { Button } from "@workspace/ui/components/button"
 
 export function PublicRoute({ route }: { route: string }) {
@@ -86,20 +92,20 @@ export function PublicRoute({ route }: { route: string }) {
     const label = formatIdentityLabel(parsed.link)
     return (
       <main className="grid min-h-svh place-items-center bg-foreground p-5 text-background">
-        <section className="w-full max-w-md rounded-2xl bg-background p-8 text-foreground">
+        <section className="w-full max-w-md rounded-3xl bg-background p-8 text-foreground">
           <Brand />
-          <p className="mt-14 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
-            REUSABLE RECIPIENT LINK
+          <p className="mt-14 text-xs font-medium text-muted-foreground">
+            Transfer to
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.055em]">
-            Transfer to {label}
+          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.055em]">
+            {label}
           </h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Enter an amount to create a specific deterministic 0x transfer
-            address for this recipient.
+            Choose an amount and add a note. GOT will handle the rest.
           </p>
           <Button
             className="mt-8 h-11 w-full"
+            nativeButton={false}
             render={
               <Link
                 href={`/transfers/new/send?recipient=${encodeURIComponent(label)}`}
@@ -110,7 +116,7 @@ export function PublicRoute({ route }: { route: string }) {
           </Button>
           <p className="mt-5 flex justify-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
-            Onchain. Direct. Non-custodial.
+            Secure transfer with GOT
           </p>
         </section>
       </main>
@@ -149,6 +155,9 @@ export function PublicRoute({ route }: { route: string }) {
         chainQuery.data.balance
       )
     : data.status
+  const recipientLabel = humanIdentity(request.recipient)
+  const hasHumanRecipient = recipientLabel !== BASE_ACCOUNT_LABEL
+
   async function transfer() {
     if (!configurationValid) return
     setIsTransferring(true)
@@ -164,7 +173,7 @@ export function PublicRoute({ route }: { route: string }) {
         refreshed.data.balance
       )
       if (currentAmount === 0n) {
-        throw new Error("This transfer is already fully funded.")
+        throw new Error("This transfer is already complete.")
       }
       const hash = await transferUSDC(
         request.intentAddress,
@@ -173,7 +182,7 @@ export function PublicRoute({ route }: { route: string }) {
       )
       const receipt = await protocol.waitForTransaction(hash)
       if (receipt.status !== "success") {
-        throw new Error("The Base transaction did not succeed.")
+        throw new Error("The transfer wasn’t completed. Please try again.")
       }
       await api.transfers.recordFunding(request.id, hash)
       const receiptParams = new URLSearchParams({ transaction: hash })
@@ -182,7 +191,7 @@ export function PublicRoute({ route }: { route: string }) {
       setTransferError(
         reason instanceof Error
           ? reason.message
-          : "The transfer could not be submitted."
+          : "The transfer could not be completed."
       )
     } finally {
       setIsTransferring(false)
@@ -191,152 +200,158 @@ export function PublicRoute({ route }: { route: string }) {
 
   return (
     <div className="flex min-h-svh flex-col bg-[#0b0b0b] text-white">
-      <header className="flex h-18 items-center justify-between border-b border-white/15 px-5 sm:px-8">
+      <header className="mx-auto flex h-18 w-full max-w-5xl items-center px-5 sm:px-8">
         <Brand inverse compact />
-        <span className="flex items-center gap-2 text-xs text-white/60">
-          <span className="size-1.5 rounded-full bg-blue-600" />
-          Base network
-        </span>
       </header>
-      <main className="mx-auto grid w-full max-w-4xl flex-1 items-stretch px-4 py-10 md:grid-cols-[1.05fr_.95fr]">
-        <section className="rounded-t-2xl bg-white p-7 text-center text-[#111] md:rounded-l-2xl md:rounded-tr-none md:p-10">
-          <span className="mx-auto grid size-12 place-items-center rounded-full bg-[#111] text-sm font-semibold text-white">
-            {data.recipient.slice(0, 1).toUpperCase()}
-          </span>
-          <p className="mt-4 text-sm text-neutral-500">
-            Transfer to{" "}
-            <strong className="font-mono text-[#111]">
-              {shortAddress(data.intentAddress)}
-            </strong>
-          </p>
-          <h1 className="mt-7 text-5xl font-semibold tracking-[-0.065em] sm:text-6xl">
-            {formatMoney(amountDue, 2).replace(` ${amountDue.symbol}`, "")}
-          </h1>
-          <p className="mt-2 text-sm font-medium text-neutral-500">
-            USDC · Base 🟦
-          </p>
-          {(data.note || data.reference) && (
-            <div className="mt-8 rounded-lg border border-neutral-200 p-4 text-left">
-              <small className="text-neutral-500">
-                {data.reference ? "Reference" : "Note"}
-              </small>
-              <p className="mt-1 text-sm">{data.reference ?? data.note}</p>
-              {data.reference && data.note && (
-                <p className="mt-2 text-xs text-neutral-500">{data.note}</p>
-              )}
+      <main className="mx-auto flex w-full max-w-lg flex-1 items-center px-4 py-6 sm:px-6 sm:py-10">
+        <div className="w-full overflow-hidden rounded-3xl bg-white text-[#111] shadow-2xl shadow-black/20">
+          <section className="px-6 py-7 text-center sm:px-8 sm:py-8">
+            <div className="flex items-center justify-between gap-4 text-left">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold tracking-[0.15em] text-neutral-500">
+                  ONCHAIN TRANSFER
+                </p>
+                {hasHumanRecipient && (
+                  <p className="mt-1 truncate text-sm">
+                    <span className="text-neutral-500">to: </span>
+                    <strong className="font-semibold">{recipientLabel}</strong>
+                  </p>
+                )}
+              </div>
+              <StatusBadge status={currentStatus} />
             </div>
-          )}
-          {data.feeAmount !== "0" && (
-            <div className="mt-3 flex justify-between rounded-lg bg-neutral-100 p-3 text-xs">
-              <span className="text-neutral-500">Execution/service fee</span>
-              <strong>
-                {formatMoney({ ...data.value, amount: data.feeAmount })}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <strong className="text-5xl font-semibold tracking-[-0.065em] sm:text-6xl">
+                {formatMoney(amountDue).replace(` ${amountDue.symbol}`, "")}
               </strong>
+              <span className="text-sm font-medium text-neutral-500">
+                {amountDue.symbol} · Base 🟦
+              </span>
             </div>
-          )}
-          {!configurationValid && (
-            <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-700">
-              This link does not match the canonical Base GOT deployment and
-              cannot be funded here.
-            </p>
-          )}
-          {chainQuery.error && (
-            <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-700">
-              {chainQuery.error instanceof Error
-                ? chainQuery.error.message
-                : "Unable to verify the live transfer balance."}
-            </p>
-          )}
-          {transferError && (
-            <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-700">
-              {transferError}
-            </p>
-          )}
-          <Button
-            className="mt-5 h-12 w-full bg-[#111] text-white hover:bg-neutral-800"
-            disabled={
-              !configurationValid ||
-              !chainQuery.data ||
-              Boolean(chainQuery.error) ||
-              fullyFunded ||
-              isTransferring
-            }
-            onClick={() => void transfer()}
-          >
-            {fullyFunded
-              ? "Transfer fully funded"
-              : chainQuery.isLoading
-                ? "Checking live balance…"
-                : isTransferring
-                  ? "Confirming with Base…"
-                  : `Transfer ${formatMoney(amountDue)}`}
-            <ArrowRight data-icon="inline-end" />
-          </Button>
-          <p className="mt-3 flex items-center justify-center gap-2 text-[11px] text-neutral-500">
-            <ShieldCheck className="size-3.5" />
-            You&apos;ll confirm this transfer in your Base Account
-          </p>
-        </section>
-        <aside className="rounded-b-2xl border border-white/15 p-7 md:rounded-r-2xl md:rounded-bl-none md:border-l-0 md:p-9">
-          <div className="flex items-start justify-between gap-5">
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.14em] text-white/45">
-                TRANSFER DETAILS
+            {(request.note || request.reference) && (
+              <div className="mx-auto mt-5 max-w-sm">
+                <p className="text-base leading-6">
+                  {request.reference ?? request.note}
+                </p>
+                {request.reference && request.note && (
+                  <p className="mt-1 text-sm text-neutral-500">
+                    {request.note}
+                  </p>
+                )}
+              </div>
+            )}
+            {request.feeAmount !== "0" && (
+              <p className="mt-5 text-xs text-neutral-500">
+                Service fee:{" "}
+                {formatMoney({ ...request.value, amount: request.feeAmount })}
               </p>
-              <h2 className="mt-2 text-2xl font-medium tracking-[-0.04em]">
-                Onchain underneath.
-              </h2>
-            </div>
-            <QRCodeImage value={request.intentAddress} size={86} inverse />
-          </div>
-          <dl className="mt-8 divide-y divide-white/15 text-xs">
-            <div className="flex items-center justify-between gap-4 py-4">
-              <dt className="text-white/45">Transfer address</dt>
-              <dd className="flex items-center gap-2 font-mono">
-                {shortAddress(data.intentAddress)}
-                <CopyButton
-                  className="border-white/20 bg-transparent text-white hover:bg-white/10"
-                  value={data.intentAddress}
-                  label=""
-                />
-              </dd>
-            </div>
-            <div className="flex justify-between py-4">
-              <dt className="text-white/45">Network</dt>
-              <dd>Base · 8453</dd>
-            </div>
-            <div className="flex justify-between py-4">
-              <dt className="text-white/45">Token</dt>
-              <dd>USDC</dd>
-            </div>
-            <div className="flex justify-between py-4">
-              <dt className="text-white/45">Status</dt>
-              <dd>
-                <StatusBadge status={currentStatus} />
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-7 flex gap-2 text-xs text-white/45">
-            <ShieldCheck className="size-4" />
-            Onchain. Direct. Non-custodial.
-          </p>
-          {data.transactionHash && (
-            <a
-              href={`https://basescan.org/tx/${data.transactionHash}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 flex items-center gap-2 text-xs text-white/60 hover:text-white"
+            )}
+            {!configurationValid && (
+              <p className="mt-5 rounded-lg bg-red-50 p-3 text-xs text-red-700">
+                This transfer link can&apos;t be verified and can&apos;t be
+                completed here.
+              </p>
+            )}
+            {chainQuery.error && (
+              <p className="mt-5 rounded-lg bg-red-50 p-3 text-xs text-red-700">
+                We couldn&apos;t verify the current transfer status. Please try
+                again.
+              </p>
+            )}
+            {transferError && (
+              <p className="mt-5 rounded-lg bg-red-50 p-3 text-xs text-red-700">
+                {transferError}
+              </p>
+            )}
+            <Button
+              className="mt-6 h-12 w-full bg-[#111] text-base text-white hover:bg-neutral-800"
+              disabled={
+                !configurationValid ||
+                !chainQuery.data ||
+                Boolean(chainQuery.error) ||
+                fullyFunded ||
+                isTransferring
+              }
+              onClick={() => void transfer()}
             >
-              View current transaction <ExternalLink className="size-3.5" />
-            </a>
-          )}
-        </aside>
+              {fullyFunded
+                ? "Transfer complete"
+                : chainQuery.isLoading
+                  ? "Checking transfer…"
+                  : isTransferring
+                    ? "Completing transfer…"
+                    : "Transfer"}
+              {!fullyFunded && <ArrowRight data-icon="inline-end" />}
+            </Button>
+            <p className="mt-3 flex items-center justify-center gap-2 text-[11px] text-neutral-500">
+              <ShieldCheck className="size-3.5" />
+              You&apos;ll confirm in your Base Account
+            </p>
+
+            <div className="-mx-6 mt-6 -mb-7 bg-[#111] px-6 pt-8 pb-7 text-white sm:-mx-8 sm:-mb-8 sm:px-8 sm:pb-8">
+              <div className="mx-auto w-max rounded-2xl border border-white/15 bg-[#111] p-3">
+                <QRCodeImage value={request.intentAddress} size={216} inverse />
+              </div>
+              <p className="mx-auto mt-3 max-w-xs text-xs leading-5 text-white/50">
+                Scan in another app or exchange to send {amountDue.symbol} on
+                Base
+              </p>
+              <OnchainDetails
+                inverse
+                className="mt-5 border-t border-white/15 text-left"
+                contentClassName="pb-0"
+              >
+                <dl className="divide-y divide-white/15 border-t border-white/15">
+                  <div className="flex justify-between gap-4 py-3">
+                    <dt>Network</dt>
+                    <dd className="font-medium text-white">Base · 8453</dd>
+                  </div>
+                  <div className="flex justify-between gap-4 py-3">
+                    <dt>Token</dt>
+                    <dd className="font-medium text-white">USDC</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 py-3">
+                    <dt>GOT intent address</dt>
+                    <dd className="flex items-center gap-2 font-mono text-white">
+                      {shortAddress(request.intentAddress)}
+                      <CopyButton
+                        className="border-white/20 bg-transparent text-white hover:bg-white/10"
+                        value={request.intentAddress}
+                        label="Copy"
+                      />
+                    </dd>
+                  </div>
+                  {request.transactionHash && (
+                    <div className="flex items-center justify-between gap-4 py-3">
+                      <dt>Transaction hash</dt>
+                      <dd className="flex items-center gap-2 font-mono text-white">
+                        {shortAddress(request.transactionHash)}
+                        <CopyButton
+                          className="border-white/20 bg-transparent text-white hover:bg-white/10"
+                          value={request.transactionHash}
+                          label="Copy"
+                        />
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                {request.transactionHash && (
+                  <a
+                    href={`https://basescan.org/tx/${request.transactionHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-2 font-medium text-white hover:underline"
+                  >
+                    View in block explorer <ExternalLink className="size-3.5" />
+                  </a>
+                )}
+              </OnchainDetails>
+            </div>
+          </section>
+        </div>
       </main>
-      <footer className="flex h-14 items-center justify-between border-t border-white/15 px-5 text-[11px] text-white/40 sm:px-8">
-        <span>
-          Powered by <strong className="text-foreground">got.cx</strong>
-        </span>
-        <span>Global Onchain Transfers</span>
+      <footer className="px-5 py-6 text-center text-[11px] text-white/40">
+        Powered by got.cx · Global Onchain Transfers
       </footer>
     </div>
   )

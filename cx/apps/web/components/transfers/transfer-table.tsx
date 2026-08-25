@@ -1,12 +1,18 @@
 import type { Transfer } from "@got-cx/sdk"
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Link2 } from "lucide-react"
 import Link from "next/link"
+import { isAddress } from "viem"
 
 import { CopyButton } from "@/components/shared/copy-button"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { formatDate, formatMoney } from "@/lib/format"
-import { transferPaymentLink } from "@/lib/transfer-envelope"
+import {
+  formatDate,
+  formatMoney,
+  humanIdentity,
+  shortAddress,
+} from "@/lib/format"
+import { transferLink } from "@/lib/transfer-envelope"
 
 export function TransferTable({ transfers }: { transfers: Transfer[] }) {
   if (!transfers.length)
@@ -19,54 +25,66 @@ export function TransferTable({ transfers }: { transfers: Transfer[] }) {
     )
 
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
-      <div className="min-w-[860px]">
-        <div className="grid grid-cols-[1.5fr_1fr_1fr_.9fr_.7fr_.7fr] gap-4 border-b bg-muted/50 px-5 py-3 text-[11px] font-medium text-muted-foreground">
-          <span>Party</span>
-          <span>Amount</span>
-          <span>ID</span>
-          <span>Date</span>
-          <span>Status</span>
-          <span>Link</span>
-        </div>
-        {transfers.map((transfer) => {
-          const DirectionIcon =
-            transfer.direction === "incoming" ? ArrowDownLeft : ArrowUpRight
-          const transferUrl = transferPaymentLink(transfer)
-          return (
-            <div
-              key={transfer.id}
-              className="grid min-h-16 grid-cols-[1.5fr_1fr_1fr_.9fr_.7fr_.7fr] items-center gap-4 border-b px-5 text-xs last:border-b-0"
+    <div className="divide-y overflow-hidden rounded-xl border bg-card">
+      {transfers.map((transfer) => {
+        const incoming = transfer.direction === "incoming"
+        const DirectionIcon = incoming ? ArrowDownLeft : ArrowUpRight
+        const transferUrl = transferLink(transfer)
+        const partyLabel = humanIdentity(transfer.party)
+        const technicalParty = isAddress(transfer.party, { strict: false })
+        const context = transfer.note ?? transfer.reference
+
+        return (
+          <article
+            key={transfer.id}
+            className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-muted/40 sm:gap-4 sm:px-5"
+          >
+            <Link
+              href={`/dashboard/transfers/${encodeURIComponent(transfer.intentAddress)}`}
+              className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
             >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="grid size-8 place-items-center rounded-lg border bg-muted">
-                  <DirectionIcon className="size-3.5" />
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted">
+                <DirectionIcon className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-sm">{partyLabel}</strong>
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  {context ??
+                    (incoming ? "Incoming transfer" : "Outgoing transfer")}
                 </span>
-                <span className="min-w-0">
-                  <Link
-                    href={`/dashboard/transfers/${encodeURIComponent(transfer.intentAddress)}`}
-                    className="block truncate font-semibold hover:underline"
-                  >
-                    {transfer.party}
-                  </Link>
-                  <small className="text-muted-foreground capitalize">
-                    {transfer.direction}
-                  </small>
+                <span className="mt-1 block text-[11px] text-muted-foreground sm:hidden">
+                  {formatDate(transfer.createdAt)}
+                  {technicalParty ? ` · ${shortAddress(transfer.party)}` : ""}
                 </span>
               </span>
-              <strong>{formatMoney(transfer.value, 2)}</strong>
-              <span className="truncate text-muted-foreground">
-                {transfer.requestId ?? "—"}
+              <span className="shrink-0 text-right">
+                <strong className="block text-sm tabular-nums">
+                  {incoming ? "+" : "−"}
+                  {formatMoney(transfer.value, 2)}
+                </strong>
+                <span className="mt-1 flex justify-end">
+                  <StatusBadge status={transfer.status} />
+                </span>
               </span>
-              <span className="text-muted-foreground">
-                {formatDate(transfer.createdAt)}
-              </span>
-              <StatusBadge status={transfer.status} />
-              <CopyButton value={transferUrl} label="Copy" />
-            </div>
-          )
-        })}
-      </div>
+            </Link>
+            <span className="hidden min-w-24 text-right text-xs text-muted-foreground sm:block">
+              {formatDate(transfer.createdAt)}
+              {technicalParty && (
+                <small className="mt-1 block font-mono">
+                  {shortAddress(transfer.party)}
+                </small>
+              )}
+            </span>
+            <CopyButton
+              value={transferUrl}
+              label="Link"
+              className="hidden sm:inline-flex"
+            >
+              <Link2 />
+            </CopyButton>
+          </article>
+        )
+      })}
     </div>
   )
 }

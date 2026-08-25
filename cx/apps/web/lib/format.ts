@@ -1,5 +1,7 @@
 import type { Money } from "@got-cx/sdk"
-import { formatUnits, type Address } from "viem"
+import { formatUnits, isAddress, type Address } from "viem"
+
+export const BASE_ACCOUNT_LABEL = "Base Account"
 
 export function formatMoney(value: Money, minimumFractionDigits = 0): string {
   const amount = formatUnits(BigInt(value.amount), value.decimals)
@@ -18,10 +20,23 @@ export function formatDate(value: string, withTime = false): string {
 }
 
 export function shortAddress(value: Address | string, size = 5): string {
-  if(value.length <= size * 2 + 3) {
+  if (value.length <= size * 2 + 3) {
     return value
   }
   return `${value.slice(0, size + 2)}…${value.slice(-size)}`
+}
+
+export function humanIdentity(value?: string | null): string {
+  if (!value || isAddress(value, { strict: false })) return BASE_ACCOUNT_LABEL
+  return value
+}
+
+export function identityInitial(value?: string | null): string {
+  const label = humanIdentity(value)
+    .replace(/^(x:|tg:|email:|phone:)/, "")
+    .replace(/^@/, "")
+    .trim()
+  return (label[0] ?? "B").toUpperCase()
 }
 
 export function titleCase(value: string): string {

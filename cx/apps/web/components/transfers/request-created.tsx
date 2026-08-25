@@ -1,18 +1,22 @@
 "use client"
 
-import { ArrowLeft, Check, ExternalLink } from "lucide-react"
+import { ArrowLeft, Check, ExternalLink, QrCode, Share2 } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
 
 import { APIMessage } from "@/components/shared/api-message"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
+import { OnchainDetails } from "@/components/shared/onchain-details"
+import { QRCodeImage } from "@/components/shared/qr-code"
 import { useAPIResource } from "@/hooks/use-api-resource"
-import { formatMoney } from "@/lib/format"
+import { formatMoney, humanIdentity, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
-import { transferPaymentLink } from "@/lib/transfer-envelope"
+import { transferLink } from "@/lib/transfer-envelope"
 import { Button } from "@workspace/ui/components/button"
 
 export function RequestCreated({ transferId }: { transferId: string }) {
+  const [showQR, setShowQR] = useState(false)
   const client = getGOTClient()
   const load = async () => {
     return client.transfers.getByIntent(transferId)
@@ -33,7 +37,26 @@ export function RequestCreated({ transferId }: { transferId: string }) {
       <main className="mx-auto mt-24 h-96 max-w-lg animate-pulse rounded-xl border bg-muted" />
     )
 
-  const transferUrl = transferPaymentLink(data)
+  const transferUrl = transferLink(data)
+  const displayUrl = transferUrl.replace(
+    data.intentAddress,
+    shortAddress(data.intentAddress)
+  )
+  const recipient = humanIdentity(data.recipient)
+  const shareText = data.note ?? data.reference ?? undefined
+
+  async function share() {
+    if (navigator.share) {
+      await navigator.share({
+        title: `Transfer to ${recipient}`,
+        text: shareText,
+        url: transferUrl,
+      })
+      return
+    }
+    await navigator.clipboard.writeText(transferUrl)
+  }
+
   return (
     <div className="min-h-svh px-5">
       <header className="mx-auto flex h-18 max-w-5xl items-center justify-between border-b">
@@ -51,52 +74,90 @@ export function RequestCreated({ transferId }: { transferId: string }) {
           <Check className="size-5" />
         </span>
         <p className="text-[11px] font-semibold tracking-[0.15em] text-muted-foreground">
-          TRANSFER REQUEST CREATED
+          TRANSFER LINK CREATED
         </p>
         <h1 className="mt-2 text-4xl font-semibold tracking-[-0.055em]">
-          Transfer request ready
+          Your transfer link is ready
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
-          Share this deterministic link with the sender.
+          Share it with the person sending {formatMoney(data.value, 2)} to{" "}
+          {recipient}.
         </p>
-        <div className="mt-8 flex items-center justify-between gap-3 rounded-lg border bg-muted/40 p-2 pl-4 text-left">
-          <strong className="min-w-0 truncate font-mono text-xs">
-            {transferUrl}
-          </strong>
-          <CopyButton value={transferUrl} label="Copy link" />
+        <div className="mt-8 rounded-xl bg-muted/60 p-4 text-left">
+          <strong className="block truncate text-sm">{displayUrl}</strong>
         </div>
-        <dl className="mt-4 divide-y rounded-lg border text-left text-sm">
-          <div className="flex justify-between px-4 py-3">
-            <dt className="text-muted-foreground">Amount</dt>
-            <dd className="font-medium">{formatMoney(data.value, 2)}</dd>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <CopyButton value={transferUrl} label="Copy link" className="h-10" />
+          <Button
+            variant="outline"
+            className="h-10"
+            onClick={() => void share().catch(() => undefined)}
+          >
+            <Share2 />
+            Share
+          </Button>
+          <Button
+            variant="outline"
+            className="h-10"
+            onClick={() => setShowQR((value) => !value)}
+          >
+            <QrCode />
+            {showQR ? "Hide QR" : "Show QR"}
+          </Button>
+        </div>
+        {showQR && (
+          <div className="mx-auto mt-6 w-max rounded-2xl border bg-white p-3">
+            <QRCodeImage value={transferUrl} size={220} />
           </div>
-          <div className="flex justify-between px-4 py-3">
-            <dt className="text-muted-foreground">Recipient</dt>
-            <dd className="font-medium">{data.recipient}</dd>
-          </div>
-          <div className="flex justify-between px-4 py-3">
-            <dt className="text-muted-foreground">Network</dt>
-            <dd className="font-medium">Base</dd>
-          </div>
-          {data.requestId && (
-            <div className="flex items-center justify-between gap-4 px-4 py-3">
-              <dt className="text-muted-foreground">ID</dt>
-              <dd className="flex items-center gap-2 font-mono text-xs">
-                <span className="max-w-52 truncate">{data.requestId}</span>
-                <CopyButton value={data.requestId} label="Copy" />
+        )}
+        {(data.requestId || data.note || data.reference) && (
+          <dl className="mt-6 divide-y rounded-xl border px-4 text-left text-sm">
+            {data.requestId && (
+              <div className="flex items-center justify-between gap-4 py-3.5">
+                <dt className="text-muted-foreground">Transfer ID</dt>
+                <dd className="flex min-w-0 items-center gap-2 font-medium">
+                  <span className="max-w-52 truncate">{data.requestId}</span>
+                  <CopyButton value={data.requestId} label="Copy ID" />
+                </dd>
+              </div>
+            )}
+            {data.note && (
+              <div className="flex justify-between gap-4 py-3.5">
+                <dt className="text-muted-foreground">Note</dt>
+                <dd className="max-w-72 text-right font-medium">
+                  {data.note}
+                </dd>
+              </div>
+            )}
+            {data.reference && (
+              <div className="flex justify-between gap-4 py-3.5">
+                <dt className="text-muted-foreground">Reference</dt>
+                <dd className="max-w-72 text-right font-medium">
+                  {data.reference}
+                </dd>
+              </div>
+            )}
+          </dl>
+        )}
+        <OnchainDetails className="mt-6 border-t text-left">
+          <dl className="divide-y">
+            <div className="flex justify-between py-3">
+              <dt>Network</dt>
+              <dd className="font-medium text-foreground">Base</dd>
+            </div>
+            <div className="flex justify-between py-3">
+              <dt>Token</dt>
+              <dd className="font-medium text-foreground">USDC</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 py-3">
+              <dt>GOT intent address</dt>
+              <dd className="flex items-center gap-2 font-mono text-foreground">
+                {shortAddress(data.intentAddress)}
+                <CopyButton value={data.intentAddress} label="Copy" />
               </dd>
             </div>
-          )}
-          {data.reference && (
-            <div className="flex justify-between px-4 py-3">
-              <dt className="text-muted-foreground">Reference</dt>
-              <dd className="font-medium">{data.reference}</dd>
-            </div>
-          )}
-        </dl>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Keep the ID with the transfer details to recreate this address.
-        </p>
+          </dl>
+        </OnchainDetails>
         <div className="mt-5 grid gap-2 sm:grid-cols-2">
           <Button
             render={<a href={transferUrl} />}
@@ -111,7 +172,7 @@ export function RequestCreated({ transferId }: { transferId: string }) {
             nativeButton={false}
             className="h-10"
           >
-            Create another request
+            Create another link
           </Button>
         </div>
       </main>

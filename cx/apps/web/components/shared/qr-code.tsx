@@ -40,7 +40,7 @@ export function QRCodeImage({
       src={source}
       width={size}
       height={size}
-      alt="Transfer address QR code"
+      alt="Transfer QR code"
       className="rounded-md"
     />
   ) : (

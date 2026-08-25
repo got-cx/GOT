@@ -11,8 +11,11 @@ export type StatusBadgeStatus =
 
 const statusLabels: Partial<Record<StatusBadgeStatus, string>> = {
   [TransferStatus.AddressReady]: "Awaiting",
-  [TransferStatus.FundingDetected]: "Paid",
-  [TransferStatus.Partial]: "Partially",
+  [TransferStatus.FundingDetected]: "Funds received",
+  [TransferStatus.Partial]: "Partial",
+  [TransferStatus.Settled]: "Completed",
+  [TransferStatus.Overpaid]: "Completed",
+  [TransferStatus.Unresolved]: "Ready to receive",
 }
 
 export function StatusBadge({ status }: { status: StatusBadgeStatus }) {

@@ -14,7 +14,8 @@ export const metadata: Metadata = {
     default: "GOT — Global Onchain Transfers",
     template: "%s · got.cx",
   },
-  description: "Global onchain transfers through one deterministic link.",
+  description:
+    "Onchain transfer solutions for people, products, and developers.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://got.cx"),
 }
 

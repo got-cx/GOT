@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, ChevronDown, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 
 import {
@@ -19,6 +19,7 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { BaseAccountButton } from "@/components/auth/base-account-button"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
+import { OnchainDetails } from "@/components/shared/onchain-details"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { appConfig } from "@/lib/app-config"
 import { getGOTClient } from "@/lib/got-client"
@@ -70,8 +71,8 @@ export function RequestTransferForm() {
         ? [
             {
               value: `wallet:${account}`,
-              label: shortAddress(account),
-              detail: "Base Account",
+              label: "Base Account",
+              detail: "Signed-in account",
             },
           ]
         : []),
@@ -84,7 +85,9 @@ export function RequestTransferForm() {
     if (!account)
       throw new Error("Sign in with the receiving Base Account first.")
     if (!selected)
-      throw new Error("Sign in or verify a GOT name before creating a request.")
+      throw new Error(
+        "Sign in or verify a GOT name before creating a transfer link."
+      )
     const metadata = JSON.stringify({
       reference: reference || undefined,
       note: note || undefined,
@@ -102,22 +105,32 @@ export function RequestTransferForm() {
     })
   }, [account, amount, dueAt, note, reference, requestId, selected, sender])
 
-  async function preview() {
-    setError(null)
-    setIsPreviewing(true)
-    try {
-      setPreviewAddress(await protocol.previewIntent(buildConfig()))
-    } catch (reason) {
-      setPreviewAddress(null)
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Unable to preview this transfer request."
-      )
-    } finally {
-      setIsPreviewing(false)
+  const canPreview = Boolean(account && selected && amount && requestId.trim())
+
+  useEffect(() => {
+    if (!canPreview) return
+
+    let current = true
+    const timer = window.setTimeout(() => {
+      setIsPreviewing(true)
+      void Promise.resolve()
+        .then(() => protocol.previewIntent(buildConfig()))
+        .then((address) => {
+          if (current) setPreviewAddress(address)
+        })
+        .catch(() => {
+          if (current) setPreviewAddress(null)
+        })
+        .finally(() => {
+          if (current) setIsPreviewing(false)
+        })
+    }, 250)
+
+    return () => {
+      current = false
+      window.clearTimeout(timer)
     }
-  }
+  }, [buildConfig, canPreview, protocol])
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -166,7 +179,7 @@ export function RequestTransferForm() {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to create this request."
+          : "Unable to create this transfer link."
       )
     } finally {
       setIsSubmitting(false)
@@ -181,10 +194,10 @@ export function RequestTransferForm() {
       ? Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
       : "—"
   const previewUrl = previewAddress
-    ? `${appConfig.siteUrl}/${shortAddress(previewAddress)}`
+    ? `${appConfig.siteUrl.replace(/\/$/, "")}/${previewAddress}`
     : isPreviewing
-      ? "Deriving address…"
-      : `${appConfig.siteUrl}/0x...`
+      ? "Preparing link…"
+      : `${appConfig.siteUrl}/…`
 
   return (
     <div className="min-h-svh">
@@ -202,20 +215,20 @@ export function RequestTransferForm() {
       <main className="mx-auto grid max-w-5xl gap-12 px-5 py-12 md:grid-cols-[1.2fr_.8fr] md:py-16">
         <section>
           <p className="text-[11px] font-semibold tracking-[0.15em] text-muted-foreground">
-            REQUEST TRANSFER
+            RECEIVE
           </p>
           <h1 className="mt-2 text-4xl font-semibold tracking-[-0.055em]">
-            Request a transfer
+            Create a transfer link
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Create a link someone can use to transfer funds to you.
+            Add who it&apos;s for, the amount, and a helpful note.
           </p>
           <form
             className="mt-8 space-y-5"
             onSubmit={(event) => void submit(event)}
           >
             <label className="block text-xs font-medium">
-              <span className="mb-2 block">Receive to</span>
+              <span className="mb-2 block">Recipient</span>
               <select
                 required
                 value={selected}
@@ -235,39 +248,30 @@ export function RequestTransferForm() {
                 ))}
               </select>
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1.3fr_.7fr]">
-              <label className="block text-xs font-medium">
-                <span className="mb-2 block">Amount</span>
-                <div className="relative">
-                  <Input
-                    required
-                    min="0.000001"
-                    step="0.000001"
-                    inputMode="decimal"
-                    type="number"
-                    value={amount}
-                    onChange={(event) => {
-                      setAmount(event.target.value)
-                      setPreviewAddress(null)
-                    }}
-                    className="h-11 pr-16 text-base"
-                    placeholder="0.00"
-                  />
-                  <span className="absolute top-3 right-3 text-sm text-muted-foreground">
-                    USDC
-                  </span>
-                </div>
-              </label>
-              <label className="block text-xs font-medium">
-                <span className="mb-2 block">Network</span>
-                <div className="flex h-11 items-center gap-2 rounded-lg border px-3 text-sm">
-                  <span className="size-2 rounded-full bg-blue-600" />
-                  Base
-                </div>
-              </label>
-            </div>
             <label className="block text-xs font-medium">
-              <span className="mb-2 block">ID</span>
+              <span className="mb-2 block">Amount</span>
+              <div className="relative">
+                <Input
+                  required
+                  min="0.000001"
+                  step="0.000001"
+                  inputMode="decimal"
+                  type="number"
+                  value={amount}
+                  onChange={(event) => {
+                    setAmount(event.target.value)
+                    setPreviewAddress(null)
+                  }}
+                  className="h-11 pr-16 text-base"
+                  placeholder="0.00"
+                />
+                <span className="absolute top-3 right-3 text-sm text-muted-foreground">
+                  USDC
+                </span>
+              </div>
+            </label>
+            <label className="block text-xs font-medium">
+              <span className="mb-2 block">Transfer ID</span>
               <Input
                 required
                 value={requestId}
@@ -302,7 +306,7 @@ export function RequestTransferForm() {
               onClick={() => setAdvanced((value) => !value)}
               className="flex w-full items-center justify-between text-xs text-muted-foreground"
             >
-              Advanced options{" "}
+              More{" "}
               <ChevronDown
                 className={`size-4 transition-transform ${advanced ? "rotate-180" : ""}`}
               />
@@ -360,46 +364,48 @@ export function RequestTransferForm() {
                     className="h-11"
                   />
                 </label>
-                <div className="grid grid-cols-3 gap-2 text-[11px]">
-                  <span>
-                    <small className="block text-muted-foreground">
-                      Protocol fee
-                    </small>
-                    <strong>0 bps</strong>
-                  </span>
-                  <span>
-                    <small className="block text-muted-foreground">Token</small>
-                    <strong>Base USDC</strong>
-                  </span>
-                  <span>
-                    <small className="block text-muted-foreground">
-                      Settlement
-                    </small>
-                    <strong>Direct</strong>
-                  </span>
-                </div>
               </div>
             )}
+            <OnchainDetails className="border-t">
+              <div className="space-y-4 pt-2">
+                <dl className="grid grid-cols-3 gap-2">
+                  <div>
+                    <dt>Network</dt>
+                    <dd className="mt-1 font-medium text-foreground">Base</dd>
+                  </div>
+                  <div>
+                    <dt>Token</dt>
+                    <dd className="mt-1 font-medium text-foreground">USDC</dd>
+                  </div>
+                  <div>
+                    <dt>Protocol fee</dt>
+                    <dd className="mt-1 font-medium text-foreground">0 bps</dd>
+                  </div>
+                  <div className="col-span-3 border-t pt-3">
+                    <dt>GOT intent address</dt>
+                    <dd className="mt-1 flex items-center gap-2 font-mono text-foreground">
+                      {isPreviewing
+                        ? "Preparing…"
+                        : previewAddress
+                          ? shortAddress(previewAddress, 8)
+                          : "..."}
+                      {previewAddress && !isPreviewing && (
+                        <CopyButton value={previewAddress} label="Copy" />
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </OnchainDetails>
             {error && (
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
                 {error}
               </p>
             )}
-            <div className="grid gap-2 sm:grid-cols-[auto_1fr]">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11"
-                onClick={() => void preview()}
-                disabled={
-                  !amount || !selected || !requestId.trim() || isPreviewing
-                }
-              >
-                {isPreviewing ? "Previewing…" : "Preview"}
-              </Button>
+            <div>
               <Button
                 type="submit"
-                className="h-11"
+                className="h-11 w-full"
                 disabled={
                   !api ||
                   !amount ||
@@ -408,7 +414,9 @@ export function RequestTransferForm() {
                   isSubmitting
                 }
               >
-                {isSubmitting ? "Creating request…" : "Create request"}
+                {isSubmitting
+                  ? "Creating transfer link…"
+                  : "Create transfer link"}
                 <ArrowRight data-icon="inline-end" />
               </Button>
             </div>
@@ -416,42 +424,32 @@ export function RequestTransferForm() {
         </section>
         <aside className="h-max rounded-xl border bg-muted/40 p-5 md:sticky md:top-8">
           <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
-            TRANSFER PREVIEW
+            LINK PREVIEW
           </p>
           <div className="mt-3 rounded-lg border bg-background p-4">
             <small className="text-muted-foreground">Recipient</small>
             <strong className="mt-1 block truncate">{recipientLabel}</strong>
-            <small className="mt-4 block text-muted-foreground">
-              Transfer URL
-            </small>
-            <strong className="mt-1 block font-mono text-xs">
-              {previewUrl}
+            <small className="mt-4 block text-muted-foreground">Amount</small>
+            <strong className="mt-1 block text-2xl tracking-[-0.04em]">
+              {displayAmount} USDC
             </strong>
+            {note && <p className="mt-4 text-sm">{note}</p>}
           </div>
           <dl className="mt-4 divide-y text-xs">
-            <div className="flex justify-between py-3">
-              <dt className="text-muted-foreground">Amount</dt>
-              <dd className="font-medium">{displayAmount} USDC</dd>
-            </div>
-            <div className="flex justify-between py-3">
-              <dt className="text-muted-foreground">Network</dt>
-              <dd className="font-medium">Base</dd>
-            </div>
             <div className="flex items-center justify-between gap-3 py-3">
-              <dt className="text-muted-foreground">ID</dt>
-              <dd className="flex min-w-0 items-center gap-2 font-mono">
-                <span className="max-w-28 truncate">{requestId || "—"}</span>
-                {requestId && <CopyButton value={requestId} label="Copy" />}
+              <dt className="text-muted-foreground">Transfer ID</dt>
+              <dd className="max-w-52 truncate font-medium">
+                {requestId || "—"}
               </dd>
             </div>
             <div className="flex justify-between py-3">
-              <dt className="text-muted-foreground">Settlement</dt>
-              <dd className="font-medium">Direct to recipient</dd>
+              <dt className="text-muted-foreground">Transfer link</dt>
+              <dd className="max-w-52 truncate font-medium">{previewUrl}</dd>
             </div>
           </dl>
           <p className="mt-3 flex gap-2 text-[11px] leading-5 text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
-            The transfer address is ready to receive USDC
+            The link will be ready to copy, share, or show as a QR code.
           </p>
         </aside>
       </main>

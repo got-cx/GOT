@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowRight, ChevronDown, ShieldCheck } from "lucide-react"
+import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMemo, useState } from "react"
@@ -19,6 +19,7 @@ import {
 } from "@got-cx/sdk"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Brand } from "@/components/shared/brand"
+import { OnchainDetails } from "@/components/shared/onchain-details"
 import { appConfig } from "@/lib/app-config"
 import { getGOTClient } from "@/lib/got-client"
 import { Button } from "@workspace/ui/components/button"
@@ -47,8 +48,6 @@ export function SendTransferForm() {
   )
   const [amount, setAmount] = useState("")
   const [note, setNote] = useState("")
-  const [advanced, setAdvanced] = useState(false)
-  const [previewAddress, setPreviewAddress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -74,7 +73,6 @@ export function SendTransferForm() {
         intentId,
       })
       const intentAddress = await protocol.previewIntent(config)
-      setPreviewAddress(intentAddress)
       const transfer = await api.transfers.create(
         {
           direction: "outgoing",
@@ -145,48 +143,33 @@ export function SendTransferForm() {
               <Input
                 required
                 value={recipient}
-                onChange={(event) => {
-                  setRecipient(event.target.value)
-                  setPreviewAddress(null)
-                }}
+                onChange={(event) => setRecipient(event.target.value)}
                 className="h-11"
-                placeholder="@name, social, email, phone, or 0x wallet"
+                placeholder="@name, social, email, phone, or account"
               />
               <small className="mt-2 block font-normal text-muted-foreground">
-                GOT name, X, Telegram, email, phone, or wallet address
+                GOT name, X, Telegram, email, phone, or Base Account
               </small>
             </label>
-            <div className="grid gap-4 sm:grid-cols-[1.3fr_.7fr]">
-              <label className="block text-xs font-medium">
-                <span className="mb-2 block">Amount</span>
-                <div className="relative">
-                  <Input
-                    required
-                    type="number"
-                    min="0.000001"
-                    step="0.000001"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(event) => {
-                      setAmount(event.target.value)
-                      setPreviewAddress(null)
-                    }}
-                    className="h-11 pr-16 text-base"
-                    placeholder="0.00"
-                  />
-                  <span className="absolute top-3 right-3 text-sm text-muted-foreground">
-                    USDC
-                  </span>
-                </div>
-              </label>
-              <label className="block text-xs font-medium">
-                <span className="mb-2 block">Network</span>
-                <div className="flex h-11 items-center gap-2 rounded-lg border px-3 text-sm">
-                  <span className="size-2 rounded-full bg-blue-600" />
-                  Base
-                </div>
-              </label>
-            </div>
+            <label className="block text-xs font-medium">
+              <span className="mb-2 block">Amount</span>
+              <div className="relative">
+                <Input
+                  required
+                  type="number"
+                  min="0.000001"
+                  step="0.000001"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  className="h-11 pr-16 text-base"
+                  placeholder="0.00"
+                />
+                <span className="absolute top-3 right-3 text-sm text-muted-foreground">
+                  USDC
+                </span>
+              </div>
+            </label>
             <label className="block text-xs font-medium">
               <span className="mb-2 flex justify-between">
                 Note{" "}
@@ -196,43 +179,26 @@ export function SendTransferForm() {
               </span>
               <Textarea
                 value={note}
-                onChange={(event) => {
-                  setNote(event.target.value)
-                  setPreviewAddress(null)
-                }}
+                onChange={(event) => setNote(event.target.value)}
                 placeholder="What is this transfer for?"
               />
             </label>
-            <button
-              type="button"
-              onClick={() => setAdvanced((value) => !value)}
-              className="flex w-full items-center justify-between text-xs text-muted-foreground"
-            >
-              Advanced options{" "}
-              <ChevronDown
-                className={`size-4 ${advanced ? "rotate-180" : ""}`}
-              />
-            </button>
-            {advanced && (
-              <div className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/40 p-3 text-[11px]">
-                <span>
-                  <small className="block text-muted-foreground">
-                    Protocol fee
-                  </small>
-                  <strong>0 bps</strong>
-                </span>
-                <span>
-                  <small className="block text-muted-foreground">Partner</small>
-                  <strong>None</strong>
-                </span>
-                <span>
-                  <small className="block text-muted-foreground">
-                    Settlement
-                  </small>
-                  <strong>Direct</strong>
-                </span>
-              </div>
-            )}
+            <OnchainDetails className="border-t">
+              <dl className="grid grid-cols-3 gap-2 pt-2">
+                <div>
+                  <dt>Network</dt>
+                  <dd className="mt-1 font-medium text-foreground">Base</dd>
+                </div>
+                <div>
+                  <dt>Token</dt>
+                  <dd className="mt-1 font-medium text-foreground">USDC</dd>
+                </div>
+                <div>
+                  <dt>Protocol fee</dt>
+                  <dd className="mt-1 font-medium text-foreground">0 bps</dd>
+                </div>
+              </dl>
+            </OnchainDetails>
             {(error || authError) && (
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
                 {error ?? authError}
@@ -254,7 +220,7 @@ export function SendTransferForm() {
               {isSigningIn
                 ? "Authenticating…"
                 : !account
-                  ? "Continue with Base passkey"
+                  ? "Continue with Base"
                   : isSubmitting
                     ? "Creating transfer…"
                     : "Create transfer"}
@@ -271,35 +237,16 @@ export function SendTransferForm() {
             <strong className="mt-1 block truncate">
               {recipient || "Recipient not entered"}
             </strong>
-            {previewAddress && (
-              <>
-                <small className="mt-4 block text-muted-foreground">
-                  Deterministic address
-                </small>
-                <strong className="mt-1 block truncate font-mono text-xs">
-                  {previewAddress}
-                </strong>
-              </>
-            )}
+            <small className="mt-4 block text-muted-foreground">Amount</small>
+            <strong className="mt-1 block text-2xl tracking-[-0.04em]">
+              {amount || "—"} USDC
+            </strong>
+            {note && <p className="mt-4 text-sm">{note}</p>}
           </div>
-          <dl className="mt-4 divide-y text-xs">
-            <div className="flex justify-between py-3">
-              <dt className="text-muted-foreground">Token</dt>
-              <dd className="font-medium">USDC</dd>
-            </div>
-            <div className="flex justify-between py-3">
-              <dt className="text-muted-foreground">Network</dt>
-              <dd className="font-medium">Base</dd>
-            </div>
-            <div className="flex justify-between py-3">
-              <dt className="text-muted-foreground">Settlement</dt>
-              <dd className="font-medium">Direct to recipient</dd>
-            </div>
-          </dl>
           <p className="mt-3 flex gap-2 text-[11px] leading-5 text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
-            The specific 0x transfer link is created from immutable protocol
-            configuration.
+            GOT handles the transfer details and sends funds directly to the
+            recipient.
           </p>
         </aside>
       </main>

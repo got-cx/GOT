@@ -8,9 +8,15 @@ import { TransferStatus } from "@got-cx/sdk"
 import { APIMessage } from "@/components/shared/api-message"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
+import { OnchainDetails } from "@/components/shared/onchain-details"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
-import { formatDate, formatMoney, shortAddress } from "@/lib/format"
+import {
+  formatDate,
+  formatMoney,
+  humanIdentity,
+  shortAddress,
+} from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
 import { Button } from "@workspace/ui/components/button"
 
@@ -41,13 +47,15 @@ export function Receipt({ transferId }: { transferId: string }) {
     data.status === TransferStatus.Settled ||
     data.status === TransferStatus.Overpaid
   const recipient =
-    data.direction === "incoming" ? (data.recipient ?? data.party) : data.party
+    data.direction === "incoming"
+      ? humanIdentity(data.recipient ?? data.party)
+      : humanIdentity(data.party)
   const receiptText = [
     "GOT transfer receipt",
     formatMoney(data.value, 2),
     `Recipient: ${recipient}`,
-    `Transfer ID: ${data.id}`,
-    transaction ? `Transaction: ${transaction}` : null,
+    data.note ? `Note: ${data.note}` : null,
+    `Status: ${complete ? "Transfer complete" : "Transfer submitted"}`,
   ]
     .filter(Boolean)
     .join("\n")
@@ -77,24 +85,10 @@ export function Receipt({ transferId }: { transferId: string }) {
             <dd className="font-medium">{recipient}</dd>
           </div>
           <div className="flex justify-between gap-5 px-4 py-3.5">
-            <dt className="text-muted-foreground">Network</dt>
-            <dd className="font-medium">Base</dd>
-          </div>
-          <div className="flex justify-between gap-5 px-4 py-3.5">
             <dt className="text-muted-foreground">Status</dt>
             <dd>
               <StatusBadge status={data.status} />
             </dd>
-          </div>
-          <div className="flex justify-between gap-5 px-4 py-3.5">
-            <dt className="text-muted-foreground">Transaction</dt>
-            <dd className="font-mono text-xs">
-              {transaction ? shortAddress(transaction) : "Awaiting indexer"}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-5 px-4 py-3.5">
-            <dt className="text-muted-foreground">Transfer ID</dt>
-            <dd className="font-mono text-xs">{data.id}</dd>
           </div>
           <div className="flex justify-between gap-5 px-4 py-3.5">
             <dt className="text-muted-foreground">Date</dt>
@@ -107,32 +101,49 @@ export function Receipt({ transferId }: { transferId: string }) {
             </div>
           )}
         </dl>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          {transaction ? (
-            <Button
-              render={
-                <a
-                  href={`https://basescan.org/tx/${transaction}`}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
-              nativeButton={false}
-              className="h-10"
-            >
-              View transaction <ExternalLink data-icon="inline-end" />
-            </Button>
-          ) : (
-            <Button disabled className="h-10">
-              Awaiting transaction
-            </Button>
-          )}
+        <div className="mt-4">
           <CopyButton
             value={receiptText}
             label="Copy receipt"
-            className="h-10"
+            className="h-10 w-full"
           />
         </div>
+        <OnchainDetails className="mt-5 border-t text-left">
+          <dl className="divide-y">
+            <div className="flex justify-between gap-5 py-3">
+              <dt>Network</dt>
+              <dd className="font-medium text-foreground">Base</dd>
+            </div>
+            <div className="flex justify-between gap-5 py-3">
+              <dt>Token</dt>
+              <dd className="font-medium text-foreground">
+                {data.value.symbol}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-5 py-3">
+              <dt>Transaction hash</dt>
+              <dd className="font-mono text-foreground">
+                {transaction ? shortAddress(transaction) : "Awaiting indexer"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-5 py-3">
+              <dt>Transfer ID</dt>
+              <dd className="max-w-56 truncate font-mono text-foreground">
+                {data.id}
+              </dd>
+            </div>
+          </dl>
+          {transaction && (
+            <a
+              href={`https://basescan.org/tx/${transaction}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-2 font-medium text-foreground hover:underline"
+            >
+              View in block explorer <ExternalLink className="size-3.5" />
+            </a>
+          )}
+        </OnchainDetails>
         <Button
           variant="link"
           className="mt-5 text-muted-foreground"
@@ -143,7 +154,7 @@ export function Receipt({ transferId }: { transferId: string }) {
         </Button>
       </main>
       <footer className="pb-6 text-center text-[11px] text-muted-foreground">
-        Onchain. Direct. Non-custodial.
+        Global Onchain Transfers, made simple.
       </footer>
     </div>
   )

@@ -29,7 +29,7 @@ export function OverviewDashboard() {
     <div>
       <PageHeader
         title="Overview"
-        description="Your global onchain transfer activity."
+        description="Your incoming and outgoing transfer activity."
         action={account ? <CreateTransferMenu /> : undefined}
       />
       {isAuthLoading ? (
@@ -78,7 +78,7 @@ export function OverviewDashboard() {
             </article>
             <article className="flex min-h-32 flex-col rounded-xl border bg-card p-5">
               <span className="text-sm text-muted-foreground">
-                Pending requests
+                Open transfer links
               </span>
               <strong className="mt-auto text-2xl tracking-[-0.04em]">
                 {data.pendingRequestCount.toLocaleString()}
