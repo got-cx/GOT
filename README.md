@@ -121,7 +121,7 @@ import { createConfig, http } from "@wagmi/core";
 import { base } from "@wagmi/core/chains";
 import {
   GOTFactoryAddressByChainId,
-  readGOTFactoryTreasury,
+  readGOTFactoryProtocolVersion,
 } from "@got-cx/protocol";
 
 const config = createConfig({
@@ -130,9 +130,9 @@ const config = createConfig({
 });
 
 const factory = GOTFactoryAddressByChainId[base.id];
-const treasury = await readGOTFactoryTreasury(config, {});
+const protocolVersion = await readGOTFactoryProtocolVersion(config, {});
 
-console.log(factory, treasury);
+console.log(factory, protocolVersion);
 ```
 
 Continue with the [protocol guide](./protocol/README.md) for deterministic intent
@@ -189,4 +189,4 @@ changing production flows.
 
 **Send it. GOT it.**
 
-[Product updates](https://x.com/got_cx)
+### [📢 Product updates](https://x.com/got_cx)

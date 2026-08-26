@@ -6,10 +6,10 @@ import {
   Link2,
   ListChecks,
   MoveRight,
+  MoveHorizontal,
   QrCode,
   ShieldCheck,
   UserRound,
-  XIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useSyncExternalStore } from "react"
@@ -188,7 +188,7 @@ export function HomePage() {
             HOW IT WORKS
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
-            Create → Share → Transfer
+            Create · Share · Transfer
           </h2>
         </div>
         <div className="grid md:grid-cols-3">
@@ -230,7 +230,7 @@ export function HomePage() {
         <div className="self-center rounded-2xl border border-background/15 p-5 sm:p-7">
           <p className="text-sm text-background/70">For users</p>
           <p className="mt-3 text-lg font-medium sm:text-xl">
-            Name → Amount → Transfer
+            Name · Amount · Transfer
           </p>
           <div className="my-6 border-t border-background/15" />
           <p className="text-sm text-background/70">
@@ -410,7 +410,7 @@ export function HomePage() {
             className="grid place-items-center py-1 text-muted-foreground"
             aria-hidden="true"
           >
-            <MoveRight className="size-5 rotate-90 md:rotate-0" />
+            <MoveHorizontal className="size-5 rotate-90 md:rotate-0" />
           </div>
           <article className="rounded-2xl bg-foreground p-6 text-background sm:p-8">
             <p className="text-sm font-medium">got.cx 🐐</p>
@@ -447,7 +447,9 @@ export function HomePage() {
       </section>
 
       <footer className="mx-auto flex min-h-24 max-w-6xl flex-col items-center justify-between gap-3 border-t py-7 text-center text-sm text-muted-foreground sm:flex-row sm:text-left">
-        <span>in GOT we trust</span>
+        <span>
+          in <strong className="text-foreground">GOT</strong> we trust
+        </span>
         <div className="flex items-center gap-5">
           <a
             href="https://x.com/got_cx"
@@ -455,8 +457,15 @@ export function HomePage() {
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 hover:text-foreground"
           >
-            <XIcon className="size-3.5" aria-hidden="true" />
-            Product updates
+            📢 Product updates
+          </a>
+          <a
+            href="https://t.me/got_cx_chat"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-foreground"
+          >
+            💬 Support
           </a>
           <span>
             {new Date().getFullYear()} ©{" "}
