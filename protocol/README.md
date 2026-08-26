@@ -29,7 +29,7 @@ The installed skill can use the same command to inspect deployments and ABIs, de
 ```ts
 import { createConfig, http } from "@wagmi/core";
 import { base } from "@wagmi/core/chains";
-import { GOTFactoryAddressByChainId, GOTNameAddressByChainId, readGOTFactoryTreasury } from "@got-cx/protocol";
+import { GOTFactoryAddressByChainId, GOTNameAddressByChainId, readGOTFactoryProtocolVersion } from "@got-cx/protocol";
 
 export const wagmiConfig = createConfig({
   chains: [base],
@@ -40,7 +40,7 @@ export const wagmiConfig = createConfig({
 
 const factory = GOTFactoryAddressByChainId[base.id];
 const nameResolver = GOTNameAddressByChainId[base.id];
-const treasury = await readGOTFactoryTreasury(wagmiConfig, {});
+const protocolVersion = await readGOTFactoryProtocolVersion(wagmiConfig, {});
 ```
 
 The SDK currently supports Base Mainnet (`chainId` `8453`). Calls to deployed protocol contracts select their Base address automatically. Intent clones require an explicit address.
@@ -129,4 +129,4 @@ npm run build
 npm test
 ```
 
-**In GOT we trust 🌐**
+**in GOT we trust 🌐**
