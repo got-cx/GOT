@@ -4,7 +4,7 @@ import { ArrowRight, ExternalLink, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import {
   createGOTProtocolClient,
@@ -25,21 +25,21 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { appConfig } from "@/lib/app-config"
 import { transferUSDC } from "@/lib/base-transactions"
-import {
-  formatMoney,
-  humanIdentity,
-  shortAddress,
-  BASE_ACCOUNT_LABEL,
-} from "@/lib/format"
+import { formatMoney, humanIdentity, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
 import { Button } from "@workspace/ui/components/button"
 
 export function PublicRoute({ route }: { route: string }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { account } = useAuth()
   const api = getGOTClient()
   const protocol = useMemo(
-    () => createGOTProtocolClient(appConfig.baseRpcUrl),
+    () =>
+      createGOTProtocolClient(
+        appConfig.baseRpcUrl,
+        appConfig.baseRpcFallback
+      ),
     []
   )
   const parsed = useMemo(() => {
@@ -69,11 +69,11 @@ export function PublicRoute({ route }: { route: string }) {
       if (!data?.intentConfig)
         throw new Error("The transfer recovery configuration is missing.")
       const config = deserializeIntentConfig(data.intentConfig)
-      const preview = await protocol.previewIntent(config)
-      if (preview.toLowerCase() !== data.intentAddress.toLowerCase()) {
-        throw new Error("The transfer configuration does not match this link.")
-      }
-      return protocol.readIntentState(data.intentAddress)
+      const [snapshot] = await protocol.readIntentSnapshots([
+        { intentAddress: data.intentAddress, config },
+      ])
+      if (!snapshot) throw new Error("The live intent snapshot is missing.")
+      return snapshot
     },
     enabled: Boolean(data?.intentConfig),
     refetchInterval: 15_000,
@@ -156,7 +156,6 @@ export function PublicRoute({ route }: { route: string }) {
       )
     : data.status
   const recipientLabel = humanIdentity(request.recipient)
-  const hasHumanRecipient = recipientLabel !== BASE_ACCOUNT_LABEL
 
   async function transfer() {
     if (!configurationValid) return
@@ -184,7 +183,16 @@ export function PublicRoute({ route }: { route: string }) {
       if (receipt.status !== "success") {
         throw new Error("The transfer wasn’t completed. Please try again.")
       }
-      await api.transfers.recordFunding(request.id, hash)
+      const fundedTransfer = await api.transfers.recordFunding(request.id, hash)
+      queryClient.setQueryData(
+        ["got-api", "transfer-intent", request.intentAddress],
+        fundedTransfer
+      )
+      await Promise.all([
+        chainQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "transfers"] }),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "overview"] }),
+      ])
       const receiptParams = new URLSearchParams({ transaction: hash })
       router.push(`/receipt/${encodeURIComponent(request.id)}?${receiptParams}`)
     } catch (reason) {
@@ -211,12 +219,11 @@ export function PublicRoute({ route }: { route: string }) {
                 <p className="text-[11px] font-semibold tracking-[0.15em] text-neutral-500">
                   ONCHAIN TRANSFER
                 </p>
-                {hasHumanRecipient && (
-                  <p className="mt-1 truncate text-sm">
-                    <span className="text-neutral-500">to: </span>
-                    <strong className="font-semibold">{recipientLabel}</strong>
-                  </p>
-                )}
+
+                <p className="mt-1 truncate text-sm">
+                  <span className="text-neutral-500">to: </span>
+                  <strong className="font-semibold">{recipientLabel}</strong>
+                </p>
               </div>
               <StatusBadge status={currentStatus} />
             </div>

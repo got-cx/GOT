@@ -1,0 +1,339 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "gotFactory_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidFactory",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ERC165_GAS_LIMIT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ERC20_BALANCE_GAS_LIMIT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "GOT_FACTORY",
+    "outputs": [
+      {
+        "internalType": "contract IGOTFactory",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "INTENT_READ_GAS_LIMIT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "OWNER_RESOLVER_GAS_LIMIT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "intentId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "ownerSource",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ownerKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "authorizedResolver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "amount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "initialDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "period",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "metadataHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct IGOTFactory.IntentConfig",
+        "name": "config",
+        "type": "tuple"
+      }
+    ],
+    "name": "snapshot",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "intentAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "configValid",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "deployed",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "canonical",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "balanceRead",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "stateRead",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalProcessed",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "ownerResolved",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "effectiveOwner",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct GOTLens.IntentSnapshot",
+        "name": "result",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "intentId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "ownerSource",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ownerKey",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "partner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "authorizedResolver",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "amount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint64",
+            "name": "initialDeadline",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "period",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "feeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "metadataHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct IGOTFactory.IntentConfig[]",
+        "name": "configs",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "snapshotMany",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "intentAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "configValid",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "deployed",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "canonical",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "balanceRead",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "stateRead",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalProcessed",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "ownerResolved",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "effectiveOwner",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct GOTLens.IntentSnapshot[]",
+        "name": "results",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

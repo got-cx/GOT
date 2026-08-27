@@ -30,7 +30,7 @@ const developerTabs = {
   SDK: {
     description:
       "Use the typed got.cx product SDK from server or browser code.",
-    example: `import { GOTClient } from "@got-cx/sdk"\n\nconst got = new GOTClient({\n  baseUrl: "https://api.got.cx",\n  getAccessToken: () => process.env.GOT_API_TOKEN,\n})\n\nconst request = await got.transfers.createRequest(input, idempotencyKey)`,
+    example: `import { GOTClient } from "@got-cx/sdk"\n\nconst got = new GOTClient({\n  baseUrl: "https://api.got.cx",\n  getAccessToken: () => process.env.GOT_API_TOKEN,\n})\n\nconst request = await got.transfers.createRequest({\n  ...input,\n  transferId: "invoice-1042",\n})`,
     subtext:
       "The SDK defaults to zero protocol fees and never silently assigns a partner.",
   },
@@ -48,10 +48,10 @@ const developerTabs = {
       "Handle events idempotently and account for retries or out-of-order delivery.",
   },
   API: {
-    description: "Use string base-unit amounts and idempotent writes.",
-    example: `POST https://api.got.cx/transfers\nAuthorization: Bearer got_live_…\nIdempotency-Key: <unique-key>\nContent-Type: application/json`,
+    description: "Use string base-unit amounts and stable transfer IDs.",
+    example: `POST https://api.got.cx/transfers\nAuthorization: Bearer got_live_…\nContent-Type: application/json\n\n{ "transferId": "invoice-1042", … }`,
     subtext:
-      "Send a unique idempotency key with every write so retries cannot create duplicate transfers.",
+      "Retry the same transfer ID and details safely; conflicting details are rejected.",
   },
 } as const
 
@@ -188,7 +188,7 @@ export function DevelopersDashboard() {
                   <>
                     <code
                       aria-hidden="true"
-                      className="min-w-0 flex-1 select-none overflow-hidden rounded-lg border bg-background px-3 py-2 text-xs blur-sm"
+                      className="min-w-0 flex-1 overflow-hidden rounded-lg border bg-background px-3 py-2 text-xs blur-sm select-none"
                     >
                       got_live_7f3a9c2e8b4d6f1a0c5e9b2d8f4a6c3e
                     </code>
@@ -213,9 +213,9 @@ export function DevelopersDashboard() {
                 </p>
               )}
               <p className="border-t bg-muted/40 px-5 py-3 text-xs text-muted-foreground">
-                The revealed value exists only on this page. Copy it to a
-                secret manager; leaving the page removes the browser copy.
-                Regenerating invalidates the previous token everywhere.
+                The revealed value exists only on this page. Copy it to a secret
+                manager; leaving the page removes the browser copy. Regenerating
+                invalidates the previous token everywhere.
               </p>
             </section>
           )}

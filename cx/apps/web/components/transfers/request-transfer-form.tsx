@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   buildRequestIntent,
   createGOTProtocolClient,
-  createIdempotencyKey,
   deriveIntentId,
   GOT_BASE_CHAIN_ID,
   GOT_BASE_USDC,
@@ -34,10 +33,14 @@ export function RequestTransferForm() {
   const { account } = useAuth()
   const api = getGOTClient()
   const protocol = useMemo(
-    () => createGOTProtocolClient(appConfig.baseRpcUrl),
+    () =>
+      createGOTProtocolClient(
+        appConfig.baseRpcUrl,
+        appConfig.baseRpcFallback
+      ),
     []
   )
-  const [requestId, setRequestId] = useState("")
+  const [transferId, setTransferId] = useState("")
   const [receiveTo, setReceiveTo] = useState("")
   const [amount, setAmount] = useState("")
   const [sender, setSender] = useState("")
@@ -100,12 +103,12 @@ export function RequestTransferForm() {
       amount,
       dueAt: dueAt ? new Date(`${dueAt}T23:59:59`).toISOString() : undefined,
       metadata,
-      intentId: deriveIntentId(requestId, account),
+      intentId: deriveIntentId(transferId, account),
       authorizedResolver: account,
     })
-  }, [account, amount, dueAt, note, reference, requestId, selected, sender])
+  }, [account, amount, dueAt, note, reference, selected, sender, transferId])
 
-  const canPreview = Boolean(account && selected && amount && requestId.trim())
+  const canPreview = Boolean(account && selected && amount && transferId.trim())
 
   useEffect(() => {
     if (!canPreview) return
@@ -146,21 +149,18 @@ export function RequestTransferForm() {
       const dueAtValue = dueAt
         ? new Date(`${dueAt}T23:59:59`).toISOString()
         : null
-      const indexedRequest = await api.transfers.createRequest(
-        {
-          chainId: GOT_BASE_CHAIN_ID,
-          requestId: requestId.trim(),
-          recipient,
-          recipientTargetAmount: config.amount.toString(),
-          token: GOT_BASE_USDC,
-          sender: sender || undefined,
-          reference: reference || undefined,
-          note: note || undefined,
-          dueAt: dueAtValue ?? undefined,
-          intentConfig: serializeIntentConfig(config),
-        },
-        createIdempotencyKey()
-      )
+      const indexedRequest = await api.transfers.createRequest({
+        chainId: GOT_BASE_CHAIN_ID,
+        transferId: transferId.trim(),
+        recipient,
+        recipientTargetAmount: config.amount.toString(),
+        token: GOT_BASE_USDC,
+        sender: sender || undefined,
+        reference: reference || undefined,
+        note: note || undefined,
+        dueAt: dueAtValue ?? undefined,
+        intentConfig: serializeIntentConfig(config),
+      })
       if (
         indexedRequest.intentAddress.toLowerCase() !==
         intentAddress.toLowerCase()
@@ -274,9 +274,9 @@ export function RequestTransferForm() {
               <span className="mb-2 block">Transfer ID</span>
               <Input
                 required
-                value={requestId}
+                value={transferId}
                 onChange={(event) => {
-                  setRequestId(event.target.value)
+                  setTransferId(event.target.value)
                   setPreviewAddress(null)
                 }}
                 className="h-11"
@@ -410,7 +410,7 @@ export function RequestTransferForm() {
                   !api ||
                   !amount ||
                   !selected ||
-                  !requestId.trim() ||
+                  !transferId.trim() ||
                   isSubmitting
                 }
               >
@@ -439,7 +439,7 @@ export function RequestTransferForm() {
             <div className="flex items-center justify-between gap-3 py-3">
               <dt className="text-muted-foreground">Transfer ID</dt>
               <dd className="max-w-52 truncate font-medium">
-                {requestId || "—"}
+                {transferId || "—"}
               </dd>
             </div>
             <div className="flex justify-between py-3">

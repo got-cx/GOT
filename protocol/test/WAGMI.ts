@@ -19,6 +19,8 @@ import {
   GOTFactoryAddress,
   GOTFactoryAddressByChainId,
   GOTIntentAbi,
+  GOTLensAbi,
+  GOTLensAddressByChainId,
   GOTNameAbi,
   GOTNameAddress,
   GOTNameAddressByChainId,
@@ -89,6 +91,7 @@ describe("GOT wagmi SDK", function () {
     for (const abi of [
       GOTFactoryAbi,
       GOTIntentAbi,
+      GOTLensAbi,
       GOTNameAbi,
       GOTSubscriptionAbi,
       IGOTFactoryAbi,
@@ -107,11 +110,13 @@ describe("GOT wagmi SDK", function () {
   it("binds generated actions and address maps to the Base deployment", function () {
     const chainId = 8453;
     const { contracts, dependencies } = baseDeployment;
+    const gotLens = (contracts as typeof contracts & { gotLens?: Address }).gotLens;
 
     assert.equal(baseDeployment.chainId, chainId);
     assert.equal(protocolDeployments[chainId], baseDeployment);
     assert.equal(GOTFactoryAddress[chainId], getAddress(contracts.gotFactory));
     assert.equal(GOTFactoryAddressByChainId[chainId], contracts.gotFactory);
+    assert.equal(GOTLensAddressByChainId[chainId], gotLens);
     assert.equal(GOTNameAddress[chainId], getAddress(contracts.gotName));
     assert.equal(GOTNameAddressByChainId[chainId], contracts.gotName);
     assert.equal(GOTSubscriptionAddress[chainId], getAddress(contracts.gotSubscription));

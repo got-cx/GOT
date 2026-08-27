@@ -53,7 +53,7 @@ function usage(exitCode = 0): never {
     "  got-protocol encode factory quoteOwnerAmount '[1000000,30]'",
     "  got-protocol read 8453 factory deployment TREASURY '[]'",
     "",
-    "Reads use rpcUrl, GOT_RPC_URL, BASE_RPC_URL, or https://mainnet.base.org.",
+    "Reads use rpcUrl, BASE_RPC_URL, or https://mainnet.base.org.",
     "Encode returns unsigned calldata; it never signs or broadcasts transactions.",
   ].join("\n");
 
@@ -157,7 +157,7 @@ async function commandRead([chainIdRaw, kindRaw, target, functionName, rawArgs, 
   const deployment = await getDeployment(chainIdRaw);
   const kind = parseContractKind(kindRaw);
   const address = resolveAddress(deployment, kind, target);
-  const resolvedRpcUrl = rpcUrl ?? process.env.GOT_RPC_URL ?? process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
+  const resolvedRpcUrl = rpcUrl ?? process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
   const client = createPublicClient({ transport: http(resolvedRpcUrl) });
   const rpcChainId = await client.getChainId();
   if (rpcChainId !== deployment.chainId) {

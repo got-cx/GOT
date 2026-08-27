@@ -81,6 +81,8 @@ Use `readGOTFactoryQuoteGrossAmount` and `readGOTFactoryQuoteOwnerAmount` to quo
 
 Intent addresses are configuration-specific, so pass the clone address to actions such as `readGOTIntentOwner` and `writeGOTIntentSettle`. The direct owner can settle; other callers must satisfy the resolver configuration.
 
+For list and indexer reads, `GOTLens.snapshotMany` derives each canonical address and returns balance, deployment, processed-total, and effective-owner state in one RPC call. Invalid entries are flagged independently and do not revert the whole batch. `GOTLensAddressByChainId` is populated after a Lens address is recorded in the deployment manifest.
+
 ## Named routes with GOTName
 
 Use `normalizeGOTIdentity` and `deriveNameKeyV1` instead of implementing identity normalization locally. Set `ownerSource` to `GOTNameAddressByChainId[chainId]` and `ownerKey` to the derived key.
@@ -108,6 +110,7 @@ Import typed addresses from `@got-cx/protocol/deployments`. Raw ABIs are availab
 | ----------------- | ---------------------------------------------------- |
 | `GOTFactory`      | Preview and deploy deterministic intents             |
 | `GOTIntent`       | Process funds for one immutable configuration        |
+| `GOTLens`         | Batch canonical intent snapshots into one RPC call   |
 | `GOTName`         | Resolve canonical identity keys to owner addresses   |
 | `GOTSubscription` | Execute recurring transfers through Spend Permission |
 

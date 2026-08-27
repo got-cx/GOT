@@ -23,6 +23,7 @@ export type GOTDeploymentConfig = {
   contracts: {
     gotIntent: string;
     gotFactory: string;
+    gotLens: string;
     gotName: string;
     gotSubscription: string;
   };
@@ -33,6 +34,7 @@ export type GOTDeploymentConfig = {
   runtimeCodeHashes: {
     gotIntent: string;
     gotFactory: string;
+    gotLens: string;
     gotName: string;
     gotSubscription: string;
   };
@@ -65,6 +67,7 @@ function dependencyAddressMap(dependencyName: keyof GOTDeploymentConfig["depende
 /** The locked GOTIntent implementation, not an address that should receive user funds. */
 export const GOTIntentImplementationAddressByChainId = contractAddressMap("gotIntent");
 export const GOTFactoryAddressByChainId = contractAddressMap("gotFactory");
+export const GOTLensAddressByChainId = contractAddressMap("gotLens");
 export const GOTNameAddressByChainId = contractAddressMap("gotName");
 export const GOTSubscriptionAddressByChainId = contractAddressMap("gotSubscription");
 export const USDCAddressByChainId = dependencyAddressMap("usdc");

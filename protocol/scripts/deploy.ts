@@ -38,6 +38,7 @@ type DeploymentResult = {
   contracts: {
     gotIntent: Address;
     gotFactory: Address;
+    gotLens: Address;
     gotName: Address;
     gotSubscription: Address;
   };
@@ -48,6 +49,7 @@ type DeploymentResult = {
   runtimeCodeHashes: {
     gotIntent: Hex;
     gotFactory: Hex;
+    gotLens: Hex;
     gotName: Hex;
     gotSubscription: Hex;
   };
@@ -294,6 +296,12 @@ async function main() {
       publicClient,
     });
 
+    const gotLensAddress = await reuseOrDeploy({
+      label: "GOTLens",
+      existingAddress: existingDeployment?.contracts?.gotLens,
+      deploy: () => viem.deployContract("GOTLens", [gotFactoryAddress], { confirmations: config.confirmations }),
+      publicClient,
+    });
     const gotNameAddress = await reuseOrDeploy({
       label: "GOTName",
       existingAddress: existingDeployment?.contracts?.gotName,
@@ -323,6 +331,9 @@ async function main() {
     assertNumber("GOTFactory partner share", await gotFactory.read.PARTNER_SHARE_BPS(), config.partnerShareBps);
     assertNumber("GOTFactory max fee", await gotFactory.read.MAX_FEE_BPS(), config.maxFeeBps);
 
+    const gotLens = await viem.getContractAt("GOTLens", gotLensAddress);
+    assertAddress("GOTLens factory", await gotLens.read.GOT_FACTORY(), gotFactoryAddress);
+
     const gotName = await viem.getContractAt("GOTName", gotNameAddress);
     assertAddress("GOTName claim verifier", await gotName.read.CLAIM_VERIFIER(), config.gotNameClaimVerifier);
 
@@ -334,9 +345,10 @@ async function main() {
       config.spendPermissionManager,
     );
 
-    const [gotIntentCode, gotFactoryCode, gotNameCode, gotSubscriptionCode] = await Promise.all([
+    const [gotIntentCode, gotFactoryCode, gotLensCode, gotNameCode, gotSubscriptionCode] = await Promise.all([
       requireCode(publicClient, gotIntentAddress, "GOTIntent"),
       requireCode(publicClient, gotFactoryAddress, "GOTFactory"),
+      requireCode(publicClient, gotLensAddress, "GOTLens"),
       requireCode(publicClient, gotNameAddress, "GOTName"),
       requireCode(publicClient, gotSubscriptionAddress, "GOTSubscription"),
     ]);
@@ -362,6 +374,7 @@ async function main() {
       contracts: {
         gotIntent: gotIntentAddress,
         gotFactory: gotFactoryAddress,
+        gotLens: gotLensAddress,
         gotName: gotNameAddress,
         gotSubscription: gotSubscriptionAddress,
       },
@@ -372,6 +385,7 @@ async function main() {
       runtimeCodeHashes: {
         gotIntent: keccak256(gotIntentCode),
         gotFactory: keccak256(gotFactoryCode),
+        gotLens: keccak256(gotLensCode),
         gotName: keccak256(gotNameCode),
         gotSubscription: keccak256(gotSubscriptionCode),
       },

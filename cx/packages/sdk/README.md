@@ -41,15 +41,18 @@ without recreating the client.
 
 ### Create a transfer
 
-Transfer creation methods require an idempotency key. Reusing the same key makes
-retries safe when a response is interrupted or its outcome is unknown.
+Every transfer requires a user-defined `transferId`. The API derives the
+protocol intent ID from it and the creating account, so retrying an identical
+creation is idempotent. Reusing the ID with different details returns a conflict.
 
 ```ts
 import {
-  createIdempotencyKey,
+  buildRequestIntent,
+  deriveIntentId,
   GOT_BASE_CHAIN_ID,
   GOT_BASE_USDC,
   GOTClient,
+  serializeIntentConfig,
 } from "@got-cx/sdk"
 
 const got = new GOTClient({
@@ -57,18 +60,22 @@ const got = new GOTClient({
   getAccessToken: () => process.env.GOT_API_TOKEN ?? null,
 })
 
-const transfer = await got.transfers.create(
-  {
-    chainId: GOT_BASE_CHAIN_ID,
-    direction: "outgoing",
-    recipient: "@alice",
-    recipientTargetAmount: "25.00",
-    token: GOT_BASE_USDC,
-    reference: "invoice-1042",
-    note: "Consulting services",
-  },
-  createIdempotencyKey()
-)
+const transferId = "invoice-1042"
+const config = buildRequestIntent({
+  recipient: "@alice",
+  amount: "25.00",
+  intentId: deriveIntentId(transferId, accountAddress),
+})
+const transfer = await got.transfers.create({
+  chainId: GOT_BASE_CHAIN_ID,
+  direction: "outgoing",
+  transferId,
+  recipient: "@alice",
+  recipientTargetAmount: config.amount.toString(),
+  token: GOT_BASE_USDC,
+  note: "Consulting services",
+  intentConfig: serializeIntentConfig(config),
+})
 
 console.log(transfer.id, transfer.intentAddress, transfer.status)
 ```
@@ -161,7 +168,10 @@ const config = buildRequestIntent({
   metadata: "invoice-1042",
 })
 
-const protocol = createGOTProtocolClient(process.env.BASE_RPC_URL)
+const protocol = createGOTProtocolClient(
+  process.env.BASE_RPC_URL,
+  process.env.BASE_RPC_FALLBACK
+)
 const intentAddress = await protocol.previewIntent(config)
 
 console.log(intentAddress)
@@ -169,9 +179,11 @@ console.log(serializeIntentConfig(config))
 ```
 
 `simulateDeployAndExecute` and `simulateResolve` return viem simulation results
-that can be passed to a wallet client. `readIntentState` verifies that a
-deployed intent belongs to the canonical got.cx factory before returning its
-balance and processing state.
+that can be passed to a wallet client. `readIntentSnapshots` verifies recovery
+envelopes and reads owner, balance, and processing state for the complete page
+in one call through the canonical Base `GOTLens` deployment.
+
+The optional second URL is used as a fallback after viem's default retries.
 
 ## Client surface
 
@@ -179,8 +191,8 @@ The `GOTClient` currently provides:
 
 - `auth`: nonce, token, session, and logout operations.
 - `overview`: workspace dashboard totals and recent transfers.
-- `transfers`: list, get, create, create request, remove, funding record, and
-  state synchronization operations.
+- `transfers`: list, get, create, create request, remove, and verified funding
+  record operations.
 - `names`: list and claim GOT identities, including X verification startup.
 - `subscriptions`: list workspace subscriptions.
 
@@ -201,12 +213,12 @@ Importing from `@got-cx/sdk` exposes the complete public API.
 
 ## Security
 
-- Keep bearer tokens and `indexerKey` values on trusted servers.
+- Keep bearer tokens on trusted servers.
 - Use a dedicated, scoped, revocable token when browser-visible development
   credentials are unavoidable.
 - Do not treat a predicted intent address as deployed; verify its chain state
   before relying on contract behavior.
-- Preserve idempotency keys across retries of the same mutation.
+- Preserve the user transfer ID across retries of the same creation.
 
 ## License
 

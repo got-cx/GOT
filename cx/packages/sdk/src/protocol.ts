@@ -1,8 +1,14 @@
-import { GOTFactoryAbi, GOTIntentAbi, baseDeployment } from "@got-cx/protocol"
+import {
+  GOTFactoryAbi,
+  GOTIntentAbi,
+  GOTLensAbi,
+  baseDeployment,
+} from "@got-cx/protocol"
 import {
   createPublicClient,
   encodeAbiParameters,
   encodeFunctionData,
+  fallback,
   getAddress,
   http,
   keccak256,
@@ -27,22 +33,19 @@ export const GOT_BASE_CHAIN_ID: ChainId = 8453
 export const GOT_BASE_USDC = getAddress(baseDeployment.dependencies.usdc)
 export const GOT_BASE_FACTORY = getAddress(baseDeployment.contracts.gotFactory)
 export const GOT_BASE_NAME = getAddress(baseDeployment.contracts.gotName)
-
-const erc20BalanceAbi = [
-  {
-    type: "function",
-    name: "balanceOf",
-    stateMutability: "view",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "balance", type: "uint256" }],
-  },
-] as const
+export const GOT_BASE_LENS = getAddress(baseDeployment.contracts.gotLens)
 
 export type GOTIntentChainState = {
   deployed: boolean
   balance: bigint
   totalProcessed: bigint
   authorizedResolver: Address | null
+  effectiveOwner: Address | null
+}
+
+export type GOTIntentSnapshot = GOTIntentChainState & {
+  intentAddress: Address
+  config: IntentConfig
 }
 
 export type BuildRequestIntentInput = {
@@ -67,6 +70,19 @@ export function createIntentId(): Hex {
 
 const intentIdNamespace = keccak256(stringToHex("GOT_APPLICATION_INTENT_V2"))
 
+type LensSnapshotResult = {
+  intentAddress: Address
+  configValid: boolean
+  deployed: boolean
+  canonical: boolean
+  balanceRead: boolean
+  balance: bigint
+  stateRead: boolean
+  totalProcessed: bigint
+  ownerResolved: boolean
+  effectiveOwner: Address
+}
+
 export function deriveIntentId(id: string, account: Address): Hex {
   const normalizedId = id.trim()
   if (!normalizedId) throw new Error("ID is required.")
@@ -79,10 +95,6 @@ export function deriveIntentId(id: string, account: Address): Hex {
       [intentIdNamespace, getAddress(account), normalizedId]
     )
   )
-}
-
-export function createIdempotencyKey(): string {
-  return globalThis.crypto.randomUUID()
 }
 
 export function remainingTransferAmount(
@@ -179,13 +191,25 @@ export function encodeResolveIntent(): Hex {
   })
 }
 
-export function createGOTProtocolClient(rpcUrl?: string) {
-  const client = createPublicClient({ chain: base, transport: http(rpcUrl) })
+export function createGOTProtocolClient(
+  rpcUrl?: string,
+  fallbackRpcUrl?: string
+) {
+  const primaryTransport = http(rpcUrl)
+  const transport =
+    fallbackRpcUrl && fallbackRpcUrl !== rpcUrl
+      ? fallback([primaryTransport, http(fallbackRpcUrl)])
+      : primaryTransport
+  const client = createPublicClient({
+    chain: base,
+    transport,
+  })
 
   return {
     chain: base,
     deployment: {
       factory: GOT_BASE_FACTORY,
+      lens: GOT_BASE_LENS,
       gotName: GOT_BASE_NAME,
       usdc: GOT_BASE_USDC,
     },
@@ -206,68 +230,69 @@ export function createGOTProtocolClient(rpcUrl?: string) {
         args: [config],
       })
     },
-    async readIntentState(
-      intentAddress: Address,
+    async readIntentSnapshots(
+      inputs: ReadonlyArray<{
+        intentAddress: Address
+        config: IntentConfig
+      }>,
       options: { blockNumber?: bigint } = {}
-    ): Promise<GOTIntentChainState> {
-      const [
-        balanceResult,
-        totalProcessedResult,
-        authorizedResolverResult,
-        factoryResult,
-      ] = await client.multicall({
-        allowFailure: true,
-        blockNumber: options.blockNumber,
-        contracts: [
-          {
-            address: GOT_BASE_USDC,
-            abi: erc20BalanceAbi,
-            functionName: "balanceOf",
-            args: [intentAddress],
-          },
-          {
-            address: intentAddress,
-            abi: GOTIntentAbi,
-            functionName: "totalProcessed",
-          },
-          {
-            address: intentAddress,
-            abi: GOTIntentAbi,
-            functionName: "authorizedResolver",
-          },
-          {
-            address: intentAddress,
-            abi: GOTIntentAbi,
-            functionName: "factory",
-          },
-        ],
-      })
-      if (balanceResult.status === "failure") {
-        throw new Error("Unable to read the intent USDC balance.")
+    ): Promise<GOTIntentSnapshot[]> {
+      if (!inputs.length) return []
+
+      let results: readonly LensSnapshotResult[]
+      try {
+        results = (await client.readContract({
+          address: GOT_BASE_LENS,
+          abi: GOTLensAbi,
+          functionName: "snapshotMany",
+          args: [inputs.map(({ config }) => config)],
+          blockNumber: options.blockNumber,
+        })) as readonly LensSnapshotResult[]
+      } catch (error) {
+        throw new Error("Unable to read GOT intent snapshots.", {
+          cause: error,
+        })
       }
-      if (factoryResult.status === "failure") {
-        return {
-          deployed: false,
-          balance: balanceResult.result,
-          totalProcessed: 0n,
-          authorizedResolver: null,
+      if (results.length !== inputs.length) {
+        throw new Error("The GOT Lens returned an incomplete snapshot batch.")
+      }
+
+      return inputs.map(({ intentAddress, config }, index) => {
+        const snapshot = results[index]
+        if (!snapshot || !snapshot.configValid) {
+          throw new Error("Unable to verify the canonical intent address.")
         }
-      }
-      if (getAddress(factoryResult.result) !== GOT_BASE_FACTORY) {
-        throw new Error("The deployed contract is not a canonical GOT intent.")
-      }
-      if (
-        totalProcessedResult.status === "failure" ||
-        authorizedResolverResult.status === "failure"
-      ) {
-        throw new Error("Unable to read the deployed GOT intent state.")
-      }
-      return {
-        deployed: true,
-        balance: balanceResult.result,
-        totalProcessed: totalProcessedResult.result,
-        authorizedResolver: getAddress(authorizedResolverResult.result),
-      }
+        if (getAddress(snapshot.intentAddress) !== getAddress(intentAddress)) {
+          throw new Error(
+            "The recovery configuration does not match the intent address."
+          )
+        }
+        if (!snapshot.balanceRead) {
+          throw new Error("Unable to read the intent token balance.")
+        }
+        if (snapshot.deployed && !snapshot.canonical) {
+          throw new Error(
+            "The deployed contract is not a canonical GOT intent."
+          )
+        }
+        if (snapshot.deployed && !snapshot.stateRead) {
+          throw new Error("Unable to read the deployed intent state.")
+        }
+
+        return {
+          intentAddress: getAddress(intentAddress),
+          config,
+          deployed: snapshot.deployed,
+          balance: snapshot.balance,
+          totalProcessed: snapshot.deployed ? snapshot.totalProcessed : 0n,
+          authorizedResolver: getAddress(config.authorizedResolver),
+          effectiveOwner:
+            snapshot.ownerResolved &&
+            getAddress(snapshot.effectiveOwner) !== zeroAddress
+              ? getAddress(snapshot.effectiveOwner)
+              : null,
+        }
+      })
     },
     simulateResolve(intentAddress: Address, account: Address) {
       return client.simulateContract({
@@ -277,8 +302,11 @@ export function createGOTProtocolClient(rpcUrl?: string) {
         functionName: "resolve",
       })
     },
-    waitForTransaction(hash: Hex) {
-      return client.waitForTransactionReceipt({ hash })
+    waitForTransaction(hash: Hex, options: { confirmations?: number } = {}) {
+      return client.waitForTransactionReceipt({
+        hash,
+        confirmations: options.confirmations,
+      })
     },
   }
 }

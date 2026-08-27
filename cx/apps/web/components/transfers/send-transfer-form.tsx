@@ -10,8 +10,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   buildRequestIntent,
   createGOTProtocolClient,
-  createIdempotencyKey,
-  createIntentId,
+  deriveIntentId,
   GOT_BASE_CHAIN_ID,
   GOT_BASE_USDC,
   parseGOTLink,
@@ -39,10 +38,11 @@ export function SendTransferForm() {
   } = useAuth()
   const api = getGOTClient()
   const protocol = useMemo(
-    () => createGOTProtocolClient(appConfig.baseRpcUrl),
+    () =>
+      createGOTProtocolClient(appConfig.baseRpcUrl, appConfig.baseRpcFallback),
     []
   )
-  const [intentId] = useState(() => createIntentId())
+  const [transferId, setTransferId] = useState("")
   const [recipient, setRecipient] = useState(
     searchParams.get("recipient") ?? ""
   )
@@ -70,21 +70,19 @@ export function SendTransferForm() {
         ...(direct ? { ownerAddress: getAddress(recipient) } : { recipient }),
         amount,
         metadata: note ? JSON.stringify({ note }) : undefined,
-        intentId,
+        intentId: deriveIntentId(transferId, account),
       })
       const intentAddress = await protocol.previewIntent(config)
-      const transfer = await api.transfers.create(
-        {
-          direction: "outgoing",
-          chainId: GOT_BASE_CHAIN_ID,
-          recipient,
-          recipientTargetAmount: config.amount.toString(),
-          token: GOT_BASE_USDC,
-          note: note || undefined,
-          intentConfig: serializeIntentConfig(config),
-        },
-        createIdempotencyKey()
-      )
+      const transfer = await api.transfers.create({
+        direction: "outgoing",
+        chainId: GOT_BASE_CHAIN_ID,
+        transferId: transferId.trim(),
+        recipient,
+        recipientTargetAmount: config.amount.toString(),
+        token: GOT_BASE_USDC,
+        note: note || undefined,
+        intentConfig: serializeIntentConfig(config),
+      })
       if (transfer.intentAddress.toLowerCase() !== intentAddress.toLowerCase())
         throw new Error(
           "The API returned an intent address that does not match the protocol preview."
@@ -171,6 +169,18 @@ export function SendTransferForm() {
               </div>
             </label>
             <label className="block text-xs font-medium">
+              <span className="mb-2 block">Transfer ID</span>
+              <Input
+                required
+                value={transferId}
+                onChange={(event) => setTransferId(event.target.value)}
+                className="h-11"
+                placeholder="e.g. transfer-2026-001"
+                maxLength={120}
+                autoComplete="off"
+              />
+            </label>
+            <label className="block text-xs font-medium">
               <span className="mb-2 flex justify-between">
                 Note{" "}
                 <em className="font-normal text-muted-foreground not-italic">
@@ -212,6 +222,7 @@ export function SendTransferForm() {
                 !api ||
                 !recipient ||
                 !amount ||
+                !transferId.trim() ||
                 isAuthLoading ||
                 isSigningIn ||
                 isSubmitting
@@ -234,7 +245,7 @@ export function SendTransferForm() {
           </p>
           <div className="mt-3 rounded-lg border bg-background p-4">
             <small className="text-muted-foreground">Recipient</small>
-            <strong className="mt-1 block truncate">
+            <strong className="mt-1 block max-w-xs truncate">
               {recipient || "Recipient not entered"}
             </strong>
             <small className="mt-4 block text-muted-foreground">Amount</small>

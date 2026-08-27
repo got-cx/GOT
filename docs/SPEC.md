@@ -2335,7 +2335,9 @@ GET    /partners/{address}/rewards
 POST   /webhooks
 ```
 
-Writes MUST support idempotency keys.
+Transfer creation MUST require a user-defined transfer ID. The creator account,
+chain and transfer ID form the natural idempotency scope: an identical retry
+returns the existing transfer, while different details under the same ID fail.
 
 Amounts MUST be strings in token base units in machine APIs.
 
@@ -2347,7 +2349,7 @@ The API MUST distinguish `recipientTargetAmount`, `grossQuotedAmount`, `processe
 
 # 56. Data Model
 
-Minimum entities:
+Representative application entities:
 
 ```text
 Organization
@@ -2370,7 +2372,10 @@ SaaSSubscription
 UsageCounter
 ```
 
-Onchain source-of-truth fields MUST be stored with chain, block, transaction, log index and finality status.
+Mutable onchain intent state MUST NOT be mirrored as authoritative application
+state. APIs SHOULD compose compact application records with live chain reads.
+Append-only indexed events used for discovery, history or analytics MUST include
+chain, block, transaction, log index and finality status and MUST be rebuildable.
 
 Sensitive claim evidence MUST be separated from public indexed records.
 
@@ -2396,6 +2401,12 @@ REORGED
 A raw ERC20 transfer is not the same as a processed transfer.
 
 The finalized `TransferProcessed` event is authoritative for owner proceeds and fee allocation.
+
+For got.cx, live transfer status is derived from the configured-token balance,
+`totalProcessed`, target amount and current effective owner. Supabase stores the
+counterfactual recovery envelope because an undeployed deterministic address
+cannot expose immutable configuration. After deployment, canonical intent
+getters are authoritative.
 
 ---
 
@@ -2466,6 +2477,12 @@ It MUST support:
 - versioned schemas.
 
 No webhook or fulfillment action should be treated as final before the configured finality threshold.
+
+Funding-log ingestion MUST be idempotent by `(chainId, transactionHash,
+logIndex)`. A non-creator becomes eligible to discover a transfer only after a
+non-orphaned funding event identifies that account as funder or effective
+recipient. Indexer projections MUST NOT replace live intent reads in transfer
+API responses.
 
 ---
 

@@ -1,7 +1,7 @@
 import type { Money } from "@got-cx/sdk"
 import { formatUnits, isAddress, type Address } from "viem"
 
-export const BASE_ACCOUNT_LABEL = "Base Account"
+export const BASE_ACCOUNT_LABEL = "Account"
 
 export function formatMoney(value: Money, minimumFractionDigits = 0): string {
   const amount = formatUnits(BigInt(value.amount), value.decimals)
@@ -27,7 +27,8 @@ export function shortAddress(value: Address | string, size = 5): string {
 }
 
 export function humanIdentity(value?: string | null): string {
-  if (!value || isAddress(value, { strict: false })) return BASE_ACCOUNT_LABEL
+  if (!value) return "—"
+  if (isAddress(value)) return `${BASE_ACCOUNT_LABEL} ${shortAddress(value, 2)}`
   return value
 }
 
