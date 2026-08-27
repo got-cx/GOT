@@ -104,7 +104,6 @@ export function RequestTransferForm() {
       dueAt: dueAt ? new Date(`${dueAt}T23:59:59`).toISOString() : undefined,
       metadata,
       intentId: deriveIntentId(transferId, account),
-      authorizedResolver: account,
     })
   }, [account, amount, dueAt, note, reference, selected, sender, transferId])
 
