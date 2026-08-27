@@ -6,6 +6,8 @@ import { getAddress } from "viem"
 import {
   createGOTProtocolClient,
   deriveIntentId,
+  encodeResolveIntent,
+  encodeSettleIntent,
   GOT_BASE_LENS,
   remainingTransferAmount,
   transferStatusFromChain,
@@ -20,6 +22,13 @@ describe("GOT Lens deployment", () => {
     assert.equal(GOT_BASE_LENS, getAddress(baseDeployment.contracts.gotLens))
     assert.equal(client.deployment.lens, GOT_BASE_LENS)
     assert.equal("readIntentState" in client, false)
+  })
+
+  it("encodes distinct resolver and owner settlement entry points", () => {
+    assert.equal(encodeResolveIntent().length, 10)
+    assert.equal(encodeSettleIntent().length, 10)
+    assert.notEqual(encodeResolveIntent(), encodeSettleIntent())
+    assert.equal(typeof createGOTProtocolClient().simulateSettle, "function")
   })
 })
 

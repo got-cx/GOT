@@ -28,7 +28,8 @@ export function shortAddress(value: Address | string, size = 5): string {
 
 export function humanIdentity(value?: string | null): string {
   if (!value) return "—"
-  if (isAddress(value)) return `${BASE_ACCOUNT_LABEL} ${shortAddress(value, 2)}`
+  if (isAddress(value, { strict: false }))
+    return `${BASE_ACCOUNT_LABEL} ${shortAddress(value, 2)}`
   return value
 }
 

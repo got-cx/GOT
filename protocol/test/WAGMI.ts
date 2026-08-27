@@ -110,7 +110,7 @@ describe("GOT wagmi SDK", function () {
   it("binds generated actions and address maps to the Base deployment", function () {
     const chainId = 8453;
     const { contracts, dependencies } = baseDeployment;
-    const gotLens = (contracts as typeof contracts & { gotLens?: Address }).gotLens;
+    const { gotLens } = contracts;
 
     assert.equal(baseDeployment.chainId, chainId);
     assert.equal(protocolDeployments[chainId], baseDeployment);

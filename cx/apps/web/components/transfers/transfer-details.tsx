@@ -91,7 +91,7 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
       if (!snapshot) throw new Error("The live intent snapshot is missing.")
       return snapshot
     },
-    enabled: Boolean(transfer),
+    enabled: Boolean(transfer?.intentConfig),
     refetchInterval: 15_000,
   })
   const [resolveError, setResolveError] = useState<string | null>(null)

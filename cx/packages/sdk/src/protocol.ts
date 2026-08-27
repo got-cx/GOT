@@ -191,6 +191,13 @@ export function encodeResolveIntent(): Hex {
   })
 }
 
+export function encodeSettleIntent(): Hex {
+  return encodeFunctionData({
+    abi: GOTIntentAbi,
+    functionName: "settle",
+  })
+}
+
 export function createGOTProtocolClient(
   rpcUrl?: string,
   fallbackRpcUrl?: string
@@ -300,6 +307,14 @@ export function createGOTProtocolClient(
         address: intentAddress,
         abi: GOTIntentAbi,
         functionName: "resolve",
+      })
+    },
+    simulateSettle(intentAddress: Address, account: Address) {
+      return client.simulateContract({
+        account,
+        address: intentAddress,
+        abi: GOTIntentAbi,
+        functionName: "settle",
       })
     },
     waitForTransaction(hash: Hex, options: { confirmations?: number } = {}) {

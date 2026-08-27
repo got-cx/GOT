@@ -31,7 +31,6 @@ export function TransferTable({ transfers }: { transfers: Transfer[] }) {
         const DirectionIcon = incoming ? ArrowDownLeft : ArrowUpRight
         const transferUrl = transferLink(transfer)
         const partyLabel = humanIdentity(transfer.party)
-        const technicalParty = isAddress(transfer.party, { strict: false })
         const context = transfer.note ?? transfer.reference
 
         return (
@@ -52,9 +51,8 @@ export function TransferTable({ transfers }: { transfers: Transfer[] }) {
                   {context ??
                     (incoming ? "Incoming transfer" : "Outgoing transfer")}
                 </span>
-                <span className="mt-1 block text-[11px] text-muted-foreground sm:hidden">
+                <span className="mt-1 block text-muted-foreground sm:hidden">
                   {formatDate(transfer.createdAt)}
-                  {technicalParty ? ` · ${shortAddress(transfer.party)}` : ""}
                 </span>
               </span>
               <span className="shrink-0 text-right">
@@ -69,11 +67,6 @@ export function TransferTable({ transfers }: { transfers: Transfer[] }) {
             </Link>
             <span className="hidden min-w-24 text-right text-xs text-muted-foreground sm:block">
               {formatDate(transfer.createdAt)}
-              {technicalParty && (
-                <small className="mt-1 block font-mono">
-                  {shortAddress(transfer.party)}
-                </small>
-              )}
             </span>
             <CopyButton
               value={transferUrl}

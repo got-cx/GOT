@@ -2,6 +2,7 @@ import {
   createGOTProtocolClient,
   encodeDeployAndExecuteIntent,
   encodeResolveIntent,
+  encodeSettleIntent,
   GOT_BASE_FACTORY,
   type IntentConfig,
 } from "@got-cx/sdk"
@@ -126,14 +127,19 @@ export async function resolveIntent(
       "Only the account authorized by this request can resolve it."
     )
   }
-  await protocol.simulateResolve(intentAddress, executor)
+  const ownerIsExecutor = executor === state.effectiveOwner
+  if (ownerIsExecutor) {
+    await protocol.simulateSettle(intentAddress, executor)
+  } else {
+    await protocol.simulateResolve(intentAddress, executor)
+  }
   const hash = await provider.request({
     method: "eth_sendTransaction",
     params: [
       {
         from: executor,
         to: intentAddress,
-        data: encodeResolveIntent(),
+        data: ownerIsExecutor ? encodeSettleIntent() : encodeResolveIntent(),
       },
     ],
   })

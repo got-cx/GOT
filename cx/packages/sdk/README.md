@@ -178,8 +178,8 @@ console.log(intentAddress)
 console.log(serializeIntentConfig(config))
 ```
 
-`simulateDeployAndExecute` and `simulateResolve` return viem simulation results
-that can be passed to a wallet client. `readIntentSnapshots` verifies recovery
+`simulateDeployAndExecute`, `simulateResolve`, and `simulateSettle` return viem
+simulation results that can be passed to a wallet client. `readIntentSnapshots` verifies recovery
 envelopes and reads owner, balance, and processing state for the complete page
 in one call through the canonical Base `GOTLens` deployment.
 

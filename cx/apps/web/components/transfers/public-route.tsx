@@ -36,10 +36,7 @@ export function PublicRoute({ route }: { route: string }) {
   const api = getGOTClient()
   const protocol = useMemo(
     () =>
-      createGOTProtocolClient(
-        appConfig.baseRpcUrl,
-        appConfig.baseRpcFallback
-      ),
+      createGOTProtocolClient(appConfig.baseRpcUrl, appConfig.baseRpcFallback),
     []
   )
   const parsed = useMemo(() => {
@@ -185,7 +182,7 @@ export function PublicRoute({ route }: { route: string }) {
       }
       const fundedTransfer = await api.transfers.recordFunding(request.id, hash)
       queryClient.setQueryData(
-        ["got-api", "transfer-intent", request.intentAddress],
+        ["got-api", "transfer-intent", intentAddress],
         fundedTransfer
       )
       await Promise.all([
