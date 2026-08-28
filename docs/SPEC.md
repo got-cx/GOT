@@ -2033,7 +2033,7 @@ Invariants:
 - account spend and settlement are atomic;
 - unresolved owner rolls back the charge;
 - execution reward is forwarded exactly;
-- no incremental configured-token balance from the current execution remains; pre-existing unsolicited balances are preserved and may be permanently stranded;
+- no incremental configured-token balance from the current execution remains; pre-existing unsolicited balances are processed together with the current execution;
 - cancellation prevents future charges.
 
 Tests MUST cover approval-by-signature, ERC-6492 where supported, existing approval, period boundaries, revocation, malformed `extraData`, malicious keeper, unresolved owner, zero and positive fee intents, token balance deltas and reentrancy.

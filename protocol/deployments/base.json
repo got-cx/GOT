@@ -3,8 +3,8 @@
   "chainKey": "base",
   "network": "base",
   "deployer": "0x238450b3ba48903b0e03b7a0d635cffc15f15bef",
-  "create2Salt": "",
-  "create2GuardedSalt": "",
+  "create2Salt": "0x39cfdf60ac246b9725c5b456d8377887f5fe30fc8acffe08a760669c13bd5a55",
+  "create2GuardedSalt": "0xa3a0f0174bb693e4b735f6189dd425234ccae89f7cd1c4487ffbd792e2ae385e",
   "constructorArguments": {
     "treasury": "0xca87066dA08fF49efF7C19244ADD4036991ba811",
     "gotNameClaimVerifier": "0x979deB2d30978686eE2b2e3494472D740d5a3117",
@@ -15,5 +15,23 @@
   "dependencies": {
     "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "spendPermissionManager": "0xf85210B21cC50302F477BA56686d2019dC9b67Ad"
+  },
+  "contracts": {
+    "gotIntent": "0xa5159F78eEc1e44F4fb6056862ab06EfF2285B90",
+    "gotFactory": "0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7",
+    "gotLens": "0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2",
+    "gotName": "0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0",
+    "gotSubscription": "0xf63b1b4e5c3d2e98608937df2378142f98c88567"
+  },
+  "creationCodeHashes": {
+    "gotIntent": "0x301d78e4cb6cc347dc5afcdc2f4e048401731412f0d24d16e302e730d0e1ace4",
+    "gotFactory": "0xcd64adec0337f273c7ea3ff24dfd779aaf5a9ede0fedd40fc10f13640c6aca7b"
+  },
+  "runtimeCodeHashes": {
+    "gotIntent": "0xcdf033a4f0d177a8cafa8034862e3ef3b19c84102327b8416c694d9891c924b5",
+    "gotFactory": "0xd47337913b5441044fc880bb3d5ecc7f28e7439285ab6434f9ee34a27768febd",
+    "gotLens": "0xa259af10df994f6c437d4add892445fb5b670b74949b82fdb7ce0f39e95da226",
+    "gotName": "0x791352644bcaf2f4ca479ed973237dc06c931ebbba80ab78a44d254404067932",
+    "gotSubscription": "0x3a50a40727279f888577e0ef4c2e6d2c164fb62af37776a4c5f4ec68bd958505"
   }
 }
