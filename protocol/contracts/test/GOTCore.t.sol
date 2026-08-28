@@ -49,9 +49,9 @@ contract GOTCoreTest is Test {
     }
 
     function test_ConstantsAndDirectImplementationAreLocked() public {
-        assertEq(implementation.PROTOCOL_VERSION(), keccak256("GOT_PROTOCOL_V0_2"));
+        assertEq(implementation.PROTOCOL_VERSION(), keccak256("GOT_PROTOCOL_V0_3"));
         assertEq(implementation.IMMUTABLE_ARGS_LENGTH(), 226);
-        assertEq(factory.PROTOCOL_VERSION(), keccak256("GOT_PROTOCOL_V0_2"));
+        assertEq(factory.PROTOCOL_VERSION(), keccak256("GOT_PROTOCOL_V0_3"));
         vm.expectRevert(GOTIntent.DirectImplementationCall.selector);
         implementation.owner();
     }
@@ -63,7 +63,7 @@ contract GOTCoreTest is Test {
 
     function test_ConfigurationValidationAndTotalProcessedOverflow() public {
         IGOTFactory.IntentConfig memory invalid = _config(OWNER, bytes32(0), 0, address(0));
-        invalid.amount = 0;
+        invalid.ownerSource = address(0);
         vm.expectRevert(GOTFactory.InvalidConfiguration.selector);
         factory.previewAddress(invalid);
 
@@ -79,6 +79,52 @@ contract GOTCoreTest is Test {
         token.mint(intent, 1);
         vm.expectRevert(GOTIntent.TotalProcessedOverflow.selector);
         IGOTIntent(intent).resolve();
+    }
+
+    function test_OpenAmountZeroFeeProcessesRepeatedVariableFunding() public {
+        IGOTFactory.IntentConfig memory config = _config(OWNER, bytes32(0), 0, address(0));
+        config.amount = 0;
+        address intent = factory.previewAddress(config);
+
+        token.mint(intent, 123);
+        vm.prank(RESOLVER);
+        (, uint256 firstProcessed, uint256 firstOwnerAmount, , , ) = factory.deployAndExecute(config);
+
+        assertEq(firstProcessed, 123);
+        assertEq(firstOwnerAmount, 123);
+        assertEq(IGOTIntent(intent).amount(), 0);
+        assertEq(IGOTIntent(intent).totalProcessed(), 123);
+
+        token.mint(intent, 4_567);
+        vm.prank(STRANGER);
+        (, , uint256 secondProcessed, uint256 secondOwnerAmount, , , ) = IGOTIntent(intent).resolve();
+
+        assertEq(secondProcessed, 4_567);
+        assertEq(secondOwnerAmount, 4_567);
+        assertEq(token.balanceOf(OWNER), 4_690);
+        assertEq(token.balanceOf(intent), 0);
+        assertEq(IGOTIntent(intent).totalProcessed(), 4_690);
+    }
+
+    function test_OpenAmountPositiveFeeUsesCumulativeGrossAccounting() public {
+        IGOTFactory.IntentConfig memory config = _config(OWNER, bytes32(0), 100, PARTNER);
+        config.amount = 0;
+        address intent = factory.previewAddress(config);
+
+        token.mint(intent, 99);
+        vm.prank(RESOLVER);
+        factory.deployAndExecute(config);
+
+        token.mint(intent, 99_901);
+        vm.prank(RESOLVER);
+        IGOTIntent(intent).resolve();
+
+        assertEq(IGOTIntent(intent).totalProcessed(), 100_000);
+        assertEq(token.balanceOf(OWNER), 99_000);
+        assertEq(token.balanceOf(RESOLVER), 200);
+        assertEq(token.balanceOf(PARTNER), 300);
+        assertEq(token.balanceOf(TREASURY), 500);
+        assertEq(token.balanceOf(intent), 0);
     }
 
     function test_IntentIdFunctionSelectorCollisionsAreRejected() public {

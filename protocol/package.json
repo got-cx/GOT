@@ -1,6 +1,6 @@
 {
   "name": "@got-cx/protocol",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "GOT Protocol SDK",
   "keywords": [
     "fintech",

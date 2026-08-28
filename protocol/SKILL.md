@@ -5,7 +5,7 @@ description: Integrate GOT Protocol with the @got-cx/protocol TypeScript SDK. Us
 
 # GOT Protocol
 
-Use `@got-cx/protocol` for GOT Protocol v0.2 integrations. Prefer its typed wagmi actions, deployment maps, ABIs, and name-key helpers over recreating contract calls or addresses.
+Use `@got-cx/protocol` for GOT Protocol v0.3 integrations. Prefer its typed wagmi actions, deployment maps, ABIs, and name-key helpers over recreating contract calls or addresses.
 
 ## Execute with the helper
 
@@ -104,7 +104,7 @@ Follow this order:
 4. Call `writeGOTFactoryDeployAndExecute` with the identical configuration.
 5. Index `IntentDeployed` and `TransferProcessed` events for finalized results.
 
-`amount` is application metadata and the recurring-transfer amount, not a settlement cap. Intent addresses can process partial, repeated, late, or excess funding.
+`amount` is optional expected application metadata, not a settlement cap. Use a positive value for fixed-amount transfers or `0` for an open-amount, reusable virtual deposit, social-link, or tip intent. Both forms process the complete configured-token balance and can process partial, repeated, late, or excess funding. Recurring subscriptions require a positive `amount`.
 
 ## Choose ownership and execution
 

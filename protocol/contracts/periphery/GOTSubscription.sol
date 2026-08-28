@@ -149,6 +149,7 @@ contract GOTSubscription is ReentrancyGuard {
             permission.account == address(0) ||
             permission.spender != address(this) ||
             permission.token != config.token ||
+            config.amount == 0 ||
             permission.allowance != uint160(config.amount) ||
             config.period == 0 ||
             permission.period != uint48(config.period) ||
