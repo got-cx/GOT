@@ -10,7 +10,7 @@ import {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const GOTFactoryAbi = [
   {
@@ -234,14 +234,14 @@ export const GOTFactoryAbi = [
 ] as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const GOTFactoryAddress = {
-  8453: '0x60700c99a58fD21022bf1f4d2b318C663e6F2E27',
+  8453: '0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7',
 } as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const GOTFactoryConfig = {
   address: GOTFactoryAddress,
@@ -609,7 +609,7 @@ export const GOTIntentAbi = [
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const GOTLensAbi = [
   {
@@ -754,14 +754,14 @@ export const GOTLensAbi = [
 ] as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const GOTLensAddress = {
-  8453: '0x8226700C98F675a825cBFBabBC776171c474b113',
+  8453: '0x576A3887C6dA68c9dD9B4fc7b37Fb757D1C78CD2',
 } as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const GOTLensConfig = {
   address: GOTLensAddress,
@@ -773,7 +773,7 @@ export const GOTLensConfig = {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const GOTNameAbi = [
   {
@@ -937,14 +937,14 @@ export const GOTNameAbi = [
 ] as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const GOTNameAddress = {
-  8453: '0x68A0a95E22E289d4b852ed2ecE6fB3A54ac936Af',
+  8453: '0x68d249Dd989c882b8BC50d1a056F1dB5dd02E0e0',
 } as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const GOTNameConfig = {
   address: GOTNameAddress,
@@ -956,7 +956,7 @@ export const GOTNameConfig = {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const GOTSubscriptionAbi = [
   {
@@ -1130,14 +1130,14 @@ export const GOTSubscriptionAbi = [
 ] as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const GOTSubscriptionAddress = {
-  8453: '0x1d7d3F702CcF67461b942C7A3f682cd9E7a28bb0',
+  8453: '0xF63B1B4E5C3d2E98608937DF2378142F98C88567',
 } as const
 
 /**
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const GOTSubscriptionConfig = {
   address: GOTSubscriptionAddress,
@@ -1631,7 +1631,7 @@ export const ISpendPermissionManagerConfig = {
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactory = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1641,7 +1641,7 @@ export const readGOTFactory = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"EXECUTION_SHARE_BPS"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryExecutionShareBps = /*#__PURE__*/ createReadContract(
   {
@@ -1654,7 +1654,7 @@ export const readGOTFactoryExecutionShareBps = /*#__PURE__*/ createReadContract(
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"IMMUTABLE_ARGS_LENGTH"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryImmutableArgsLength =
   /*#__PURE__*/ createReadContract({
@@ -1666,7 +1666,7 @@ export const readGOTFactoryImmutableArgsLength =
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"IMPLEMENTATION"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryImplementation = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1677,7 +1677,7 @@ export const readGOTFactoryImplementation = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"MAX_FEE_BPS"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryMaxFeeBps = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1688,7 +1688,7 @@ export const readGOTFactoryMaxFeeBps = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"PARTNER_SHARE_BPS"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryPartnerShareBps = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1699,7 +1699,7 @@ export const readGOTFactoryPartnerShareBps = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"PROTOCOL_VERSION"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryProtocolVersion = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1710,7 +1710,7 @@ export const readGOTFactoryProtocolVersion = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"TREASURY"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryTreasury = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1721,7 +1721,7 @@ export const readGOTFactoryTreasury = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"configHash"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryConfigHash = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1732,7 +1732,7 @@ export const readGOTFactoryConfigHash = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"previewAddress"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryPreviewAddress = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1743,7 +1743,7 @@ export const readGOTFactoryPreviewAddress = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"quoteGrossAmount"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryQuoteGrossAmount = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1754,7 +1754,7 @@ export const readGOTFactoryQuoteGrossAmount = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"quoteOwnerAmount"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const readGOTFactoryQuoteOwnerAmount = /*#__PURE__*/ createReadContract({
   abi: GOTFactoryAbi,
@@ -1765,7 +1765,7 @@ export const readGOTFactoryQuoteOwnerAmount = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTFactoryAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const writeGOTFactory = /*#__PURE__*/ createWriteContract({
   abi: GOTFactoryAbi,
@@ -1775,7 +1775,7 @@ export const writeGOTFactory = /*#__PURE__*/ createWriteContract({
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"deployAndExecute"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const writeGOTFactoryDeployAndExecute =
   /*#__PURE__*/ createWriteContract({
@@ -1787,7 +1787,7 @@ export const writeGOTFactoryDeployAndExecute =
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTFactoryAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const simulateGOTFactory = /*#__PURE__*/ createSimulateContract({
   abi: GOTFactoryAbi,
@@ -1797,7 +1797,7 @@ export const simulateGOTFactory = /*#__PURE__*/ createSimulateContract({
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTFactoryAbi}__ and `functionName` set to `"deployAndExecute"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const simulateGOTFactoryDeployAndExecute =
   /*#__PURE__*/ createSimulateContract({
@@ -1809,7 +1809,7 @@ export const simulateGOTFactoryDeployAndExecute =
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTFactoryAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const watchGOTFactoryEvent = /*#__PURE__*/ createWatchContractEvent({
   abi: GOTFactoryAbi,
@@ -1819,7 +1819,7 @@ export const watchGOTFactoryEvent = /*#__PURE__*/ createWatchContractEvent({
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTFactoryAbi}__ and `eventName` set to `"IntentDeployed"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x60700c99a58fD21022bf1f4d2b318C663e6F2E27)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x607009e3E7E1FEf0b130F2a1edA3CDb485CAC2A7)
  */
 export const watchGOTFactoryIntentDeployedEvent =
   /*#__PURE__*/ createWatchContractEvent({
@@ -2136,7 +2136,7 @@ export const watchGOTIntentTransferProcessedEvent =
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLens = /*#__PURE__*/ createReadContract({
   abi: GOTLensAbi,
@@ -2146,7 +2146,7 @@ export const readGOTLens = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"ERC165_GAS_LIMIT"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensErc165GasLimit = /*#__PURE__*/ createReadContract({
   abi: GOTLensAbi,
@@ -2157,7 +2157,7 @@ export const readGOTLensErc165GasLimit = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"ERC20_BALANCE_GAS_LIMIT"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensErc20BalanceGasLimit = /*#__PURE__*/ createReadContract(
   {
@@ -2170,7 +2170,7 @@ export const readGOTLensErc20BalanceGasLimit = /*#__PURE__*/ createReadContract(
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"GOT_FACTORY"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensGotFactory = /*#__PURE__*/ createReadContract({
   abi: GOTLensAbi,
@@ -2181,7 +2181,7 @@ export const readGOTLensGotFactory = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"INTENT_READ_GAS_LIMIT"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensIntentReadGasLimit = /*#__PURE__*/ createReadContract({
   abi: GOTLensAbi,
@@ -2192,7 +2192,7 @@ export const readGOTLensIntentReadGasLimit = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"OWNER_RESOLVER_GAS_LIMIT"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensOwnerResolverGasLimit =
   /*#__PURE__*/ createReadContract({
@@ -2204,7 +2204,7 @@ export const readGOTLensOwnerResolverGasLimit =
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"snapshot"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensSnapshot = /*#__PURE__*/ createReadContract({
   abi: GOTLensAbi,
@@ -2215,7 +2215,7 @@ export const readGOTLensSnapshot = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"snapshotMany"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x576a3887c6da68c9dd9b4fc7b37fb757d1c78cd2)
  */
 export const readGOTLensSnapshotMany = /*#__PURE__*/ createReadContract({
   abi: GOTLensAbi,
@@ -2226,7 +2226,7 @@ export const readGOTLensSnapshotMany = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTName = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2236,7 +2236,7 @@ export const readGOTName = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"CLAIM_TYPEHASH"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameClaimTypehash = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2247,7 +2247,7 @@ export const readGOTNameClaimTypehash = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"CLAIM_VERIFIER"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameClaimVerifier = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2258,7 +2258,7 @@ export const readGOTNameClaimVerifier = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"accountOf"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameAccountOf = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2269,7 +2269,7 @@ export const readGOTNameAccountOf = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"deriveNameKey"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameDeriveNameKey = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2280,7 +2280,7 @@ export const readGOTNameDeriveNameKey = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"eip712Domain"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameEip712Domain = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2291,7 +2291,7 @@ export const readGOTNameEip712Domain = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"resolveOwner"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameResolveOwner = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2302,7 +2302,7 @@ export const readGOTNameResolveOwner = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"supportsInterface"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const readGOTNameSupportsInterface = /*#__PURE__*/ createReadContract({
   abi: GOTNameAbi,
@@ -2313,7 +2313,7 @@ export const readGOTNameSupportsInterface = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTNameAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const writeGOTName = /*#__PURE__*/ createWriteContract({
   abi: GOTNameAbi,
@@ -2323,7 +2323,7 @@ export const writeGOTName = /*#__PURE__*/ createWriteContract({
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"claim"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const writeGOTNameClaim = /*#__PURE__*/ createWriteContract({
   abi: GOTNameAbi,
@@ -2334,7 +2334,7 @@ export const writeGOTNameClaim = /*#__PURE__*/ createWriteContract({
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"transfer"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const writeGOTNameTransfer = /*#__PURE__*/ createWriteContract({
   abi: GOTNameAbi,
@@ -2345,7 +2345,7 @@ export const writeGOTNameTransfer = /*#__PURE__*/ createWriteContract({
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTNameAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const simulateGOTName = /*#__PURE__*/ createSimulateContract({
   abi: GOTNameAbi,
@@ -2355,7 +2355,7 @@ export const simulateGOTName = /*#__PURE__*/ createSimulateContract({
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"claim"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const simulateGOTNameClaim = /*#__PURE__*/ createSimulateContract({
   abi: GOTNameAbi,
@@ -2366,7 +2366,7 @@ export const simulateGOTNameClaim = /*#__PURE__*/ createSimulateContract({
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTNameAbi}__ and `functionName` set to `"transfer"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const simulateGOTNameTransfer = /*#__PURE__*/ createSimulateContract({
   abi: GOTNameAbi,
@@ -2377,7 +2377,7 @@ export const simulateGOTNameTransfer = /*#__PURE__*/ createSimulateContract({
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTNameAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const watchGOTNameEvent = /*#__PURE__*/ createWatchContractEvent({
   abi: GOTNameAbi,
@@ -2387,7 +2387,7 @@ export const watchGOTNameEvent = /*#__PURE__*/ createWatchContractEvent({
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTNameAbi}__ and `eventName` set to `"EIP712DomainChanged"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const watchGOTNameEip712DomainChangedEvent =
   /*#__PURE__*/ createWatchContractEvent({
@@ -2399,7 +2399,7 @@ export const watchGOTNameEip712DomainChangedEvent =
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTNameAbi}__ and `eventName` set to `"NameClaimed"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const watchGOTNameClaimedEvent = /*#__PURE__*/ createWatchContractEvent({
   abi: GOTNameAbi,
@@ -2410,7 +2410,7 @@ export const watchGOTNameClaimedEvent = /*#__PURE__*/ createWatchContractEvent({
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTNameAbi}__ and `eventName` set to `"NameTransferred"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x68d249dd989c882b8bc50d1a056f1db5dd02e0e0)
  */
 export const watchGOTNameTransferredEvent =
   /*#__PURE__*/ createWatchContractEvent({
@@ -2422,7 +2422,7 @@ export const watchGOTNameTransferredEvent =
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const readGOTSubscription = /*#__PURE__*/ createReadContract({
   abi: GOTSubscriptionAbi,
@@ -2432,7 +2432,7 @@ export const readGOTSubscription = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__ and `functionName` set to `"BINDING_VERSION"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const readGOTSubscriptionBindingVersion =
   /*#__PURE__*/ createReadContract({
@@ -2444,7 +2444,7 @@ export const readGOTSubscriptionBindingVersion =
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__ and `functionName` set to `"GOT_FACTORY"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const readGOTSubscriptionGotFactory = /*#__PURE__*/ createReadContract({
   abi: GOTSubscriptionAbi,
@@ -2455,7 +2455,7 @@ export const readGOTSubscriptionGotFactory = /*#__PURE__*/ createReadContract({
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__ and `functionName` set to `"SPEND_PERMISSION_MANAGER"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const readGOTSubscriptionSpendPermissionManager =
   /*#__PURE__*/ createReadContract({
@@ -2467,7 +2467,7 @@ export const readGOTSubscriptionSpendPermissionManager =
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const writeGOTSubscription = /*#__PURE__*/ createWriteContract({
   abi: GOTSubscriptionAbi,
@@ -2477,7 +2477,7 @@ export const writeGOTSubscription = /*#__PURE__*/ createWriteContract({
 /**
  * Wraps __{@link writeContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__ and `functionName` set to `"execute"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const writeGOTSubscriptionExecute = /*#__PURE__*/ createWriteContract({
   abi: GOTSubscriptionAbi,
@@ -2488,7 +2488,7 @@ export const writeGOTSubscriptionExecute = /*#__PURE__*/ createWriteContract({
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const simulateGOTSubscription = /*#__PURE__*/ createSimulateContract({
   abi: GOTSubscriptionAbi,
@@ -2498,7 +2498,7 @@ export const simulateGOTSubscription = /*#__PURE__*/ createSimulateContract({
 /**
  * Wraps __{@link simulateContract}__ with `abi` set to __{@link GOTSubscriptionAbi}__ and `functionName` set to `"execute"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const simulateGOTSubscriptionExecute =
   /*#__PURE__*/ createSimulateContract({
@@ -2510,7 +2510,7 @@ export const simulateGOTSubscriptionExecute =
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTSubscriptionAbi}__
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const watchGOTSubscriptionEvent = /*#__PURE__*/ createWatchContractEvent(
   { abi: GOTSubscriptionAbi, address: GOTSubscriptionAddress },
@@ -2519,7 +2519,7 @@ export const watchGOTSubscriptionEvent = /*#__PURE__*/ createWatchContractEvent(
 /**
  * Wraps __{@link watchContractEvent}__ with `abi` set to __{@link GOTSubscriptionAbi}__ and `eventName` set to `"SubscriptionTransferProcessed"`
  *
- * [__View Contract on Base Basescan__](https://basescan.org/address/0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0)
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0xf63b1b4e5c3d2e98608937df2378142f98c88567)
  */
 export const watchGOTSubscriptionTransferProcessedEvent =
   /*#__PURE__*/ createWatchContractEvent({
