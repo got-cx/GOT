@@ -110,23 +110,21 @@ export function RequestCreated({ transferId }: { transferId: string }) {
             <QRCodeImage value={transferUrl} size={220} />
           </div>
         )}
-        {(data.requestId || data.note || data.reference) && (
+        {(data.transferId || data.note || data.reference) && (
           <dl className="mt-6 divide-y rounded-xl border px-4 text-left text-sm">
-            {data.requestId && (
+            {data.transferId && (
               <div className="flex items-center justify-between gap-4 py-3.5">
                 <dt className="text-muted-foreground">Transfer ID</dt>
                 <dd className="flex min-w-0 items-center gap-2 font-medium">
-                  <span className="max-w-52 truncate">{data.requestId}</span>
-                  <CopyButton value={data.requestId} label="Copy ID" />
+                  <span className="max-w-52 truncate">{data.transferId}</span>
+                  <CopyButton value={data.transferId} label="Copy ID" />
                 </dd>
               </div>
             )}
             {data.note && (
               <div className="flex justify-between gap-4 py-3.5">
                 <dt className="text-muted-foreground">Note</dt>
-                <dd className="max-w-72 text-right font-medium">
-                  {data.note}
-                </dd>
+                <dd className="max-w-72 text-right font-medium">{data.note}</dd>
               </div>
             )}
             {data.reference && (

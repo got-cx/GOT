@@ -18,7 +18,7 @@ The API accepts either the secure session cookie or an `Authorization: Bearer go
 
 For local web development, developers can set `NEXT_PUBLIC_GOT_API_URL` and `NEXT_PUBLIC_GOT_API_TOKEN` to use a custom API endpoint and token. Development token mode sends a bearer header without cookies, while production remains cookie-only.
 
-Incoming transfer requests use the canonical intent address as a short link. The API stores transfer metadata, while live balances and contract state are read directly from Base. Each incoming request requires a user-defined ID; got.cx combines it with the requesting Base Account to derive the protocol `intentId`. The same ID and transfer parameters recreate the same deterministic address.
+Transfers use the canonical intent address as a short link. The API stores a compact recovery envelope and product metadata, while live balances and contract state are read directly from Base. Both send and receive flows require a user-defined transfer ID; got.cx combines it with the creating Base Account to derive the protocol `intentId`. The same ID and transfer parameters recreate the same deterministic address.
 
 ## Commands
 

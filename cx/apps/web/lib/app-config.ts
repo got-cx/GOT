@@ -10,4 +10,6 @@ export const appConfig = {
       ? process.env.NEXT_PUBLIC_GOT_API_TOKEN || null
       : null,
   baseRpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined,
+  baseRpcFallback:
+    process.env.NEXT_PUBLIC_BASE_RPC_FALLBACK || undefined,
 } as const

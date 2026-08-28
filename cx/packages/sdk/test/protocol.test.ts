@@ -1,14 +1,36 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { baseDeployment } from "@got-cx/protocol"
+import { getAddress } from "viem"
 
 import {
+  createGOTProtocolClient,
   deriveIntentId,
+  encodeResolveIntent,
+  encodeSettleIntent,
+  GOT_BASE_LENS,
   remainingTransferAmount,
   transferStatusFromChain,
 } from "../src/protocol"
 import { TransferStatus } from "../src/types"
 
 const account = "0xafE0D4b0C259eb4826e40cD8Bc044759A357CE76"
+
+describe("GOT Lens deployment", () => {
+  it("requires the canonical protocol Lens for snapshot reads", () => {
+    const client = createGOTProtocolClient()
+    assert.equal(GOT_BASE_LENS, getAddress(baseDeployment.contracts.gotLens))
+    assert.equal(client.deployment.lens, GOT_BASE_LENS)
+    assert.equal("readIntentState" in client, false)
+  })
+
+  it("encodes distinct resolver and owner settlement entry points", () => {
+    assert.equal(encodeResolveIntent().length, 10)
+    assert.equal(encodeSettleIntent().length, 10)
+    assert.notEqual(encodeResolveIntent(), encodeSettleIntent())
+    assert.equal(typeof createGOTProtocolClient().simulateSettle, "function")
+  })
+})
 
 describe("intent ID derivation", () => {
   it("derives the same ID from the same account and trimmed user ID", () => {

@@ -194,45 +194,35 @@ describe("GOTClient API errors", () => {
     })
   })
 
-  it("requests a server-verified transfer state sync", async () => {
+  it("uses the user transfer ID as creation idempotency", async () => {
     let request: FetchCall | undefined
     const client = new GOTClient({
       baseUrl: "https://api.got.cx",
-      credentials: "include",
       fetch: async (input, init) => {
         request = { input, init }
         return jsonResponse({ id: "transfer_1" })
       },
     })
 
-    await client.transfers.sync("transfer_1")
-
-    assert.ok(request?.init)
-    assert.equal(request.input, "https://api.got.cx/transfers/transfer_1/sync")
-    assert.equal(request.init.method, "POST")
-    assert.equal(request.init.credentials, "include")
-    assert.deepEqual(JSON.parse(request.init.body as string), {})
-  })
-
-  it("reports transfer state sync without a payload", async () => {
-    let request: FetchCall | undefined
-    const client = new GOTClient({
-      baseUrl: "https://api.got.cx",
-      indexerKey: "indexer_test_key",
-      fetch: async (input, init) => {
-        request = { input, init }
-        return jsonResponse({ id: "transfer_1" })
-      },
+    await client.transfers.create({
+      direction: "outgoing",
+      chainId: 8453,
+      transferId: "invoice-42",
+      recipient: "0x0000000000000000000000000000000000000002",
+      recipientTargetAmount: "1000000",
+      token: "0x0000000000000000000000000000000000000003",
     })
-    await client.transfers.sync("transfer_1")
 
     assert.ok(request?.init)
-    assert.equal(request.input, "https://api.got.cx/transfers/transfer_1/sync")
+    assert.equal(request.input, "https://api.got.cx/transfers")
     assert.equal(request.init.method, "POST")
     assert.equal(
-      new Headers(request.init.headers).get("X-GOT-Indexer-Key"),
-      "indexer_test_key"
+      new Headers(request.init.headers).has("Idempotency-Key"),
+      false
     )
-    assert.equal(request.init.body, undefined)
+    assert.equal(
+      JSON.parse(request.init.body as string).transferId,
+      "invoice-42"
+    )
   })
 })

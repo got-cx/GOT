@@ -16,7 +16,6 @@ export type GOTClientOptions = {
   fetch?: typeof globalThis.fetch
   credentials?: RequestCredentials
   getAccessToken?: () => string | null | Promise<string | null>
-  indexerKey?: string
 }
 
 export type AuthTokenDelivery = "bearer" | "cookie"
@@ -58,7 +57,6 @@ export class GOTClient {
   readonly #fetch: typeof globalThis.fetch
   readonly #credentials: RequestCredentials
   readonly #getAccessToken?: GOTClientOptions["getAccessToken"]
-  readonly #indexerKey?: string
 
   constructor(options: GOTClientOptions) {
     if (!options.baseUrl.trim()) throw new Error("GOT API baseUrl is required")
@@ -66,7 +64,6 @@ export class GOTClient {
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
     this.#credentials = options.credentials ?? "omit"
     this.#getAccessToken = options.getAccessToken
-    this.#indexerKey = options.indexerKey
   }
 
   async #request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -75,7 +72,6 @@ export class GOTClient {
     headers.set("Accept", "application/json")
     if (init.body) headers.set("Content-Type", "application/json")
     if (token) headers.set("Authorization", `Bearer ${token}`)
-    if (this.#indexerKey) headers.set("X-GOT-Indexer-Key", this.#indexerKey)
 
     const response = await this.#fetch(`${this.#baseUrl}${path}`, {
       credentials: this.#credentials,
@@ -159,21 +155,14 @@ export class GOTClient {
         method: "POST",
         body: JSON.stringify({ transactionHash }),
       }),
-    sync: (id: string) =>
-      this.#request<Transfer>(`/transfers/${encodeURIComponent(id)}/sync`, {
-        method: "POST",
-        ...(this.#indexerKey ? {} : { body: JSON.stringify({}) }),
-      }),
-    createRequest: (input: TransferRequestInput, idempotencyKey: string) =>
+    createRequest: (input: TransferRequestInput) =>
       this.#request<TransferRequest>("/transfers", {
         method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({ direction: "incoming", ...input }),
       }),
-    create: (input: CreateTransferInput, idempotencyKey: string) =>
+    create: (input: CreateTransferInput) =>
       this.#request<Transfer>("/transfers", {
         method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
         body: JSON.stringify(input),
       }),
   }

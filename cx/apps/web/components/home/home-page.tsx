@@ -173,7 +173,7 @@ export function HomePage() {
             nativeButton={false}
             render={<Link href="#developers" />}
           >
-            For developers <ArrowRight data-icon="inline-end" />
+            For builders <ArrowRight data-icon="inline-end" />
           </Button>
         </div>
         <p className="mt-7 font-medium italic">Send it. GOT it.</p>
@@ -321,7 +321,7 @@ export function HomePage() {
       >
         <div>
           <p className="text-xs font-semibold tracking-[0.15em] text-muted-foreground">
-            FOR DEVELOPERS
+            FOR BUILDERS
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
             Add onchain transfers to your product.

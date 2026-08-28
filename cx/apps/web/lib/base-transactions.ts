@@ -2,6 +2,7 @@ import {
   createGOTProtocolClient,
   encodeDeployAndExecuteIntent,
   encodeResolveIntent,
+  encodeSettleIntent,
   GOT_BASE_FACTORY,
   type IntentConfig,
 } from "@got-cx/sdk"
@@ -65,21 +66,23 @@ export async function deployAndResolveIntent(
   const { provider, account: executor } = await getConnectedAccount(
     "Authenticate with the requesting Base Account."
   )
-  const directOwner = /^0x0{64}$/i.test(config.ownerKey)
-    ? getAddress(config.ownerSource)
-    : null
+  const protocol = createGOTProtocolClient(
+    appConfig.baseRpcUrl,
+    appConfig.baseRpcFallback
+  )
+  const [snapshot] = await protocol.readIntentSnapshots([
+    { intentAddress, config },
+  ])
+  if (!snapshot) throw new Error("The live intent snapshot is missing.")
   const restrictedResolver = getAddress(config.authorizedResolver)
-  if (executor !== directOwner && executor !== restrictedResolver) {
+  if (
+    executor !== snapshot.effectiveOwner &&
+    restrictedResolver !==
+      getAddress("0x0000000000000000000000000000000000000000") &&
+    executor !== restrictedResolver
+  ) {
     throw new Error(
-      "Only the account that created or currently owns this request can settle it."
-    )
-  }
-
-  const protocol = createGOTProtocolClient(appConfig.baseRpcUrl)
-  const preview = await protocol.previewIntent(config)
-  if (preview.toLowerCase() !== intentAddress.toLowerCase()) {
-    throw new Error(
-      "The recovery configuration does not match this intent address."
+      "Only the current owner or authorized resolver can settle it."
     )
   }
   await protocol.simulateDeployAndExecute(config, executor)
@@ -96,28 +99,47 @@ export async function deployAndResolveIntent(
   return requireTransactionHash(hash)
 }
 
-export async function resolveIntent(intentAddress: Address): Promise<Hash> {
+export async function resolveIntent(
+  intentAddress: Address,
+  config: IntentConfig
+): Promise<Hash> {
   const { provider, account: executor } = await getConnectedAccount(
     "Authenticate with the requesting Base Account."
   )
-  const protocol = createGOTProtocolClient(appConfig.baseRpcUrl)
-  const state = await protocol.readIntentState(intentAddress)
+  const protocol = createGOTProtocolClient(
+    appConfig.baseRpcUrl,
+    appConfig.baseRpcFallback
+  )
+  const [state] = await protocol.readIntentSnapshots([
+    { intentAddress, config },
+  ])
+  if (!state) throw new Error("The live intent snapshot is missing.")
   if (!state.deployed || !state.authorizedResolver) {
     throw new Error("This GOT intent has not been deployed yet.")
   }
-  if (executor !== state.authorizedResolver) {
+  if (
+    executor !== state.effectiveOwner &&
+    state.authorizedResolver !==
+      getAddress("0x0000000000000000000000000000000000000000") &&
+    executor !== state.authorizedResolver
+  ) {
     throw new Error(
       "Only the account authorized by this request can resolve it."
     )
   }
-  await protocol.simulateResolve(intentAddress, executor)
+  const ownerIsExecutor = executor === state.effectiveOwner
+  if (ownerIsExecutor) {
+    await protocol.simulateSettle(intentAddress, executor)
+  } else {
+    await protocol.simulateResolve(intentAddress, executor)
+  }
   const hash = await provider.request({
     method: "eth_sendTransaction",
     params: [
       {
         from: executor,
         to: intentAddress,
-        data: encodeResolveIntent(),
+        data: ownerIsExecutor ? encodeSettleIntent() : encodeResolveIntent(),
       },
     ],
   })

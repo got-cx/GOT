@@ -18,10 +18,15 @@ function contentSecurityPolicy(nonce: string) {
     process.env.NEXT_PUBLIC_BASE_RPC_URL,
     "https://mainnet.base.org"
   )
+  const rpcFallbackOrigin = origin(
+    process.env.NEXT_PUBLIC_BASE_RPC_FALLBACK,
+    "https://base-rpc.publicnode.com"
+  )
   const connectSources = [
     "'self'",
     apiOrigin,
     rpcOrigin,
+    rpcFallbackOrigin,
     ...(isDev ? ["http:", "ws:", "wss:"] : []),
   ]
 

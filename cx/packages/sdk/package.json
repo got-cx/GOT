@@ -1,6 +1,6 @@
 {
   "name": "@got-cx/sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "got.cx product SDK",
   "keywords": [
     "fintech",
@@ -70,7 +70,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@got-cx/protocol": "0.2.0",
+    "@got-cx/protocol": "0.2.1",
     "viem": "2.55.11"
   },
   "devDependencies": {

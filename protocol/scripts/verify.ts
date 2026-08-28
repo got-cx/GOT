@@ -21,6 +21,7 @@ type BaseDeployment = {
   contracts: {
     gotIntent: Address;
     gotFactory: Address;
+    gotLens: Address;
     gotName: Address;
     gotSubscription: Address;
   };
@@ -53,6 +54,12 @@ async function main(): Promise<void> {
         args.partnerShareBps,
         args.maxFeeBps,
       ],
+    },
+    {
+      name: "GOTLens",
+      address: contracts.gotLens,
+      contract: "contracts/periphery/GOTLens.sol:GOTLens",
+      constructorArgs: [contracts.gotFactory],
     },
     {
       name: "GOTName",

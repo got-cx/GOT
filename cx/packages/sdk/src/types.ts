@@ -40,8 +40,9 @@ export type Transfer = {
   processedAmount: string
   ownerAmount: string
   feeAmount: string
+  effectiveOwner: Address | null
   reference: string | null
-  requestId?: string | null
+  transferId: string
   note: string | null
   createdAt: string
   status: TransferStatus
@@ -129,6 +130,7 @@ export type APIAuthToken = APIAuth & {
 
 type TransferInput = {
   chainId: ChainId
+  transferId: string
   recipient: string
   recipientTargetAmount: string
   token: Address
@@ -139,13 +141,10 @@ type TransferInput = {
   intentConfig?: SerializedIntentConfig
 }
 
-export type TransferRequestInput = TransferInput & {
-  requestId: string
-}
+export type TransferRequestInput = TransferInput
 
 export type CreateTransferInput = TransferInput & {
   direction: TransferDirection
-  requestId?: string
 }
 
 export type IntentConfig = {

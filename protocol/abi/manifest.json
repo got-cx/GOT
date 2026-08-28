@@ -7,6 +7,10 @@
     "abi": "GOTIntent.json",
     "sourceName": "contracts/core/GOTIntent.sol"
   },
+  "GOTLens": {
+    "abi": "GOTLens.json",
+    "sourceName": "contracts/periphery/GOTLens.sol"
+  },
   "GOTName": {
     "abi": "GOTName.json",
     "sourceName": "contracts/periphery/GOTName.sol"

@@ -21,6 +21,7 @@ function getShortName(contractName: string, itemName?: string) {
 
 const addressByContract = {
   GOTFactory: baseDeployment.contracts.gotFactory,
+  GOTLens: baseDeployment.contracts.gotLens,
   GOTName: baseDeployment.contracts.gotName,
   GOTSubscription: baseDeployment.contracts.gotSubscription,
   ISpendPermissionManager: baseDeployment.dependencies.spendPermissionManager,

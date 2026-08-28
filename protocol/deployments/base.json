@@ -19,6 +19,7 @@
   "contracts": {
     "gotIntent": "0x9da08A8680978fb802A97F0445962F616FA6b598",
     "gotFactory": "0x60700c99a58fD21022bf1f4d2b318C663e6F2E27",
+    "gotLens": "0x8226700c98f675a825cbfbabbc776171c474b113",
     "gotName": "0x68a0a95e22e289d4b852ed2ece6fb3a54ac936af",
     "gotSubscription": "0x1d7d3f702ccf67461b942c7a3f682cd9e7a28bb0"
   },
@@ -29,6 +30,7 @@
   "runtimeCodeHashes": {
     "gotIntent": "0xe819e937fabd8ca0b074effc0cbcc7282576139637deeef2c5e82ab07419ad19",
     "gotFactory": "0x0d70e10766f647e4573956db4bd3610f5c9ee24f7618197c47d056bc3d44e2cd",
+    "gotLens": "0x48035f39bbfa5842f6eef5943adad037360ed3538051616f882db3914848a5b6",
     "gotName": "0x8cbabd0bdb42a8f0f2aa4db381c9ba63a49fb80dfcf5610c0ec62609e65b99bc",
     "gotSubscription": "0xc82e86fb6ec20504992aa41231b0081aa4e5278054deb68a74ec94b44a160725"
   }

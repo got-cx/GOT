@@ -605,6 +605,170 @@ export const GOTIntentAbi = [
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GOTLens
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const GOTLensAbi = [
+  {
+    type: 'constructor',
+    inputs: [{ name: 'gotFactory_', internalType: 'address', type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'error', inputs: [], name: 'InvalidFactory' },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'ERC165_GAS_LIMIT',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'ERC20_BALANCE_GAS_LIMIT',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'GOT_FACTORY',
+    outputs: [
+      { name: '', internalType: 'contract IGOTFactory', type: 'address' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'INTENT_READ_GAS_LIMIT',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'OWNER_RESOLVER_GAS_LIMIT',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'config',
+        internalType: 'struct IGOTFactory.IntentConfig',
+        type: 'tuple',
+        components: [
+          { name: 'intentId', internalType: 'bytes32', type: 'bytes32' },
+          { name: 'ownerSource', internalType: 'address', type: 'address' },
+          { name: 'ownerKey', internalType: 'bytes32', type: 'bytes32' },
+          { name: 'token', internalType: 'address', type: 'address' },
+          { name: 'partner', internalType: 'address', type: 'address' },
+          {
+            name: 'authorizedResolver',
+            internalType: 'address',
+            type: 'address',
+          },
+          { name: 'amount', internalType: 'uint128', type: 'uint128' },
+          { name: 'initialDeadline', internalType: 'uint64', type: 'uint64' },
+          { name: 'period', internalType: 'uint32', type: 'uint32' },
+          { name: 'feeBps', internalType: 'uint16', type: 'uint16' },
+          { name: 'metadataHash', internalType: 'bytes32', type: 'bytes32' },
+        ],
+      },
+    ],
+    name: 'snapshot',
+    outputs: [
+      {
+        name: 'result',
+        internalType: 'struct GOTLens.IntentSnapshot',
+        type: 'tuple',
+        components: [
+          { name: 'intentAddress', internalType: 'address', type: 'address' },
+          { name: 'configValid', internalType: 'bool', type: 'bool' },
+          { name: 'deployed', internalType: 'bool', type: 'bool' },
+          { name: 'canonical', internalType: 'bool', type: 'bool' },
+          { name: 'balanceRead', internalType: 'bool', type: 'bool' },
+          { name: 'balance', internalType: 'uint256', type: 'uint256' },
+          { name: 'stateRead', internalType: 'bool', type: 'bool' },
+          { name: 'totalProcessed', internalType: 'uint256', type: 'uint256' },
+          { name: 'ownerResolved', internalType: 'bool', type: 'bool' },
+          { name: 'effectiveOwner', internalType: 'address', type: 'address' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'configs',
+        internalType: 'struct IGOTFactory.IntentConfig[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'intentId', internalType: 'bytes32', type: 'bytes32' },
+          { name: 'ownerSource', internalType: 'address', type: 'address' },
+          { name: 'ownerKey', internalType: 'bytes32', type: 'bytes32' },
+          { name: 'token', internalType: 'address', type: 'address' },
+          { name: 'partner', internalType: 'address', type: 'address' },
+          {
+            name: 'authorizedResolver',
+            internalType: 'address',
+            type: 'address',
+          },
+          { name: 'amount', internalType: 'uint128', type: 'uint128' },
+          { name: 'initialDeadline', internalType: 'uint64', type: 'uint64' },
+          { name: 'period', internalType: 'uint32', type: 'uint32' },
+          { name: 'feeBps', internalType: 'uint16', type: 'uint16' },
+          { name: 'metadataHash', internalType: 'bytes32', type: 'bytes32' },
+        ],
+      },
+    ],
+    name: 'snapshotMany',
+    outputs: [
+      {
+        name: 'results',
+        internalType: 'struct GOTLens.IntentSnapshot[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'intentAddress', internalType: 'address', type: 'address' },
+          { name: 'configValid', internalType: 'bool', type: 'bool' },
+          { name: 'deployed', internalType: 'bool', type: 'bool' },
+          { name: 'canonical', internalType: 'bool', type: 'bool' },
+          { name: 'balanceRead', internalType: 'bool', type: 'bool' },
+          { name: 'balance', internalType: 'uint256', type: 'uint256' },
+          { name: 'stateRead', internalType: 'bool', type: 'bool' },
+          { name: 'totalProcessed', internalType: 'uint256', type: 'uint256' },
+          { name: 'ownerResolved', internalType: 'bool', type: 'bool' },
+          { name: 'effectiveOwner', internalType: 'address', type: 'address' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+] as const
+
+/**
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const GOTLensAddress = {
+  8453: '0x8226700C98F675a825cBFBabBC776171c474b113',
+} as const
+
+/**
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const GOTLensConfig = {
+  address: GOTLensAddress,
+  abi: GOTLensAbi,
+} as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GOTName
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1968,6 +2132,96 @@ export const watchGOTIntentTransferProcessedEvent =
     abi: GOTIntentAbi,
     eventName: 'TransferProcessed',
   })
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLens = /*#__PURE__*/ createReadContract({
+  abi: GOTLensAbi,
+  address: GOTLensAddress,
+})
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"ERC165_GAS_LIMIT"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensErc165GasLimit = /*#__PURE__*/ createReadContract({
+  abi: GOTLensAbi,
+  address: GOTLensAddress,
+  functionName: 'ERC165_GAS_LIMIT',
+})
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"ERC20_BALANCE_GAS_LIMIT"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensErc20BalanceGasLimit = /*#__PURE__*/ createReadContract(
+  {
+    abi: GOTLensAbi,
+    address: GOTLensAddress,
+    functionName: 'ERC20_BALANCE_GAS_LIMIT',
+  },
+)
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"GOT_FACTORY"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensGotFactory = /*#__PURE__*/ createReadContract({
+  abi: GOTLensAbi,
+  address: GOTLensAddress,
+  functionName: 'GOT_FACTORY',
+})
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"INTENT_READ_GAS_LIMIT"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensIntentReadGasLimit = /*#__PURE__*/ createReadContract({
+  abi: GOTLensAbi,
+  address: GOTLensAddress,
+  functionName: 'INTENT_READ_GAS_LIMIT',
+})
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"OWNER_RESOLVER_GAS_LIMIT"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensOwnerResolverGasLimit =
+  /*#__PURE__*/ createReadContract({
+    abi: GOTLensAbi,
+    address: GOTLensAddress,
+    functionName: 'OWNER_RESOLVER_GAS_LIMIT',
+  })
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"snapshot"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensSnapshot = /*#__PURE__*/ createReadContract({
+  abi: GOTLensAbi,
+  address: GOTLensAddress,
+  functionName: 'snapshot',
+})
+
+/**
+ * Wraps __{@link readContract}__ with `abi` set to __{@link GOTLensAbi}__ and `functionName` set to `"snapshotMany"`
+ *
+ * [__View Contract on Base Basescan__](https://basescan.org/address/0x8226700c98f675a825cbfbabbc776171c474b113)
+ */
+export const readGOTLensSnapshotMany = /*#__PURE__*/ createReadContract({
+  abi: GOTLensAbi,
+  address: GOTLensAddress,
+  functionName: 'snapshotMany',
+})
 
 /**
  * Wraps __{@link readContract}__ with `abi` set to __{@link GOTNameAbi}__

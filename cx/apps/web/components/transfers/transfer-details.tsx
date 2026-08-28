@@ -10,8 +10,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getAddress, isAddress, type Address, type Hash } from "viem"
 
 import {
@@ -59,7 +59,8 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
   const client = getGOTClient()
   const { account, isLoading: isAuthLoading } = useAuth()
   const protocol = useMemo(
-    () => createGOTProtocolClient(appConfig.baseRpcUrl),
+    () =>
+      createGOTProtocolClient(appConfig.baseRpcUrl, appConfig.baseRpcFallback),
     []
   )
   const routeAddress = useMemo<Address | null>(
@@ -79,73 +80,20 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
     queryKey: ["got-chain", "intent", transfer?.intentAddress],
     queryFn: async () => {
       if (!transfer) throw new Error("Transfer data is required.")
-      if (transfer.intentConfig) {
-        const preview = await protocol.previewIntent(
-          deserializeIntentConfig(transfer.intentConfig)
-        )
-        if (preview !== transfer.intentAddress) {
-          throw new Error(
-            "The API intent configuration does not derive this address."
-          )
-        }
-      }
-      return protocol.readIntentState(transfer.intentAddress)
+      if (!transfer.intentConfig)
+        throw new Error("The transfer recovery configuration is missing.")
+      const [snapshot] = await protocol.readIntentSnapshots([
+        {
+          intentAddress: transfer.intentAddress,
+          config: deserializeIntentConfig(transfer.intentConfig),
+        },
+      ])
+      if (!snapshot) throw new Error("The live intent snapshot is missing.")
+      return snapshot
     },
-    enabled: Boolean(transfer),
+    enabled: Boolean(transfer?.intentConfig),
     refetchInterval: 15_000,
   })
-  const lastSyncAttempt = useRef<string | null>(null)
-  const syncMutation = useMutation({
-    mutationFn: (id: string) => client.transfers.sync(id),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["got-api", "transfer-intent", routeAddress],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["got-api", "transfers"] }),
-        queryClient.invalidateQueries({ queryKey: ["got-api", "overview"] }),
-      ])
-    },
-  })
-  const detectedStatus =
-    transfer && chainQuery.data
-      ? transferStatusFromChain(
-          BigInt(transfer.recipientTargetAmount),
-          chainQuery.data.totalProcessed,
-          chainQuery.data.balance
-        )
-      : null
-  const needsSync = Boolean(
-    transfer &&
-    chainQuery.data &&
-    (detectedStatus !== transfer.status ||
-      chainQuery.data.totalProcessed.toString() !== transfer.processedAmount ||
-      chainQuery.data.totalProcessed + chainQuery.data.balance >
-        BigInt(transfer.fundedAmount))
-  )
-
-  useEffect(() => {
-    if (!transfer || !chainQuery.data || !needsSync || syncMutation.isPending) {
-      return
-    }
-    const fingerprint = [
-      transfer.id,
-      detectedStatus,
-      chainQuery.data.balance,
-      chainQuery.data.totalProcessed,
-      chainQuery.dataUpdatedAt,
-    ].join(":")
-    if (lastSyncAttempt.current === fingerprint) return
-    lastSyncAttempt.current = fingerprint
-    syncMutation.mutate(transfer.id)
-  }, [
-    chainQuery.data,
-    chainQuery.dataUpdatedAt,
-    detectedStatus,
-    needsSync,
-    syncMutation,
-    transfer,
-  ])
   const [resolveError, setResolveError] = useState<string | null>(null)
   const [isActing, setIsActing] = useState(false)
   const [transactionHash, setTransactionHash] = useState<Hash | null>(null)
@@ -159,15 +107,20 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
     setResolveError(null)
     setTransactionHash(null)
     try {
+      const config = deserializeIntentConfig(transfer.intentConfig)
       const hash = chainQuery.data.deployed
-        ? await resolveIntent(transfer.intentAddress)
-        : await deployAndResolveIntent(
-            transfer.intentAddress,
-            deserializeIntentConfig(transfer.intentConfig)
-          )
+        ? await resolveIntent(transfer.intentAddress, config)
+        : await deployAndResolveIntent(transfer.intentAddress, config)
       setTransactionHash(hash)
-      await protocol.waitForTransaction(hash)
-      await chainQuery.refetch()
+      await protocol.waitForTransaction(hash, {
+        confirmations: 2,
+      })
+      await Promise.all([
+        chainQuery.refetch(),
+        transferQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "transfers"] }),
+        queryClient.invalidateQueries({ queryKey: ["got-api", "overview"] }),
+      ])
     } catch (reason) {
       setResolveError(
         reason instanceof Error
@@ -240,10 +193,12 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
   const configuredResolver = transfer.intentConfig
     ? getAddress(transfer.intentConfig.authorizedResolver)
     : null
+  const isRecipient = Boolean(
+    account &&
+    (configuredResolver === account || chain?.effectiveOwner === account)
+  )
   const canResolve =
-    transfer.direction === "incoming" &&
-    configuredResolver === account &&
-    Boolean(chain && chain.balance > 0n && transfer.intentConfig)
+    isRecipient && Boolean(chain && chain.balance > 0n && transfer.intentConfig)
   const transferUrl = transferLink(transfer)
   const fromLabel =
     transfer.direction === "incoming"
@@ -380,12 +335,12 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
               {formatDate(transfer.createdAt, true)}
             </dd>
           </div>
-          {transfer.requestId && (
+          {transfer.transferId && (
             <div>
               <dt className="text-xs text-muted-foreground">Transfer ID</dt>
               <dd className="mt-1 flex items-center gap-2 font-medium">
-                <span className="max-w-48 truncate">{transfer.requestId}</span>
-                <CopyButton value={transfer.requestId} label="Copy" />
+                <span className="max-w-48 truncate">{transfer.transferId}</span>
+                <CopyButton value={transfer.transferId} label="Copy" />
               </dd>
             </div>
           )}
@@ -416,7 +371,7 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
           )}
         </dl>
 
-        {chain && transfer.direction === "incoming" && (
+        {chain && isRecipient && (
           <div className="mt-6 flex flex-col justify-between gap-4 rounded-xl bg-muted/60 p-4 sm:flex-row sm:items-center">
             <div>
               <strong className="block text-sm">
@@ -470,10 +425,7 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
         <div className="flex items-start justify-between gap-4 border-t pt-4">
           <div>
             <h2 className="font-medium text-foreground">Live onchain state</h2>
-            <p className="mt-1 leading-5">
-              Read directly from Base.
-              {syncMutation.isPending && " Syncing with your activity feed…"}
-            </p>
+            <p className="mt-1 leading-5">Read directly from Base.</p>
           </div>
           <Button
             variant="outline"
@@ -525,12 +477,6 @@ export function TransferDetails({ intentAddress }: { intentAddress: string }) {
               </dd>
             </div>
           </dl>
-        )}
-
-        {syncMutation.error && (
-          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400">
-            The live state could not be synced to the activity feed yet.
-          </p>
         )}
 
         <dl className="mt-5 grid gap-x-8 gap-y-4 border-t pt-5 sm:grid-cols-2 lg:grid-cols-3">
