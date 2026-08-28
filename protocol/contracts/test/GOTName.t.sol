@@ -10,7 +10,7 @@ import { IGOTFactory } from "../core/interfaces/IGOTFactory.sol";
 import { IGOTOwnerResolver } from "../core/interfaces/IGOTOwnerResolver.sol";
 import { IGOTName } from "../periphery/interfaces/IGOTName.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
-import { MockERC1271Verifier } from "./mocks/MockERC1271Verifier.sol";
+import { MockERC1271Verifier, StrictCalldataERC1271Verifier } from "./mocks/MockERC1271Verifier.sol";
 
 contract GOTNameTest is Test {
     uint256 internal constant VERIFIER_KEY = 0xA11CE;
@@ -91,6 +91,23 @@ contract GOTNameTest is Test {
 
         vm.expectRevert(GOTName.InvalidVerifierSignature.selector);
         otherNames.claim(claimData, signature);
+    }
+
+    function test_ERC1271SignatureCalldataIsABIPadded() public {
+        StrictCalldataERC1271Verifier contractVerifier = new StrictCalldataERC1271Verifier(verifier);
+        GOTName names = new GOTName(address(contractVerifier));
+        IGOTName.Claim memory claimData = IGOTName.Claim(
+            names.deriveNameKey("x:strict-erc1271"),
+            ALICE,
+            uint48(block.timestamp + 1 hours)
+        );
+
+        // The 65-byte signature is intentionally not word-aligned. The strict
+        // verifier accepts it only when SignatureChecker pads the ERC-1271 call.
+        bytes memory signature = _sign(names, claimData, VERIFIER_KEY);
+        assertEq(signature.length, 65);
+        names.claim(claimData, signature);
+        assertEq(names.accountOf(claimData.nameKey), ALICE);
     }
 
     function test_ExpiredInvalidAndUnauthorizedClaimsFail() public {

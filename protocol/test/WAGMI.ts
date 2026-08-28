@@ -48,7 +48,7 @@ export const wagmiConfig = createConfig({
   transports: { [base.id]: http() },
 });
 
-/** Builds a direct-owner, zero-fee, one-time USDC intent. */
+/** Builds a direct-owner, zero-fee, non-recurring USDC intent. */
 export function createDirectUSDCIntentConfig(recipient: Address, reference: string, amount: bigint) {
   return {
     intentId: keccak256(stringToHex(`intent:${reference}`)),

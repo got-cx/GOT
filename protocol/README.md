@@ -2,7 +2,7 @@
 
 GOT - Global Onchain Transfers - provides deterministic intent addresses that can receive ERC-20 tokens before an intent contract is deployed. Once ownership is resolvable, an allowed executor can atomically deploy the canonical intent clone and process its configured-token balance.
 
-`@got-cx/protocol` provides type-safe wagmi Core actions, ABIs, Base Mainnet deployment metadata, and name-key utilities for GOT protocol version `0.2`. See the [GOT protocol specification](https://github.com/got-cx/GOT/blob/main/docs/SPEC.md) for the full design.
+`@got-cx/protocol` provides type-safe wagmi Core actions, ABIs, Base Mainnet deployment metadata, and name-key utilities for GOT protocol version `0.3`. See the [GOT protocol specification](https://github.com/got-cx/GOT/blob/main/docs/SPEC.md) for the full design.
 
 ## Install
 
@@ -64,6 +64,8 @@ Generated names preserve Solidity contract casing. Examples include `GOTFactoryA
 
 An intent's immutable configuration determines its counterfactual address. Reuse the exact same configuration when previewing, funding, deploying, and indexing it.
 
+Set `amount` to a positive expected gross amount for fixed-amount transfers. Set it to `0` for an open-amount intent such as a reusable virtual deposit address, social transfer link, or tip address. In either case, processing settles the complete configured-token balance; `amount` is not a cap, minimum, or settlement trigger. `GOTSubscription` requires a positive amount.
+
 The runnable [wagmi SDK example](https://github.com/got-cx/GOT/blob/main/protocol/test/WAGMI.ts) shows how to:
 
 1. Build a direct-owner USDC intent.
@@ -75,7 +77,7 @@ Always derive the address with `readGOTFactoryPreviewAddress` before funding. Ne
 
 ## Quote fees
 
-Use `readGOTFactoryQuoteGrossAmount` and `readGOTFactoryQuoteOwnerAmount` to quote fees. Fees use basis points: `100` is `1%`. The configuration's `feeBps` must not exceed the factory's `MAX_FEE_BPS`.
+Use `readGOTFactoryQuoteGrossAmount` and `readGOTFactoryQuoteOwnerAmount` to quote fixed-amount transfers. Fees use basis points: `100` is `1%`. The configuration's `feeBps` must not exceed the factory's `MAX_FEE_BPS`.
 
 ## Interact with a deployed intent
 

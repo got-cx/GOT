@@ -109,6 +109,29 @@ describe("GOT protocol product and integrator examples", async function () {
     assert.equal(invoiceStatus(recipientTargetAmount, recipientTargetAmount), "SETTLED");
   });
 
+  it("open amount: reuses one intent address for variable-size transfers", async function () {
+    const { token, factory } = await networkHelpers.loadFixture(deployProtocol);
+    const config = directIntent(token.address, "reusable-tip-address", {
+      amount: 0n,
+      feeBps: 0,
+    });
+    const intentAddress = await factory.read.previewAddress([config]);
+
+    await token.write.mint([intentAddress, 750_000n]);
+    await factory.write.deployAndExecute([config], {
+      account: resolverOperator.account,
+    });
+
+    const intent = await viem.getContractAt("GOTIntent", intentAddress);
+    assert.equal(await intent.read.amount(), 0n);
+    await token.write.mint([intentAddress, 2_250_000n]);
+    await intent.write.resolve({ account: resolverOperator.account });
+
+    assert.equal(await intent.read.totalProcessed(), 3_000_000n);
+    assert.equal(await token.read.balanceOf([merchant.account.address]), 3_000_000n);
+    assert.equal(await token.read.balanceOf([intentAddress]), 0n);
+  });
+
   it("marketplace integrator: quotes an exact-net invoice and earns immutable partner rewards", async function () {
     const { token, factory } = await networkHelpers.loadFixture(deployProtocol);
     const recipientTargetAmount = 100_000_000n; // Merchant must receive exactly 100 USDC.

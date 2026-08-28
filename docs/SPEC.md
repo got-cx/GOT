@@ -1,19 +1,19 @@
 # GOT — Global Onchain Transfers
 
-## Final Unified System Implementation Specification v0.2
+## Final Unified System Implementation Specification v0.3
 
 **System:** GOT  
 **Expansion:** Global Onchain Transfers  
 **Canonical domain:** `got.cx`  
-**System version:** `0.2`  
-**Protocol identifier:** `keccak256("GOT_PROTOCOL_V0_2")`  
+**System version:** `0.3`  
+**Protocol identifier:** `keccak256("GOT_PROTOCOL_V0_3")`  
 **Primary launch network:** Base  
 **Primary launch asset:** canonical USDC  
 **Primary account layer:** Base Account  
 **Target protocol networks:** Cancun-compatible Ethereum/EVM networks supporting `CREATE2` and `MCOPY`
-**Document revision:** `0.2.3-name-keys`  
+**Document revision:** `0.3.0-open-amount`  
 **Status:** Review-remediation candidate; independent audit closure pending  
-**Date:** 2026-08-07
+**Date:** 2026-08-28
 
 ---
 
@@ -44,7 +44,7 @@ The deterministic intent address is the protocol’s core primitive. An applicat
 
 GOT Protocol is neutral infrastructure. It does not require applications to use `got.cx`, a particular business model, or a mandatory protocol fee.
 
-Version 0.2 makes the following decisions normative:
+Version 0.3 makes the following decisions normative:
 
 1. `feeBps` MAY be zero.
 2. A zero-fee intent is valid and processes the complete configured-token balance to the effective owner.
@@ -56,8 +56,9 @@ Version 0.2 makes the following decisions normative:
 8. Third-party integrators MAY configure their own immutable onchain fee through `feeBps` and receive transparent partner rewards.
 9. `got.cx` usage limits apply only to hosted software and infrastructure, never to permissionless onchain protocol usage or transfer value.
 10. GOT’s own paid SaaS plans SHOULD use `GOTSubscription` onchain as production dogfooding, without requiring subscription revenue sharing with integrators.
-11. Canonical v0.2 bytecode targets the Cancun EVM; support for an older hard fork requires a separately versioned build and published code hashes.
+11. Canonical v0.3 bytecode targets the Cancun EVM; support for an older hard fork requires a separately versioned build and published code hashes.
 12. The canonical got.cx Links Model uses `@`, `x:`, `tg:`, fragment-based `email:`/`phone:`, and direct `0x...` intent-address routes; processed `transferId` values are receipt identifiers, not canonical transfer URLs.
+13. `amount` MAY be zero. `amount == 0` means the transfer amount is not predetermined or committed by the intent configuration; settlement still processes the complete configured-token balance. This enables reusable virtual deposit addresses, social transfer links, tips and other variable-amount transfers.
 
 The primary product promise is:
 
@@ -149,7 +150,7 @@ The recommended brand line is:
 76. Reference Solidity
 77. External Standards and Dependencies
 78. Canonical Statements
-79. v0.2 Change Log
+79. v0.3 Change Log
 80. Final Decisions
 
 ---
@@ -235,9 +236,11 @@ Application interpretation
 
 An intent address is not itself an invoice, subscription or customer record.
 
-`amount` in `IntentConfig` is an expected gross transfer amount used by applications and recurring-transfer bindings. It is not a processing cap and does not prevent partial, repeated, late or excess transfers.
+`amount` in `IntentConfig` is optional expected gross transfer metadata. When `amount > 0`, it commits an expected gross amount to the deterministic address. When `amount == 0`, the amount is open and is not known or fixed ahead of time. In both cases, `amount` is not a processing cap, minimum or authorization amount and does not prevent partial, repeated, late or excess transfers.
 
-When an application displays a net invoice amount and `feeBps > 0`, it SHOULD compute and display a separate gross payer quote so that the expected owner proceeds equal the invoice amount.
+Open-amount intents are intended for reusable virtual deposit addresses, social transfer links, tips, donations and other flows where the payer chooses or discovers the amount at transfer time. A zero `amount` MUST NOT be interpreted as a request to transfer zero tokens.
+
+When an application displays a net invoice amount and `feeBps > 0`, it SHOULD compute and display a separate gross payer quote so that the expected owner proceeds equal the invoice amount. Fixed-amount invoices and recurring subscriptions SHOULD use a positive `amount`; `GOTSubscription` requires one.
 
 ---
 
@@ -332,9 +335,10 @@ infra
 
 # 4. Goals
 
-GOT v0.2 MUST provide:
+GOT v0.3 MUST provide:
 
 - deterministic intent addresses before deployment;
+- open-amount intents with `amount == 0` for reusable virtual deposit addresses, social links, tips and variable deposits;
 - direct ERC20 transfers to undeployed intent addresses;
 - direct ownership without requiring names;
 - optional reusable names and verified identifiers;
@@ -363,7 +367,7 @@ GOT v0.2 MUST provide:
 
 # 5. Non-Goals
 
-GOT v0.2 MUST NOT require or implement:
+GOT v0.3 MUST NOT require or implement:
 
 - a protocol token;
 - a DAO;
@@ -518,7 +522,7 @@ The implementation MUST expose:
 
 ```solidity
 bytes32 public constant PROTOCOL_VERSION =
-    keccak256("GOT_PROTOCOL_V0_2");
+    keccak256("GOT_PROTOCOL_V0_3");
 
 uint16 public constant IMMUTABLE_ARGS_LENGTH = 226;
 
@@ -669,11 +673,27 @@ The effective owner may always settle.
 
 ## 10.7 `amount`
 
-Expected gross transfer amount in token base units.
+Optional expected gross transfer amount in token base units.
 
-It is application metadata committed to the address. It does not cap processing.
+```text
+0
+    open amount; no transfer amount is predetermined by the intent
 
-Applications MAY separately store a recipient target amount and SHOULD quote a gross payer amount when positive fees apply.
+> 0
+    expected gross transfer amount committed to the intent
+```
+
+`amount` is application metadata committed to the deterministic address. It is never a processing cap, minimum balance or authorization amount. A successful processing call always processes the complete configured-token balance available at execution time.
+
+`amount == 0` MUST be interpreted as **unspecified/open amount**, not as a zero-value transfer. It allows one deterministic intent address to remain independent of transfer size and therefore supports reusable virtual deposit addresses, social transfer links, tips, donations and other variable-amount transfer flows.
+
+Applications MAY fund and process an open-amount intent repeatedly with different amounts. Positive fees, when configured, are calculated from the actual cumulative gross value processed, exactly as for fixed-amount intents.
+
+Applications that require a fixed recipient target, such as invoices, SHOULD use `amount > 0` and MAY separately store a recipient target amount when fee-on-top quoting is required.
+
+`GOTSubscription` MUST require `amount > 0` because a spend permission requires an explicit recurring allowance and execution amount.
+
+Applications MUST NOT derive `PARTIAL`, `SETTLED` or `OVERPAID` solely by comparing proceeds with `IntentConfig.amount` when `amount == 0`; open-amount status is application-defined and SHOULD be based on funding/processing events or a separate offchain target when one exists.
 
 ## 10.8 `initialDeadline`
 
@@ -683,13 +703,13 @@ Application-level time reference. The core MUST NOT reject settlement because th
 
 ```text
 0
-    one-time application semantics
+    no recurring schedule semantics; the intent may still receive and process funds repeatedly
 
 > 0
     recurring application semantics
 ```
 
-The core does not itself authorize recurring withdrawals.
+The core does not itself authorize recurring withdrawals. `period == 0` does not make an intent single-use.
 
 ## 10.10 `feeBps`
 
@@ -716,16 +736,20 @@ Commitment to canonical offchain metadata. It MUST NOT reveal secrets or protect
 ```solidity
 config.ownerSource != address(0);
 config.token != address(0);
-config.amount > 0;
 config.feeBps <= MAX_FEE_BPS;
 config.period == 0 || config.initialDeadline != 0;
 ```
 
-Version 0.2 intentionally does not require:
+Version 0.3 intentionally does not require:
 
 ```solidity
+config.amount > 0
 config.feeBps > 0
 ```
+
+The core MUST accept `amount == 0`. A zero amount means the amount is not predetermined; it does not change processing behavior and does not prevent the intent from receiving or settling any positive configured-token balance.
+
+Periphery contracts MAY impose stricter amount requirements. The canonical `GOTSubscription` MUST require `config.amount > 0`.
 
 Mode validation:
 
@@ -1469,6 +1493,9 @@ Tests MUST include:
 - split invariance under randomized funding partitions;
 - exact recipient quote properties;
 - partial, repeated, late and excess funding;
+- `amount == 0` before and after deployment;
+- repeated variable-size funding and processing for the same open-amount intent;
+- zero- and positive-fee processing with `amount == 0`;
 - competing resolvers;
 - owner and resolver transaction competition;
 - first deployment and execution rollback;
@@ -1487,6 +1514,7 @@ owner + treasury + partner + executor == gross
 zero fee implies owner == gross
 all fee outputs are monotonic cumulatively
 partitioning does not change cumulative allocation
+amount == 0 does not change complete-balance processing or fee accounting
 quoteGrossAmount produces exact target owner proceeds for a fresh intent
 ```
 
@@ -1859,9 +1887,12 @@ end        = required exclusive end
 
 The pinned Coinbase Spend Permission Manager requires `start < end`; zero is not an unbounded-expiry sentinel. A product with no user-selected end MUST encode an explicit future timestamp. `type(uint48).max` MAY represent a practically unbounded permission when that policy is clearly disclosed.
 
-Required v0.2 reference policy:
+Recurring subscriptions require a fixed positive intent amount. Open-amount intents are not valid subscription bindings.
+
+Required v0.3 reference policy:
 
 ```text
+config.amount         > 0
 permission.spender   == GOTSubscription
 permission.token     == config.token
 permission.allowance == config.amount
@@ -1907,6 +1938,7 @@ Required relationships:
 ```solidity
 permission.spender == address(this);
 permission.token == config.token;
+config.amount > 0;
 config.period > 0;
 permission.period == uint48(config.period);
 permission.allowance == uint160(config.amount);
@@ -1944,7 +1976,7 @@ function execute(
 
 Required algorithm:
 
-1. Validate permission and exact binding.
+1. Validate permission and exact binding, including `config.amount > 0`.
 2. Predict the canonical intent.
 3. Register approval by signature when not already approved.
 4. Snapshot token balance.
@@ -1969,7 +2001,7 @@ The spender MAY also revoke where supported.
 
 Application states such as paused, canceled, overdue and trial-ended remain offchain interpretations unless represented by permission validity or revocation.
 
-No rollover is performed by v0.2. Missed periods require a new invoice, a separate catch-up permission or explicit product policy.
+No rollover is performed by v0.3. Missed periods require a new invoice, a separate catch-up permission or explicit product policy.
 
 Keeper front-running changes only which keeper receives an execution allocation. It cannot change amount, token, recipient, period, partner or fee.
 
@@ -2001,7 +2033,7 @@ Invariants:
 - account spend and settlement are atomic;
 - unresolved owner rolls back the charge;
 - execution reward is forwarded exactly;
-- no incremental configured-token balance from the current execution remains; pre-existing unsolicited balances are preserved and may be permanently stranded;
+- no incremental configured-token balance from the current execution remains; pre-existing unsolicited balances are processed together with the current execution;
 - cancellation prevents future charges.
 
 Tests MUST cover approval-by-signature, ERC-6492 where supported, existing approval, period boundaries, revocation, malformed `extraData`, malicious keeper, unresolved owner, zero and positive fee intents, token balance deltas and reentrancy.
@@ -2098,7 +2130,7 @@ Base Account is the preferred reference account layer for:
 - spend permissions;
 - sponsored transactions where available.
 
-GOT MUST NOT implement a competing custom wallet for v0.2.
+GOT MUST NOT implement a competing custom wallet for v0.3.
 
 The interface SHOULD use capability detection and MUST degrade gracefully for EOA, Safe and other compatible accounts.
 
@@ -2108,17 +2140,31 @@ Account recovery is controlled by the account system, not GOT Protocol.
 
 # 49. Transfer and Invoice Experience
 
-Merchant flow:
+Fixed-amount merchant or invoice flow:
 
 ```text
 merchant signs in
 -> enters recipient target amount, asset, customer and description
 -> application chooses feeBps and partner
 -> application quotes gross payer amount
--> application creates IntentConfig
+-> application creates IntentConfig with amount > 0
 -> factory predicts intent address
 -> application returns transfer link and address
 ```
+
+Open-amount transfer flow:
+
+```text
+recipient or application chooses asset, owner/name and optional metadata
+-> application creates IntentConfig with amount = 0
+-> factory predicts one reusable intent address
+-> application returns a virtual deposit address or transfer link
+-> payer chooses or supplies the amount at transfer time
+-> any positive configured-token balance can be processed
+-> the same intent may receive and process later transfers of different sizes
+```
+
+Canonical examples include exchange/fintech-style virtual deposit addresses, reusable social links and tips.
 
 Payer display for positive fee:
 
@@ -2137,7 +2183,7 @@ Total to transfer    100.00 USDC
 
 The interface MUST not hide a positive fee.
 
-Status is derived from finalized onchain owner proceeds and application target:
+For fixed-amount requests, status is derived from finalized onchain owner proceeds and the application target:
 
 ```text
 OPEN
@@ -2147,6 +2193,8 @@ OVERPAID
 EXPIRED
 CANCELED
 ```
+
+For `amount == 0`, the intent has no protocol-level target amount. Applications MUST NOT classify it as partial, settled or overpaid by comparing proceeds to zero. They SHOULD expose funding/processing history or apply a separate offchain target when the product flow defines one.
 
 A deadline does not disable protocol settlement.
 
@@ -2186,7 +2234,7 @@ Fragment routes reduce passive HTTP request and referrer exposure because the fr
 
 Applications MAY offer a separate random opaque-link mode as described in Section 33.2, but that mode is not a canonical identity route and MUST NOT replace the deterministic `#email:` or `#phone:` normalization rules when those canonical routes are used.
 
-Routes provide discovery and UX only. The deterministic intent address, selected chain and immutable intent configuration remain authoritative.
+Routes provide discovery and UX only. Identity and social routes MAY represent reusable open-amount intents with `amount == 0`. The deterministic intent address, selected chain and immutable intent configuration remain authoritative.
 
 ---
 
@@ -2199,7 +2247,8 @@ payer enters or opens GOT identity link
 -> application parses the canonical route
 -> application normalizes identity and derives identifierKey
 -> creates intent with ownerSource = GOTName
--> payer funds predicted intent address
+-> for reusable social/name/tip links, amount MAY be 0
+-> payer chooses an amount and funds the predicted intent address
 -> owner may remain unresolved
 -> recipient verifies identifier
 -> threshold verifier signs claim
@@ -2341,9 +2390,13 @@ returns the existing transfer, while different details under the same ID fail.
 
 Amounts MUST be strings in token base units in machine APIs.
 
+`Intent.amount` MUST accept `"0"` to represent an open amount. For open-amount transfer requests, `recipientTargetAmount` and `grossQuotedAmount` MAY be absent when no offchain target exists. Actual funding, processed, owner and fee amounts remain positive-value observations expressed as base-unit strings.
+
+Fixed-amount invoice and subscription APIs SHOULD require a positive target amount. `GOTSubscription` bindings MUST reject `config.amount == 0`.
+
 Every chain-bound record MUST include `chainId`.
 
-The API MUST distinguish `recipientTargetAmount`, `grossQuotedAmount`, `processedAmount`, `ownerAmount` and each fee allocation.
+The API MUST distinguish `recipientTargetAmount`, `grossQuotedAmount`, `processedAmount`, `ownerAmount` and each fee allocation when those fields are applicable.
 
 ---
 
@@ -2403,14 +2456,18 @@ A raw ERC20 transfer is not the same as a processed transfer.
 The finalized `TransferProcessed` event is authoritative for owner proceeds and fee allocation.
 
 For got.cx, live transfer status is derived from the configured-token balance,
-`totalProcessed`, target amount and current effective owner. Supabase stores the
-counterfactual recovery envelope because an undeployed deterministic address
-cannot expose immutable configuration. After deployment, canonical intent
-getters are authoritative.
+`totalProcessed`, optional target amount and current effective owner. When
+`IntentConfig.amount == 0` and no separate offchain target exists, status MUST
+not use zero as a settlement threshold; funding and processing history are the
+relevant state. Supabase stores the counterfactual recovery envelope because an
+undeployed deterministic address cannot expose immutable configuration. After
+deployment, canonical intent getters are authoritative.
 
 ---
 
 # 58. Invoice State Model
+
+Invoices SHOULD define a positive recipient target and normally use `amount > 0`.
 
 Recommended invoice state derives from cumulative finalized owner proceeds:
 
@@ -2768,22 +2825,22 @@ Equal hexadecimal addresses do not imply shared balances, processed totals, name
 System version:
 
 ```text
-GOT Unified System Specification v0.2
+GOT Unified System Specification v0.3
 ```
 
 Protocol identifier:
 
 ```solidity
-keccak256("GOT_PROTOCOL_V0_2")
+keccak256("GOT_PROTOCOL_V0_3")
 ```
 
-The protocol identifier changes because allowing `feeBps == 0` changes normative configuration validation and creates a new deterministic address namespace.
+The protocol identifier changes because v0.3 permits both `feeBps == 0` and `amount == 0`, changing normative configuration validation and creating a new deterministic address namespace.
 
-v0.1 intents remain immutable and valid under their original factory and namespace.
+Intents created under previous versions remain immutable and valid under their original factories and namespaces.
 
-New applications SHOULD default to v0.2.
+New applications SHOULD default to v0.3.
 
-Interfaces MUST display the protocol version for every intent and MUST NOT reinterpret v0.1 fee validation as v0.2 behavior.
+Interfaces MUST display the protocol version for every intent and MUST NOT reinterpret previous-version validation as v0.3 behavior.
 
 Canonical contracts MUST NOT be upgraded in place.
 
@@ -2821,8 +2878,10 @@ Every release MUST include:
 
 - update protocol identifier;
 - permit zero fee;
+- permit zero amount;
 - preserve immutable layout;
 - implement zero-fee tests;
+- implement open-amount tests;
 - implement quote helpers;
 - preserve cumulative positive-fee math;
 - publish new deterministic vectors;
@@ -2842,8 +2901,9 @@ Every release MUST include:
 - Base Account sign-in;
 - Base USDC;
 - direct and named transfer creation;
+- open-amount virtual deposit addresses, reusable social links and tips;
 - canonical GOT link parser and route resolver;
-- exact recipient and gross quote display;
+- exact recipient and gross quote display for fixed-amount flows;
 - indexer;
 - resolver worker;
 - receipts, webhooks and CSV export.
@@ -2882,9 +2942,10 @@ Every release MUST include:
 
 - [x] zero mutable storage;
 - [x] no admin, pause or upgrade;
-- [x] `GOT_PROTOCOL_V0_2`;
+- [x] `GOT_PROTOCOL_V0_3`;
 - [x] exact 226-byte layout;
 - [x] zero fee accepted;
+- [x] zero amount accepted as open amount;
 - [x] fee above maximum rejected;
 - [x] preview has no external calls;
 - [x] all intent function-selector prefixes rejected;
@@ -2943,7 +3004,8 @@ Every release MUST include:
 - [ ] SaaS limits only;
 - [ ] onchain paid-plan dogfooding;
 - [ ] protocol access survives plan expiration;
-- [ ] fee and gross quote visible;
+- [ ] fee and gross quote visible for fixed-amount flows;
+- [ ] open-amount virtual deposit addresses, reusable social links and tips;
 - [ ] canonical `@`, `x:`, `tg:`, `#email:`, `#phone:` and `0x...` route formats;
 - [ ] shared route parser with normalization parity across frontend, API, claim service and signer tooling;
 - [ ] API idempotency;
@@ -2975,7 +3037,6 @@ function _validate(
     if (
         config.ownerSource == address(0) ||
         config.token == address(0) ||
-        config.amount == 0 ||
         config.feeBps > MAX_FEE_BPS ||
         (
             config.period != 0 &&
@@ -3287,11 +3348,11 @@ External SDK versions and deployed dependency addresses MUST be pinned in the re
 
 ---
 
-# 79. v0.2 Change Log
+# 79. v0.3 Change Log
 
-Changes from Final Unified System Specification v0.1:
+Changes from previous versions:
 
-1. Protocol identifier changed to `GOT_PROTOCOL_V0_2`.
+1. Protocol identifier changed to `GOT_PROTOCOL_V0_3`.
 2. `feeBps == 0` is valid.
 3. Removed the minimum-positive-fee configuration invariant.
 4. Added normative zero-fee settlement behavior.
@@ -3308,12 +3369,18 @@ Changes from Final Unified System Specification v0.1:
 15. Added 2-of-3 Safe verifier operations for GOTName.
 16. Updated tests, threats, audit scope and deployment artifacts.
 17. Merged the complete normative `got-links-v1` name-key normalization, injective encoding rules and cross-language golden vectors into Section 32 so this specification is self-contained.
+18. `amount == 0` is valid and normatively means an open/unspecified transfer amount.
+19. Added open-amount use cases for reusable virtual deposit addresses, social transfer links, tips, donations and variable deposits.
+20. Clarified that open-amount intents still process the complete configured-token balance and use the same cumulative fee accounting.
+21. Clarified that `period == 0` does not make an intent single-use.
+22. Kept `GOTSubscription` fixed-amount by requiring `config.amount > 0`.
+23. Updated API, status, UX, tests and implementation guidance for open-amount intents.
 
 ---
 
 # 80. Final Decisions
 
-The v0.2 implementation MUST follow these final decisions:
+The v0.3 implementation MUST follow these final decisions:
 
 ```text
 Core primitive
@@ -3321,6 +3388,9 @@ Core primitive
 
 Public terminology
     transfer, not payment
+
+Intent amount
+    optional expected metadata; zero means open/unspecified amount and enables reusable variable-amount transfer addresses
 
 Core fee
     optional; zero is valid
@@ -3364,4 +3434,4 @@ Canonical launch
 
 ---
 
-**End of GOT Final Unified System Implementation Specification v0.2**
+**End of GOT Final Unified System Implementation Specification v0.3**

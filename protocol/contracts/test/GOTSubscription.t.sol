@@ -143,6 +143,19 @@ contract GOTSubscriptionTest is Test {
         assertFalse(permissionManager.isApproved(permission));
     }
 
+    function test_OpenAmountIntentCannotBindToSubscription() public {
+        (
+            IGOTFactory.IntentConfig memory config,
+            ISpendPermissionManager.SpendPermission memory permission
+        ) = _boundTransfer(MERCHANT, bytes32(0), 0);
+        config.amount = 0;
+        permission = _permissionFor(config);
+
+        vm.expectRevert(GOTSubscription.InvalidPermission.selector);
+        subscription.execute(permission, hex"01", config);
+        assertFalse(permissionManager.isApproved(permission));
+    }
+
     function test_NewPeriodAllowsNextExactCharge() public {
         (
             IGOTFactory.IntentConfig memory config,

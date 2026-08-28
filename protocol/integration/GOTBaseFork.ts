@@ -48,7 +48,7 @@ type SpendPermission = {
 type InvoiceStatus = "OPEN" | "PARTIAL" | "SETTLED" | "OVERPAID";
 
 const BASE_CHAIN_ID = 8453;
-const PINNED_BASE_FORK_BLOCK = BigInt(process.env.BASE_FORK_BLOCK ?? "49650000");
+const PINNED_BASE_FORK_BLOCK = BigInt(process.env.BASE_FORK_BLOCK ?? "50569060");
 const FORK_MODE = process.env.GOT_BASE_FORK_MODE ?? "pinned";
 const USDC = getAddress("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
 const SPEND_PERMISSION_MANAGER = getAddress("0xf85210B21cC50302F477BA56686d2019dC9b67Ad");

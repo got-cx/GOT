@@ -9,7 +9,7 @@ import { GOTClones } from "./libraries/GOTClones.sol";
 /// @title GOTFactory
 /// @notice Stateless canonical factory for previewing, deploying, and executing GOT intents.
 contract GOTFactory is IGOTFactory {
-    bytes32 public constant PROTOCOL_VERSION = keccak256("GOT_PROTOCOL_V0_2");
+    bytes32 public constant PROTOCOL_VERSION = keccak256("GOT_PROTOCOL_V0_3");
     uint16 public constant IMMUTABLE_ARGS_LENGTH = 226;
     uint256 internal constant BPS_DENOMINATOR = 10_000;
 
@@ -131,7 +131,6 @@ contract GOTFactory is IGOTFactory {
         if (
             config.ownerSource == address(0) ||
             config.token == address(0) ||
-            config.amount == 0 ||
             config.feeBps > MAX_FEE_BPS ||
             (config.period != 0 && config.initialDeadline == 0) ||
             _isIntentSelector(bytes4(config.intentId))

@@ -3,7 +3,7 @@ import { configVariable, defineConfig } from "hardhat/config";
 import abiExportPlugin from "./plugins/abi-export/index.js";
 
 const BASE_RPC_URL = process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
-const BASE_FORK_BLOCK = Number(process.env.BASE_FORK_BLOCK ?? "49650000");
+const BASE_FORK_BLOCK = Number(process.env.BASE_FORK_BLOCK ?? "50569060");
 const useBaseForkDeployAccount = process.env.USE_GOT_DEPLOY_ACCOUNT === "true";
 
 if (!Number.isSafeInteger(BASE_FORK_BLOCK) || BASE_FORK_BLOCK <= 0) {

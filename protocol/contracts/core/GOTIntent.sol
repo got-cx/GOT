@@ -14,7 +14,7 @@ import { IGOTOwnerResolver } from "./interfaces/IGOTOwnerResolver.sol";
 contract GOTIntent is IGOTIntent {
     using SafeERC20 for IERC20;
 
-    bytes32 public constant PROTOCOL_VERSION = keccak256("GOT_PROTOCOL_V0_2");
+    bytes32 public constant PROTOCOL_VERSION = keccak256("GOT_PROTOCOL_V0_3");
     uint16 public constant IMMUTABLE_ARGS_LENGTH = 226;
     uint256 public constant ERC165_GAS_LIMIT = 30_000;
     uint256 public constant OWNER_RESOLVER_GAS_LIMIT = 50_000;

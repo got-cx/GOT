@@ -1,6 +1,6 @@
 {
   "name": "@got-cx/protocol",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "GOT Protocol SDK",
   "keywords": [
     "fintech",
@@ -83,7 +83,7 @@
     "prepack": "npm run build:package"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "5.6.1"
+    "@openzeppelin/contracts": "5.7.0"
   },
   "peerDependencies": {
     "@wagmi/core": "^3.4.1",
