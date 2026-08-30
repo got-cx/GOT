@@ -2,13 +2,91 @@ import type { Address, Hash, Hex } from "viem"
 
 export type ChainId = 8453
 
+export type IntentMetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | IntentMetadataValue[]
+  | { [key: string]: IntentMetadataValue }
+
+export type IntentMetadata = { [key: string]: IntentMetadataValue }
+
+export type CreateIntentInput = {
+  owner: Address
+  ref: string
+  amount?: string
+  token?: Address
+  tokenDecimals?: number
+  deadline?: number
+  period?: number
+  metadata?: IntentMetadata
+  partner?: Address
+  authorizedResolver?: Address
+  feeBps?: number
+}
+
+export type CreatedIntent = {
+  ref: string
+  intentId: Hex
+  metadata: IntentMetadata | null
+  metadataHash: Hex
+  address: Address
+  chainId: ChainId
+  token: Address
+  amount: bigint
+  config: IntentConfig
+}
+
+export type AddressRecord = {
+  id: string
+  workspaceId: string
+  ref: string
+  intentId: Hex
+  intentAddress: Address
+  chainId: ChainId
+  token: Address
+  amount: string
+  metadata: IntentMetadata | null
+  metadataHash: Hex
+  intentConfig: SerializedIntentConfig
+  ownerSource: Address
+  ownerKey: Hex
+  receivedAmount: string
+  processedAmount: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AddressList = {
+  items: AddressRecord[]
+  nextCursor: string | null
+}
+
+export type AddressActivity = {
+  items: Transfer[]
+  nextCursor: string | null
+}
+
+export type CreateAddressInput = {
+  owner?: Address
+  ref: string
+  amount?: string
+  metadata?: IntentMetadata
+  token?: Address
+  deadline?: number
+  period?: number
+  partner?: Address
+  authorizedResolver?: Address
+  feeBps?: number
+  intentAddress?: Address
+}
+
 export type Money = {
   amount: string
   decimals: number
   symbol: string
 }
-
-export type TransferDirection = "incoming" | "outgoing"
 
 export const TransferStatus = {
   Created: "created",
@@ -28,38 +106,24 @@ export const TransferStatus = {
 export type TransferStatus =
   (typeof TransferStatus)[keyof typeof TransferStatus]
 
+/** Canonical incoming configured-token Transfer indexed from Base logs. */
 export type Transfer = {
   id: string
+  addressId: string
   chainId: ChainId
-  direction: TransferDirection
-  party: string
-  value: Money
-  recipientTargetAmount: string
-  grossQuotedAmount: string
-  fundedAmount: string
-  processedAmount: string
-  ownerAmount: string
-  feeAmount: string
-  effectiveOwner: Address | null
-  reference: string | null
-  transferId: string
-  note: string | null
+  tokenAddress: Address
+  transactionHash: Hash
+  logIndex: number
+  /** JSON-safe uint64 representation. */
+  blockNumber: string
+  blockHash: Hash
+  blockTimestamp: string | null
+  from: Address
+  to: Address
+  amount: string
   createdAt: string
-  status: TransferStatus
+  ref: string
   intentAddress: Address
-  transactionHash: Hash | null
-  intentConfig?: SerializedIntentConfig
-  recipient?: string
-  sender?: string | null
-  dueAt?: string | null
-}
-
-export type TransferRequest = Transfer & {
-  direction: "incoming"
-  recipient: string
-  sender: string | null
-  dueAt: string | null
-  token: Address
 }
 
 export type TransferList = {
@@ -100,11 +164,11 @@ export type Subscription = {
 }
 
 export type DashboardOverview = {
-  transferVolume: Money
+  received: Money
+  addressCount: number
   transferCount: number
-  pendingRequestCount: number
+  subscriptionCount: number
   recentTransfers: Transfer[]
-  volumeSeries: Array<{ at: string; amount: string }>
 }
 
 export type AccountSession = {
@@ -126,25 +190,6 @@ export type APIAuth = {
 
 export type APIAuthToken = APIAuth & {
   token: string
-}
-
-type TransferInput = {
-  chainId: ChainId
-  transferId: string
-  recipient: string
-  recipientTargetAmount: string
-  token: Address
-  sender?: string
-  reference?: string
-  note?: string
-  dueAt?: string
-  intentConfig?: SerializedIntentConfig
-}
-
-export type TransferRequestInput = TransferInput
-
-export type CreateTransferInput = TransferInput & {
-  direction: TransferDirection
 }
 
 export type IntentConfig = {

@@ -6,17 +6,20 @@ import {
 } from "@got-cx/protocol"
 import {
   createPublicClient,
+  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
   fallback,
   getAddress,
   http,
   keccak256,
+  parseAbi,
   parseUnits,
   stringToHex,
   zeroAddress,
   zeroHash,
   type Address,
+  type Hash,
   type Hex,
 } from "viem"
 import { base } from "viem/chains"
@@ -46,6 +49,14 @@ export type GOTIntentChainState = {
 export type GOTIntentSnapshot = GOTIntentChainState & {
   intentAddress: Address
   config: IntentConfig
+}
+
+export type GOTUSDCTransferReceipt = {
+  transactionHash: Hash
+  sender: Address
+  intentAddress: Address
+  amount: bigint
+  confirmedAt: string
 }
 
 export type BuildRequestIntentInput = {
@@ -83,6 +94,10 @@ type LensSnapshotResult = {
   effectiveOwner: Address
 }
 
+const usdcTransferAbi = parseAbi([
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+])
+
 export function deriveIntentId(id: string, account: Address): Hex {
   const normalizedId = id.trim()
   if (!normalizedId) throw new Error("ID is required.")
@@ -105,6 +120,8 @@ export function remainingTransferAmount(
   if (target < 0n || processed < 0n || pendingBalance < 0n) {
     throw new Error("Transfer amounts cannot be negative.")
   }
+  // Open-amount Intents have no fixed remainder and stay reusable.
+  if (target === 0n) return 0n
   const committed = processed + pendingBalance
   return committed >= target ? 0n : target - committed
 }
@@ -116,6 +133,11 @@ export function transferStatusFromChain(
 ): TransferStatus {
   if (target < 0n || processed < 0n || pendingBalance < 0n) {
     throw new Error("Transfer amounts cannot be negative.")
+  }
+  if (target === 0n) {
+    return pendingBalance > 0n
+      ? TransferStatus.FundingDetected
+      : TransferStatus.AddressReady
   }
   const funded = processed + pendingBalance
   if (funded > target) return TransferStatus.Overpaid
@@ -316,6 +338,60 @@ export function createGOTProtocolClient(
         abi: GOTIntentAbi,
         functionName: "settle",
       })
+    },
+    async readUSDCTransferReceipt(hash: Hash): Promise<GOTUSDCTransferReceipt> {
+      const receipt = await client
+        .getTransactionReceipt({ hash })
+        .catch((error: unknown) => {
+          throw new Error("Unable to load the confirmed Base transaction.", {
+            cause: error,
+          })
+        })
+      if (receipt.status !== "success") {
+        throw new Error("The Base transaction was not successful.")
+      }
+      const transfers = receipt.logs.flatMap((log) => {
+        if (getAddress(log.address) !== GOT_BASE_USDC) return []
+        try {
+          const event = decodeEventLog({
+            abi: usdcTransferAbi,
+            data: log.data,
+            topics: log.topics,
+          })
+          return [
+            {
+              sender: getAddress(event.args.from),
+              intentAddress: getAddress(event.args.to),
+              amount: event.args.value,
+            },
+          ]
+        } catch {
+          return []
+        }
+      })
+      if (transfers.length === 0) {
+        throw new Error("The confirmed USDC Transfer event is missing.")
+      }
+      if (transfers.length > 1) {
+        throw new Error(
+          "The transaction contains multiple USDC transfers and is not a unique receipt."
+        )
+      }
+      const transfer = transfers[0]!
+
+      let block
+      try {
+        block = await client.getBlock({ blockHash: receipt.blockHash })
+      } catch (error) {
+        throw new Error("Unable to load the confirmation block.", {
+          cause: error,
+        })
+      }
+      return {
+        transactionHash: hash,
+        ...transfer,
+        confirmedAt: new Date(Number(block.timestamp) * 1_000).toISOString(),
+      }
     },
     waitForTransaction(hash: Hex, options: { confirmations?: number } = {}) {
       return client.waitForTransactionReceipt({

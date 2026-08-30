@@ -1,14 +1,6 @@
 "use client"
 
-import {
-  ArrowLeftRight,
-  Code2,
-  LayoutDashboard,
-  Menu,
-  RefreshCw,
-  Settings,
-  UsersRound,
-} from "lucide-react"
+import { AtSign, Code2, LayoutDashboard, Menu, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
@@ -26,11 +18,9 @@ import {
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/transfers", label: "Transfers", icon: ArrowLeftRight },
-  { href: "/dashboard/names", label: "Names", icon: UsersRound },
+  { href: "/dashboard/addresses", label: "Addresses", icon: AtSign },
   { href: "/dashboard/subscriptions", label: "Subscriptions", icon: RefreshCw },
   { href: "/dashboard/developers", label: "Developers", icon: Code2 },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ] as const
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

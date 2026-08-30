@@ -1,17 +1,17 @@
 import type {
+  AddressList,
+  AddressRecord,
   APIAuth,
   APIAuthToken,
-  CreateTransferInput,
+  CreateAddressInput,
   DashboardOverview,
   NameRecord,
   Subscription,
   Transfer,
   TransferList,
-  TransferRequest,
-  TransferRequestInput,
 } from "./types"
 
-export type GOTClientOptions = {
+export type GOTAPIClientOptions = {
   baseUrl: string
   fetch?: typeof globalThis.fetch
   credentials?: RequestCredentials
@@ -35,9 +35,9 @@ type AuthTokenResult<TCredentials extends AuthTokenCredentials> =
   TCredentials extends { delivery: "cookie" } ? APIAuth : APIAuthToken
 
 export type ListTransfersOptions = {
-  direction?: "incoming" | "outgoing"
   query?: string
   cursor?: string
+  limit?: number
 }
 
 export class GOTAPIError extends Error {
@@ -52,13 +52,13 @@ export class GOTAPIError extends Error {
   }
 }
 
-export class GOTClient {
+export class GOTAPIClient {
   readonly #baseUrl: string
   readonly #fetch: typeof globalThis.fetch
   readonly #credentials: RequestCredentials
-  readonly #getAccessToken?: GOTClientOptions["getAccessToken"]
+  readonly #getAccessToken?: GOTAPIClientOptions["getAccessToken"]
 
-  constructor(options: GOTClientOptions) {
+  constructor(options: GOTAPIClientOptions) {
     if (!options.baseUrl.trim()) throw new Error("GOT API baseUrl is required")
     this.#baseUrl = options.baseUrl.replace(/\/$/, "")
     this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis)
@@ -128,43 +128,55 @@ export class GOTClient {
 
   overview = () => this.#request<DashboardOverview>("/overview")
 
+  addresses = {
+    create: (input: CreateAddressInput) =>
+      this.#request<AddressRecord>("/addresses", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    list: (options: { query?: string; cursor?: string } = {}) => {
+      const query = new URLSearchParams()
+      if (options.query) query.set("query", options.query)
+      if (options.cursor) query.set("cursor", options.cursor)
+      const suffix = query.size ? `?${query}` : ""
+      return this.#request<AddressList>(`/addresses${suffix}`)
+    },
+    get: (id: string) =>
+      this.#request<AddressRecord>(`/addresses/${encodeURIComponent(id)}`),
+    getByIntentAddress: (intentAddress: string) =>
+      this.#request<AddressRecord>(
+        `/addresses/by-intent-address/${encodeURIComponent(intentAddress)}`
+      ),
+    transfers: (
+      id: string,
+      options: { cursor?: string; limit?: number } = {}
+    ) => {
+      const query = new URLSearchParams()
+      if (options.cursor) query.set("cursor", options.cursor)
+      if (options.limit) query.set("limit", String(options.limit))
+      const suffix = query.size ? `?${query}` : ""
+      return this.#request<TransferList>(
+        `/addresses/${encodeURIComponent(id)}/transfers${suffix}`
+      )
+    },
+    remove: (id: string) =>
+      this.#request<void>(`/addresses/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        body: JSON.stringify({}),
+      }),
+  }
+
   transfers = {
     list: (options: ListTransfersOptions = {}) => {
       const query = new URLSearchParams()
-      if (options.direction) query.set("direction", options.direction)
       if (options.query) query.set("query", options.query)
       if (options.cursor) query.set("cursor", options.cursor)
+      if (options.limit) query.set("limit", String(options.limit))
       const suffix = query.size ? `?${query}` : ""
       return this.#request<TransferList>(`/transfers${suffix}`)
     },
     get: (id: string) =>
       this.#request<Transfer>(`/transfers/${encodeURIComponent(id)}`),
-    getRequest: (id: string) =>
-      this.#request<TransferRequest>(`/transfers/${encodeURIComponent(id)}`),
-    getByIntent: (intentAddress: string) =>
-      this.#request<TransferRequest>(
-        `/intents/${encodeURIComponent(intentAddress)}`
-      ),
-    remove: (id: string) =>
-      this.#request<void>(`/transfers/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        body: JSON.stringify({}),
-      }),
-    recordFunding: (id: string, transactionHash: string) =>
-      this.#request<Transfer>(`/transfers/${encodeURIComponent(id)}/funding`, {
-        method: "POST",
-        body: JSON.stringify({ transactionHash }),
-      }),
-    createRequest: (input: TransferRequestInput) =>
-      this.#request<TransferRequest>("/transfers", {
-        method: "POST",
-        body: JSON.stringify({ direction: "incoming", ...input }),
-      }),
-    create: (input: CreateTransferInput) =>
-      this.#request<Transfer>("/transfers", {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
   }
 
   names = {

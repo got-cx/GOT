@@ -1,83 +1,88 @@
 import type { Transfer } from "@got-cx/sdk"
-import { ArrowDownLeft, ArrowUpRight, Link2 } from "lucide-react"
+import { ArrowDownLeft, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { isAddress } from "viem"
+import { formatUnits } from "viem"
 
-import { CopyButton } from "@/components/shared/copy-button"
 import { EmptyState } from "@/components/shared/empty-state"
-import { StatusBadge } from "@/components/shared/status-badge"
-import {
-  formatDate,
-  formatMoney,
-  humanIdentity,
-  shortAddress,
-} from "@/lib/format"
-import { transferLink } from "@/lib/transfer-envelope"
+import { formatDate, shortAddress } from "@/lib/format"
 
-export function TransferTable({ transfers }: { transfers: Transfer[] }) {
+function transferAmount(amount: string) {
+  const formatted = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2,
+  }).format(Number(formatUnits(BigInt(amount), 6)))
+  return `+${formatted} USDC`
+}
+
+export function TransferTable({
+  transfers,
+  showReference = true,
+}: {
+  transfers: Transfer[]
+  showReference?: boolean
+}) {
   if (!transfers.length)
     return (
       <EmptyState
         icon={ArrowDownLeft}
-        title="No transfers yet"
-        description="Incoming and outgoing transfers will appear here after they are created."
+        title="No transfers yet."
+        description="Transfers received by your Intent Addresses will appear here."
       />
     )
 
   return (
-    <div className="divide-y overflow-hidden rounded-xl border bg-card">
-      {transfers.map((transfer) => {
-        const incoming = transfer.direction === "incoming"
-        const DirectionIcon = incoming ? ArrowDownLeft : ArrowUpRight
-        const transferUrl = transferLink(transfer)
-        const partyLabel = humanIdentity(transfer.party)
-        const context = transfer.note ?? transfer.reference
-
-        return (
-          <article
-            key={transfer.id}
-            className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-muted/40 sm:gap-4 sm:px-5"
-          >
-            <Link
-              href={`/dashboard/transfers/${encodeURIComponent(transfer.intentAddress)}`}
-              className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted">
-                <DirectionIcon className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <strong className="block truncate text-sm">{partyLabel}</strong>
-                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                  {context ??
-                    (incoming ? "Incoming transfer" : "Outgoing transfer")}
-                </span>
-                <span className="mt-1 block text-muted-foreground sm:hidden">
-                  {formatDate(transfer.createdAt)}
-                </span>
-              </span>
-              <span className="shrink-0 text-right">
-                <strong className="block text-sm tabular-nums">
-                  {incoming ? "+" : "−"}
-                  {formatMoney(transfer.value, 2)}
-                </strong>
-                <span className="mt-1 flex justify-end">
-                  <StatusBadge status={transfer.status} />
-                </span>
-              </span>
-            </Link>
-            <span className="hidden min-w-24 text-right text-xs text-muted-foreground sm:block">
-              {formatDate(transfer.createdAt)}
-            </span>
-            <CopyButton
-              value={transferUrl}
-              label="Link"
-              className="hidden sm:inline-flex"
-            >
-              <Link2 />
-            </CopyButton>
-          </article>
-        )
-      })}
+    <div className="overflow-x-auto rounded-xl border bg-card">
+      <table className="w-full min-w-[680px] text-left text-sm">
+        <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+          <tr>
+            {showReference && (
+              <th className="px-4 py-3 font-medium">Reference</th>
+            )}
+            <th className="px-4 py-3 font-medium">From</th>
+            <th className="px-4 py-3 font-medium">Amount</th>
+            <th className="px-4 py-3 font-medium">Date</th>
+            <th className="px-4 py-3 text-right font-medium">Transaction</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {transfers.map((transfer) => (
+            <tr key={transfer.id} className="hover:bg-muted/30">
+              {showReference && (
+                <td className="px-4 py-3 font-medium">
+                  <Link
+                    href={`/dashboard/addresses/${transfer.intentAddress}`}
+                    className="hover:underline"
+                  >
+                    {transfer.ref}
+                  </Link>
+                </td>
+              )}
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                {shortAddress(transfer.from, 5)}
+              </td>
+              <td className="px-4 py-3 font-medium text-emerald-700 tabular-nums dark:text-emerald-400">
+                {transferAmount(transfer.amount)}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {transfer.blockTimestamp
+                  ? formatDate(transfer.blockTimestamp, true)
+                  : "—"}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <a
+                  href={`https://basescan.org/tx/${transfer.transactionHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:underline"
+                  aria-label={`View transaction ${transfer.transactionHash} on Basescan`}
+                >
+                  {shortAddress(transfer.transactionHash, 5)}
+                  <ExternalLink className="size-3" />
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -9,6 +9,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
+  Settings,
 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -79,6 +80,13 @@ export function BaseAccountButton({
           >
             <ExternalLink />
             Open in Base App
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="px-2 py-2"
+            render={<Link href="/dashboard/settings" />}
+          >
+            <Settings />
+            Settings
           </DropdownMenuItem>
           <DropdownMenuItem
             className="px-2 py-2"

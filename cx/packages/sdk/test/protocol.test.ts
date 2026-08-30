@@ -29,6 +29,10 @@ describe("GOT Lens deployment", () => {
     assert.equal(encodeSettleIntent().length, 10)
     assert.notEqual(encodeResolveIntent(), encodeSettleIntent())
     assert.equal(typeof createGOTProtocolClient().simulateSettle, "function")
+    assert.equal(
+      typeof createGOTProtocolClient().readUSDCTransferReceipt,
+      "function"
+    )
   })
 })
 
@@ -70,6 +74,18 @@ describe("remaining transfer amount", () => {
 })
 
 describe("live transfer status", () => {
+  it("keeps open-amount Intent Addresses reusable", () => {
+    assert.equal(
+      transferStatusFromChain(0n, 100n, 0n),
+      TransferStatus.AddressReady
+    )
+    assert.equal(
+      transferStatusFromChain(0n, 100n, 50n),
+      TransferStatus.FundingDetected
+    )
+    assert.equal(remainingTransferAmount(0n, 100n, 50n), 0n)
+  })
+
   it("reports received funding before the intent is resolved", () => {
     assert.equal(
       transferStatusFromChain(100n, 0n, 100n),
