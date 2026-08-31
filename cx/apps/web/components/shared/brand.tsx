@@ -4,14 +4,16 @@ import Image from "next/image"
 export function Brand({
   inverse = false,
   compact = false,
+  href = "/",
 }: {
   inverse?: boolean
   compact?: boolean
+  href?: string
 }) {
   return (
     <Link
-      href="/"
-      aria-label="GOT home"
+      href={href}
+      aria-label={href === "/dashboard" ? "GOT dashboard" : "GOT home"}
       className={`inline-flex items-center gap-2.5 ${inverse ? "text-white" : "text-foreground"}`}
     >
       <span

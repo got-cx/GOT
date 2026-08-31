@@ -14,7 +14,7 @@ import { useAPIResource } from "@/hooks/use-api-resource"
 import { formatDate, shortAddress } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
 
-export function NamesDashboard() {
+export function NamesDashboard({ embedded = false }: { embedded?: boolean }) {
   const { account, isLoading: isAuthLoading } = useAuth()
   const client = getGOTClient()
   const load = async () => {
@@ -29,10 +29,12 @@ export function NamesDashboard() {
 
   return (
     <div>
-      <PageHeader
-        title="Names"
-        description="Verified identities that resolve to your account."
-      />
+      {!embedded && (
+        <PageHeader
+          title="Names"
+          description="Verified identities that resolve to your account."
+        />
+      )}
       {account && <NameClaimActions onChanged={retry} />}
       {isAuthLoading ? (
         <div className="h-64 animate-pulse rounded-xl border bg-muted" />

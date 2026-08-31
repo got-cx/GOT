@@ -2,63 +2,63 @@
 
 import { Check, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { isHash } from "viem"
 
-import { TransferStatus } from "@got-cx/sdk"
+import { createGOTProtocolClient } from "@got-cx/sdk"
 import { APIMessage } from "@/components/shared/api-message"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
 import { OnchainDetails } from "@/components/shared/onchain-details"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { useAPIResource } from "@/hooks/use-api-resource"
-import {
-  formatDate,
-  formatMoney,
-  humanIdentity,
-  shortAddress,
-} from "@/lib/format"
-import { getGOTClient } from "@/lib/got-client"
+import { appConfig } from "@/lib/app-config"
+import { formatDate, formatMoney, shortAddress } from "@/lib/format"
 import { Button } from "@workspace/ui/components/button"
 
-export function Receipt({ transferId }: { transferId: string }) {
-  const searchParams = useSearchParams()
-  const client = getGOTClient()
-  const load = async () => {
-    return client.transfers.get(transferId)
-  }
-  const { data, error, isLoading, retry } = useAPIResource(
-    ["transfer", transferId],
-    load
+export function Receipt({ transactionHash }: { transactionHash: string }) {
+  const hash = isHash(transactionHash) ? transactionHash : null
+  const protocol = useMemo(
+    () =>
+      createGOTProtocolClient(appConfig.baseRpcUrl, appConfig.baseRpcFallback),
+    []
   )
+  const receiptQuery = useQuery({
+    queryKey: ["got-chain", "transfer-receipt", hash],
+    queryFn: () => protocol.readUSDCTransferReceipt(hash!),
+    enabled: Boolean(hash),
+    retry: 2,
+  })
 
-  if (error)
+  if (!hash) {
+    return <ReceiptMessage error="The transaction hash is invalid." />
+  }
+  if (receiptQuery.error) {
     return (
-      <main className="mx-auto max-w-xl p-6 pt-24">
-        <APIMessage error={error} onRetry={retry} />
-      </main>
+      <ReceiptMessage
+        error={receiptQuery.error.message}
+        onRetry={() => void receiptQuery.refetch()}
+      />
     )
-  if (isLoading || !data)
-    return (
-      <main className="mx-auto mt-24 h-96 max-w-lg animate-pulse rounded-xl border bg-muted" />
-    )
+  }
+  if (!receiptQuery.data) {
+    return <div className="min-h-svh animate-pulse bg-muted" />
+  }
 
-  const transaction = data.transactionHash ?? searchParams.get("transaction")
-  const complete =
-    data.status === TransferStatus.Settled ||
-    data.status === TransferStatus.Overpaid
-  const recipient =
-    data.direction === "incoming"
-      ? humanIdentity(data.recipient ?? data.party)
-      : humanIdentity(data.party)
+  const receipt = receiptQuery.data
+  const amountLabel = formatMoney({
+    amount: receipt.amount.toString(),
+    decimals: 6,
+    symbol: "USDC",
+  })
   const receiptText = [
     "GOT transfer receipt",
-    formatMoney(data.value, 2),
-    `Recipient: ${recipient}`,
-    data.note ? `Note: ${data.note}` : null,
-    `Status: ${complete ? "Transfer complete" : "Transfer submitted"}`,
-  ]
-    .filter(Boolean)
-    .join("\n")
+    amountLabel,
+    `From: ${receipt.sender}`,
+    `Intent Address: ${receipt.intentAddress}`,
+    `Transaction: ${receipt.transactionHash}`,
+    `Confirmed: ${receipt.confirmedAt}`,
+    "Status: Transfer confirmed",
+  ].join("\n")
 
   return (
     <div className="min-h-svh px-5">
@@ -71,43 +71,40 @@ export function Receipt({ transferId }: { transferId: string }) {
           <Check className="size-5" />
         </span>
         <p className="text-[11px] font-semibold tracking-[0.15em] text-muted-foreground">
-          {complete ? "TRANSFER COMPLETE" : "TRANSFER SUBMITTED"}
+          TRANSFER CONFIRMED
         </p>
         <h1 className="mt-3 text-5xl font-semibold tracking-[-0.06em]">
-          {formatMoney(data.value, 2)}
+          {amountLabel}
         </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          to <strong className="text-foreground">{recipient}</strong>
-        </p>
         <dl className="mt-8 divide-y rounded-xl border text-left text-sm">
           <div className="flex justify-between gap-5 px-4 py-3.5">
-            <dt className="text-muted-foreground">Recipient</dt>
-            <dd className="font-medium">{recipient}</dd>
-          </div>
-          <div className="flex justify-between gap-5 px-4 py-3.5">
             <dt className="text-muted-foreground">Status</dt>
-            <dd>
-              <StatusBadge status={data.status} />
-            </dd>
+            <dd className="font-medium">Confirmed</dd>
           </div>
           <div className="flex justify-between gap-5 px-4 py-3.5">
             <dt className="text-muted-foreground">Date</dt>
-            <dd className="font-medium">{formatDate(data.createdAt, true)}</dd>
+            <dd className="font-medium">
+              {formatDate(receipt.confirmedAt, true)}
+            </dd>
           </div>
-          {data.reference && (
-            <div className="flex justify-between gap-5 px-4 py-3.5">
-              <dt className="text-muted-foreground">Reference</dt>
-              <dd className="font-medium">{data.reference}</dd>
-            </div>
-          )}
+          <div className="flex justify-between gap-5 px-4 py-3.5">
+            <dt className="text-muted-foreground">From</dt>
+            <dd className="font-mono text-xs">
+              {shortAddress(receipt.sender)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-5 px-4 py-3.5">
+            <dt className="text-muted-foreground">To</dt>
+            <dd className="font-mono text-xs">
+              {shortAddress(receipt.intentAddress)}
+            </dd>
+          </div>
         </dl>
-        <div className="mt-4">
-          <CopyButton
-            value={receiptText}
-            label="Copy receipt"
-            className="h-10 w-full"
-          />
-        </div>
+        <CopyButton
+          value={receiptText}
+          label="Copy receipt"
+          className="mt-4 h-10 w-full"
+        />
         <OnchainDetails className="mt-5 border-t text-left">
           <dl className="divide-y">
             <div className="flex justify-between gap-5 py-3">
@@ -116,46 +113,61 @@ export function Receipt({ transferId }: { transferId: string }) {
             </div>
             <div className="flex justify-between gap-5 py-3">
               <dt>Token</dt>
-              <dd className="font-medium text-foreground">
-                {data.value.symbol}
+              <dd className="font-medium text-foreground">USDC</dd>
+            </div>
+            <div className="flex justify-between gap-5 py-3">
+              <dt>Intent Address</dt>
+              <dd className="font-mono text-foreground">
+                {shortAddress(receipt.intentAddress)}
               </dd>
             </div>
             <div className="flex justify-between gap-5 py-3">
               <dt>Transaction hash</dt>
               <dd className="font-mono text-foreground">
-                {transaction ? shortAddress(transaction) : "Awaiting indexer"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-5 py-3">
-              <dt>Transfer ID</dt>
-              <dd className="max-w-56 truncate font-mono text-foreground">
-                {data.id}
+                {shortAddress(receipt.transactionHash)}
               </dd>
             </div>
           </dl>
-          {transaction && (
-            <a
-              href={`https://basescan.org/tx/${transaction}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-2 font-medium text-foreground hover:underline"
-            >
-              View in block explorer <ExternalLink className="size-3.5" />
-            </a>
-          )}
+          <a
+            href={`https://basescan.org/tx/${receipt.transactionHash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-2 font-medium text-foreground hover:underline"
+          >
+            View in block explorer <ExternalLink className="size-3.5" />
+          </a>
         </OnchainDetails>
         <Button
           variant="link"
           className="mt-5 text-muted-foreground"
-          render={<Link href="/dashboard/transfers" />}
+          render={<a href={`/${receipt.intentAddress}`} />}
           nativeButton={false}
         >
-          Return to transfers
+          Return to transfer
         </Button>
       </main>
       <footer className="pb-6 text-center text-[11px] text-muted-foreground">
         Global Onchain Transfers, made simple.
       </footer>
+    </div>
+  )
+}
+
+function ReceiptMessage({
+  error,
+  onRetry,
+}: {
+  error: string
+  onRetry?: () => void
+}) {
+  return (
+    <div className="min-h-svh px-5">
+      <header className="mx-auto flex h-18 max-w-5xl items-center border-b">
+        <Brand />
+      </header>
+      <main className="mx-auto mt-14 max-w-lg">
+        <APIMessage error={error} onRetry={onRetry} />
+      </main>
     </div>
   )
 }

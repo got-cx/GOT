@@ -29,15 +29,15 @@ import { Button } from "@workspace/ui/components/button"
 const developerTabs = {
   SDK: {
     description:
-      "Use the typed got.cx product SDK from server or browser code.",
-    example: `import { GOTClient } from "@got-cx/sdk"\n\nconst got = new GOTClient({\n  baseUrl: "https://api.got.cx",\n  getAccessToken: () => process.env.GOT_API_TOKEN,\n})\n\nconst request = await got.transfers.createRequest({\n  ...input,\n  transferId: "invoice-1042",\n})`,
+      "Create deterministic Intent Addresses synchronously in server or browser code.",
+    example: `import { createIntent } from "@got-cx/sdk"\n\nconst intent = createIntent({\n  owner: "0x...",\n  ref: "invoice:1042",\n})\n\nconsole.log(intent.address)`,
     subtext:
-      "The SDK defaults to zero protocol fees and never silently assigns a partner.",
+      "No API, API key, RPC request, wallet connection, or transaction is required.",
   },
   Protocol: {
     description:
-      "Preview deterministic addresses through the deployed GOT factory.",
-    example: `import { createGOTProtocolClient } from "@got-cx/sdk/protocol"\n\nconst protocol = createGOTProtocolClient(process.env.BASE_RPC_URL)\nconst intentAddress = await protocol.previewIntent(config)`,
+      "Use GOTLens state reads, settlement, resolution, and advanced protocol functionality.",
+    example: `import { createGOTProtocolClient } from "@got-cx/sdk/protocol"\n\nconst protocol = createGOTProtocolClient(process.env.BASE_RPC_URL)\nconst snapshots = await protocol.readIntentSnapshots(intents)`,
     subtext:
       "Preview the intent address before funding and verify it against the canonical deployment.",
   },
@@ -48,10 +48,11 @@ const developerTabs = {
       "Handle events idempotently and account for retries or out-of-order delivery.",
   },
   API: {
-    description: "Use string base-unit amounts and stable transfer IDs.",
-    example: `POST https://api.got.cx/transfers\nAuthorization: Bearer got_live_…\nContent-Type: application/json\n\n{ "transferId": "invoice-1042", … }`,
+    description:
+      "Persist Addresses and use managed indexing, history, and reconciliation.",
+    example: `import { GOTAPIClient } from "@got-cx/sdk/api"\n\nconst api = new GOTAPIClient({\n  baseUrl: "https://api.got.cx",\n  getAccessToken: () => process.env.GOT_API_TOKEN,\n})\n\nawait api.addresses.create({ ref: "invoice:1042" })`,
     subtext:
-      "Retry the same transfer ID and details safely; conflicting details are rejected.",
+      "got.cx verifies every supplied Intent Address against canonical protocol rules.",
   },
 } as const
 

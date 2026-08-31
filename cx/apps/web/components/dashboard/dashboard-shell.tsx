@@ -1,14 +1,6 @@
 "use client"
 
-import {
-  ArrowLeftRight,
-  Code2,
-  LayoutDashboard,
-  Menu,
-  RefreshCw,
-  Settings,
-  UsersRound,
-} from "lucide-react"
+import { AtSign, Code2, LayoutDashboard, Menu, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
@@ -26,11 +18,9 @@ import {
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/transfers", label: "Transfers", icon: ArrowLeftRight },
-  { href: "/dashboard/names", label: "Names", icon: UsersRound },
+  { href: "/dashboard/addresses", label: "Addresses", icon: AtSign },
   { href: "/dashboard/subscriptions", label: "Subscriptions", icon: RefreshCw },
   { href: "/dashboard/developers", label: "Developers", icon: Code2 },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ] as const
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -85,7 +75,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:hidden">
-        <Brand compact />
+        <Brand />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger render={<Button variant="outline" size="icon" />}>
             <Menu />
@@ -93,7 +83,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <SheetContent side="right" className="w-72 p-5">
             <SheetTitle className="sr-only">Dashboard navigation</SheetTitle>
             <div className="mb-7">
-              <Brand />
+              <Brand compact />
             </div>
             <nav className="flex flex-col gap-1">
               {navigation.map((item) => {

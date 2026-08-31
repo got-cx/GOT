@@ -1,12 +1,13 @@
 "use client"
 
 import { LayoutDashboard } from "lucide-react"
+import Link from "next/link"
 
 import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PageHeader } from "@/components/shared/page-header"
-import { CreateTransferMenu } from "@/components/transfers/create-transfer-menu"
+import { CreateAddressMenu } from "@/components/addresses/create-address-menu"
 import { TransferTable } from "@/components/transfers/transfer-table"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { formatMoney } from "@/lib/format"
@@ -29,8 +30,8 @@ export function OverviewDashboard() {
     <div>
       <PageHeader
         title="Overview"
-        description="Your incoming and outgoing transfer activity."
-        action={account ? <CreateTransferMenu /> : undefined}
+        description="Your onchain addresses and recent value activity."
+        action={<CreateAddressMenu />}
       />
       {isAuthLoading ? (
         <div className="h-72 animate-pulse rounded-xl border bg-muted" />
@@ -46,10 +47,10 @@ export function OverviewDashboard() {
         <APIMessage error={error} onRetry={retry} />
       ) : isLoading || !data ? (
         <div
-          className="grid gap-3 sm:grid-cols-3"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
           aria-label="Loading overview"
         >
-          {[0, 1, 2].map((item) => (
+          {[0, 1, 2, 3].map((item) => (
             <div
               key={item}
               className="h-32 animate-pulse rounded-xl border bg-muted"
@@ -59,15 +60,19 @@ export function OverviewDashboard() {
       ) : (
         <>
           <section
-            className="mb-8 grid gap-3 sm:grid-cols-3"
-            aria-label="Transfer metrics"
+            className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            aria-label="Workspace metrics"
           >
             <article className="flex min-h-32 flex-col rounded-xl border bg-card p-5">
-              <span className="text-sm text-muted-foreground">
-                Transfer volume
-              </span>
+              <span className="text-sm text-muted-foreground">Received</span>
               <strong className="mt-auto text-2xl tracking-[-0.04em]">
-                {formatMoney(data.transferVolume, 2)}
+                {formatMoney(data.received, 2)}
+              </strong>
+            </article>
+            <article className="flex min-h-32 flex-col rounded-xl border bg-card p-5">
+              <span className="text-sm text-muted-foreground">Addresses</span>
+              <strong className="mt-auto text-2xl tracking-[-0.04em]">
+                {(data.addressCount ?? 0).toLocaleString()}
               </strong>
             </article>
             <article className="flex min-h-32 flex-col rounded-xl border bg-card p-5">
@@ -78,19 +83,27 @@ export function OverviewDashboard() {
             </article>
             <article className="flex min-h-32 flex-col rounded-xl border bg-card p-5">
               <span className="text-sm text-muted-foreground">
-                Open transfer links
+                Subscriptions
               </span>
               <strong className="mt-auto text-2xl tracking-[-0.04em]">
-                {data.pendingRequestCount.toLocaleString()}
+                {data.subscriptionCount.toLocaleString()}
               </strong>
             </article>
           </section>
           <section>
-            <div className="mb-3">
-              <h2 className="text-sm font-medium">Recent transfers</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Incoming and outgoing activity
-              </p>
+            <div className="mb-3 flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-medium">Recent transfers</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Processed transfers for your addresses.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/transfers"
+                className="shrink-0 text-xs font-medium hover:underline"
+              >
+                View all transfers
+              </Link>
             </div>
             <TransferTable transfers={data.recentTransfers} />
           </section>

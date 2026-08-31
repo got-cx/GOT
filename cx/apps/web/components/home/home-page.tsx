@@ -15,9 +15,9 @@ import Link from "next/link"
 import { useSyncExternalStore } from "react"
 
 import { useAuth } from "@/components/auth/auth-provider"
+import { CreateAddressMenu } from "@/components/addresses/create-address-menu"
 import { BaseAccountButton } from "@/components/auth/base-account-button"
 import { Brand } from "@/components/shared/brand"
-import { CreateTransferMenu } from "@/components/transfers/create-transfer-menu"
 import { PublicRoute } from "@/components/transfers/public-route"
 import { Button } from "@workspace/ui/components/button"
 
@@ -51,20 +51,20 @@ function isTransferHash(hash: string) {
 const steps = [
   {
     number: "01",
-    title: "Create a transfer",
-    copy: "Choose who it is for, an amount, and optional context.",
+    title: "Intent",
+    copy: "Define what the Address represents: invoice, order, agent task, etc.",
     icon: UserRound,
   },
   {
     number: "02",
-    title: "Share a link",
-    copy: "Send one simple GOT link or QR code anywhere.",
+    title: "Address",
+    copy: "GOT derives its deterministic onchain Intent Address instantly.",
     icon: Link2,
   },
   {
     number: "03",
-    title: "Receive the transfer",
-    copy: "Funds move directly onchain to the destination.",
+    title: "Transfer",
+    copy: "Process value from any compatible source at the Address.",
     icon: MoveRight,
   },
 ] as const
@@ -114,14 +114,13 @@ const audiences = [
 ] as const
 
 const landingNavigation = [
-  { label: "Transfers", href: "#transfers" },
-  { label: "Names", href: "#names" },
+  { label: "How it works", href: "#addresses" },
   { label: "Developers", href: "#developers" },
 ] as const
 
 const dashboardNavigation = [
-  { label: "Transfers", href: "/dashboard/transfers" },
-  { label: "Names", href: "/dashboard/names" },
+  { label: "Addresses", href: "/dashboard/addresses" },
+  { label: "Subscriptions", href: "/dashboard/subscriptions" },
   { label: "Developers", href: "/dashboard/developers" },
 ] as const
 
@@ -139,7 +138,7 @@ export function HomePage() {
   return (
     <main className="min-h-svh px-5 sm:px-8">
       <header className="mx-auto flex h-18 max-w-6xl items-center justify-between border-b sm:h-20">
-        <Brand compact />
+        <Brand href={account ? "/dashboard" : "/"} />
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
           {navigation.map((item) => (
             <Link
@@ -162,11 +161,10 @@ export function HomePage() {
           Accept onchain transfers now
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Create a transfer link. Share it anywhere. Receive USDC directly
-          onchain.
+          Create an onchain address for any business intent.
         </p>
         <div className="mt-8 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
-          <CreateTransferMenu triggerClassName="h-11 px-5" />
+          <CreateAddressMenu triggerClassName="h-11 px-5" />
           <Button
             variant="outline"
             className="h-11 px-5"
@@ -180,7 +178,7 @@ export function HomePage() {
       </section>
 
       <section
-        id="transfers"
+        id="addresses"
         className="mx-auto max-w-6xl scroll-mt-6 border-y py-12 sm:py-16"
       >
         <div className="mb-10 sm:mb-12">
@@ -188,7 +186,7 @@ export function HomePage() {
             HOW IT WORKS
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">
-            Create · Share · Transfer
+            Intent · Address · Transfer
           </h2>
         </div>
         <div className="grid md:grid-cols-3">
@@ -437,10 +435,10 @@ export function HomePage() {
         </p>
         <div className="mx-auto mt-14 max-w-xl border-t pt-12">
           <h2 className="text-3xl font-semibold tracking-[-0.05em]">
-            Accept onchain transfers now.
+            Address your next intent.
           </h2>
           <div className="mt-6 flex justify-center">
-            <CreateTransferMenu triggerClassName="h-11 px-5" />
+            <CreateAddressMenu triggerClassName="h-11 px-5" />
           </div>
           <p className="mt-6 font-medium italic">Send it. GOT it.</p>
         </div>

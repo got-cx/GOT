@@ -1,9 +1,5 @@
-import type { Metadata } from "next"
-
-import { NamesDashboard } from "@/components/dashboard/names-dashboard"
-
-export const metadata: Metadata = { title: "Names" }
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <NamesDashboard />
+  redirect("/dashboard/addresses/names")
 }

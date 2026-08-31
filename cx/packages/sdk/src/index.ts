@@ -1,4 +1,5 @@
 export * from "./api"
+export * from "./intent"
 export * from "./links"
 export * from "./protocol"
 export * from "./types"
