@@ -10,7 +10,7 @@ function transferAmount(amount: string) {
   const formatted = new Intl.NumberFormat(undefined, {
     maximumFractionDigits: 2,
   }).format(Number(formatUnits(BigInt(amount), 6)))
-  return `+${formatted} USDC`
+  return `${formatted} USDC`
 }
 
 export function TransferTable({
@@ -25,7 +25,7 @@ export function TransferTable({
       <EmptyState
         icon={ArrowDownLeft}
         title="No transfers yet."
-        description="Transfers received by your Intent Addresses will appear here."
+        description="Processed GOT transfers will appear here."
       />
     )
 
@@ -37,9 +37,9 @@ export function TransferTable({
             {showReference && (
               <th className="px-4 py-3 font-medium">Reference</th>
             )}
-            <th className="px-4 py-3 font-medium">From</th>
-            <th className="px-4 py-3 font-medium">Amount</th>
-            <th className="px-4 py-3 font-medium">Date</th>
+            <th className="px-4 py-3 font-medium">Received</th>
+            <th className="px-4 py-3 font-medium">Processed amount</th>
+            <th className="px-4 py-3 font-medium">Processed at</th>
             <th className="px-4 py-3 text-right font-medium">Transaction</th>
           </tr>
         </thead>
@@ -56,16 +56,14 @@ export function TransferTable({
                   </Link>
                 </td>
               )}
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                {shortAddress(transfer.from, 5)}
-              </td>
               <td className="px-4 py-3 font-medium text-emerald-700 tabular-nums dark:text-emerald-400">
-                {transferAmount(transfer.amount)}
+                {transferAmount(transfer.ownerAmount)}
+              </td>
+              <td className="px-4 py-3 tabular-nums">
+                {transferAmount(transfer.processedAmount)}
               </td>
               <td className="px-4 py-3 text-muted-foreground">
-                {transfer.blockTimestamp
-                  ? formatDate(transfer.blockTimestamp, true)
-                  : "—"}
+                {formatDate(transfer.blockTimestamp, true)}
               </td>
               <td className="px-4 py-3 text-right">
                 <a

@@ -43,7 +43,7 @@ export function TransfersDashboard() {
     <div>
       <PageHeader
         title="Transfers"
-        description="Incoming Base USDC received by your Intent Addresses."
+        description="Processed transfers for your addresses."
       />
       {account && (
         <div className="mb-4 flex justify-end">
@@ -53,7 +53,7 @@ export function TransfersDashboard() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search reference, sender, or transaction"
+              placeholder="Search reference, address or transaction"
               className="h-9 pl-9"
             />
           </label>
@@ -65,7 +65,7 @@ export function TransfersDashboard() {
         <EmptyState
           icon={ArrowLeftRight}
           title="No transfers yet"
-          description="Incoming transfers will appear here after you sign in."
+          description="Processed transfers will appear here after you sign in."
         />
       ) : error ? (
         <APIMessage

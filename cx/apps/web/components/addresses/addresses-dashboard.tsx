@@ -55,7 +55,7 @@ export function AddressesDashboard() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search reference or Address"
+            placeholder="Search reference or address"
             className="h-9 pl-9"
           />
         </label>

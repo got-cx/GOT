@@ -136,7 +136,7 @@ function PublicIntentAddress({
   return (
     <div className="flex min-h-svh flex-col bg-[#0b0b0b] text-white">
       <header className="mx-auto flex h-18 w-full max-w-5xl items-center px-5 sm:px-8">
-        <Brand inverse compact />
+        <Brand inverse />
       </header>
       <main className="mx-auto flex w-full max-w-lg flex-1 items-center px-4 py-8">
         <section className="w-full overflow-hidden rounded-3xl bg-white p-7 text-[#111] sm:p-9">
@@ -154,8 +154,9 @@ function PublicIntentAddress({
                   <Input
                     value={amount}
                     inputMode="decimal"
-                    placeholder="100"
+                    placeholder="0.00"
                     className="h-14 text-2xl"
+                    autoFocus={true}
                     onChange={(event) => setAmount(event.target.value)}
                   />
                   <span className="font-medium text-neutral-500">USDC</span>
@@ -183,7 +184,7 @@ function PublicIntentAddress({
             </p>
           )}
           <Button
-            className="mt-6 h-12 w-full bg-[#111] text-white hover:bg-neutral-800"
+            className="mt-4 h-12 w-full bg-[#111] text-white hover:bg-neutral-800"
             disabled={
               !chainQuery.data ||
               Boolean(chainQuery.error) ||
@@ -205,7 +206,7 @@ function PublicIntentAddress({
               <ArrowRight data-icon="inline-end" />
             )}
           </Button>
-          <div className="mt-7 grid place-items-center border-t pt-7">
+          <div className="mt-4 grid place-items-center border-t">
             <QRCodeImage value={address.intentAddress} size={196} />
             <p className="mt-3 font-mono text-xs text-neutral-500">
               {address.intentAddress}

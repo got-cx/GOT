@@ -20,8 +20,10 @@ For local web development, developers can set `NEXT_PUBLIC_GOT_API_URL` and `NEX
 
 The durable product object is an Intent Address. `createIntent({ owner, ref })`
 derives it locally with no got.cx API or RPC request. The managed API persists
-canonical recovery data, indexes many Transfers beneath an Address, and verifies
-client-provided Addresses against GOT Protocol v0.3 before storing them.
+canonical recovery data, indexes processed history beneath an Address, and verifies
+client-provided Addresses against GOT Protocol v0.3 before storing them. Base
+and GOTLens remain authoritative for live intent state; Supabase indexes only
+canonical `TransferProcessed` outcomes for managed Addresses.
 
 ## Commands
 

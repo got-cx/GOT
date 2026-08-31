@@ -44,18 +44,31 @@ export function CreateAddressMenu({
   const [open, setOpen] = useState(false)
   const [ref, setRef] = useState("")
   const [amount, setAmount] = useState("")
-  const [ownerMode, setOwnerMode] = useState<"account" | "custom">("account")
+  const [ownerMode, setOwnerMode] = useState<"account" | "custom" | null>(null)
   const [customOwner, setCustomOwner] = useState("")
   const [advanced, setAdvanced] = useState(false)
   const [metadataText, setMetadataText] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  const customOwnerMatchesAccount = Boolean(
+    account && customOwner.trim().toLowerCase() === account.toLowerCase()
+  )
+  const selectedOwnerMode = account
+    ? customOwnerMatchesAccount
+      ? "account"
+      : (ownerMode ?? "account")
+    : "custom"
   const preview = useMemo(() => {
-    if (!account || !ref.trim()) return { intent: null, error: null }
+    if (!ref.trim()) return { intent: null, error: null }
+    if (selectedOwnerMode === "custom" && !customOwner.trim()) {
+      return { intent: null, error: null }
+    }
     try {
       const owner =
-        ownerMode === "account" ? account : getAddress(customOwner.trim())
+        selectedOwnerMode === "account" && account
+          ? account
+          : getAddress(customOwner.trim())
       const metadata = metadataText.trim()
         ? (JSON.parse(metadataText) as IntentMetadata)
         : undefined
@@ -74,10 +87,10 @@ export function CreateAddressMenu({
         error: error instanceof Error ? error.message : "Invalid Intent.",
       }
     }
-  }, [account, amount, customOwner, metadataText, ownerMode, ref])
+  }, [account, amount, customOwner, metadataText, ref, selectedOwnerMode])
 
   async function createAddress() {
-    if (!preview.intent) return
+    if (!account || !preview.intent) return
     setIsSaving(true)
     setSaveError(null)
     try {
@@ -96,7 +109,7 @@ export function CreateAddressMenu({
       setOpen(false)
       setRef("")
       setAmount("")
-      setOwnerMode("account")
+      setOwnerMode(null)
       setCustomOwner("")
       setMetadataText("")
       router.push(`/dashboard/addresses/${created.intentAddress}`)
@@ -123,25 +136,23 @@ export function CreateAddressMenu({
             Create a deterministic onchain address for your intent.
           </DialogDescription>
         </DialogHeader>
-        {!account ? (
-          <div className="grid justify-items-start gap-4 rounded-lg border bg-muted/40 p-4">
-            <p className="text-sm text-muted-foreground">
-              Sign in with Base to choose an owner, derive the Intent Address,
-              and save it to your workspace.
-            </p>
-            <BaseAccountButton compact={false} />
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="intent-owner-mode">Owner</Label>
+        <>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor={account ? "intent-owner-mode" : "intent-owner"}>
+                Owner
+              </Label>
+              {account && (
                 <NativeSelect
                   id="intent-owner-mode"
                   className="w-full"
-                  value={ownerMode}
+                  value={selectedOwnerMode}
                   onChange={(event) => {
-                    setOwnerMode(event.target.value as "account" | "custom")
+                    const mode = event.target.value as "account" | "custom"
+                    if (mode === "custom" && customOwnerMatchesAccount) {
+                      setCustomOwner("")
+                    }
+                    setOwnerMode(mode)
                     setSaveError(null)
                   }}
                 >
@@ -152,98 +163,109 @@ export function CreateAddressMenu({
                     Custom address
                   </NativeSelectOption>
                 </NativeSelect>
-                {ownerMode === "custom" && (
-                  <Input
-                    value={customOwner}
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder="0x…"
-                    aria-label="Custom owner address"
-                    className="font-mono"
-                    onChange={(event) => setCustomOwner(event.target.value)}
-                  />
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Funds received by this Intent Address resolve to its owner.
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="intent-ref">Reference</Label>
+              )}
+              {selectedOwnerMode === "custom" && (
                 <Input
-                  id="intent-ref"
-                  value={ref}
-                  maxLength={120}
-                  placeholder="invoice:1042"
-                  onChange={(event) => setRef(event.target.value)}
+                  id="intent-owner"
+                  value={customOwner}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="0x…"
+                  aria-label="Custom owner address"
+                  className="font-mono"
+                  onChange={(event) => {
+                    setCustomOwner(event.target.value)
+                    setOwnerMode("custom")
+                    setSaveError(null)
+                  }}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="intent-amount">Amount</Label>
-                <Input
-                  id="intent-amount"
-                  value={amount}
-                  inputMode="decimal"
-                  placeholder="Any amount"
-                  onChange={(event) => setAmount(event.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave empty for a reusable Address that can receive any
-                  amount.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="w-max text-xs font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => setAdvanced((value) => !value)}
-              >
-                {advanced ? "Hide advanced" : "Advanced"}
-              </button>
-              {advanced && (
-                <div className="grid gap-2">
-                  <Label htmlFor="intent-metadata">Metadata (JSON)</Label>
-                  <Textarea
-                    id="intent-metadata"
-                    value={metadataText}
-                    placeholder={'{\n  "customerId": "customer:123"\n}'}
-                    onChange={(event) => setMetadataText(event.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Metadata is immutable and changes the resulting Address.
-                  </p>
-                </div>
               )}
-              {(preview.error || saveError) && (
-                <p className="text-xs text-destructive" role="alert">
-                  {saveError ?? preview.error}
-                </p>
-              )}
-              {preview.intent && (
-                <div className="rounded-lg border bg-muted/40 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Intent Address
-                  </p>
-                  <p
-                    className="mt-1 font-mono text-sm"
-                    title={preview.intent.address}
-                  >
-                    {shortAddress(preview.intent.address, 9)}
-                  </p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    Virtual address · Preview
-                  </p>
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Funds received by this Intent Address resolve to its owner.
+              </p>
             </div>
-            <DialogFooter>
+            <div className="grid gap-2">
+              <Label htmlFor="intent-ref">Reference</Label>
+              <Input
+                id="intent-ref"
+                value={ref}
+                maxLength={120}
+                placeholder="invoice:1042"
+                onChange={(event) => setRef(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="intent-amount">Amount</Label>
+              <Input
+                id="intent-amount"
+                value={amount}
+                inputMode="decimal"
+                placeholder="Any amount"
+                onChange={(event) => setAmount(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty for a reusable Address that can receive any amount.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="w-max text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => setAdvanced((value) => !value)}
+            >
+              {advanced ? "Hide advanced" : "Advanced"}
+            </button>
+            {advanced && (
+              <div className="grid gap-2">
+                <Label htmlFor="intent-metadata">Metadata (JSON)</Label>
+                <Textarea
+                  id="intent-metadata"
+                  value={metadataText}
+                  placeholder={'{\n  "customerId": "customer:123"\n}'}
+                  onChange={(event) => setMetadataText(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Metadata is immutable and changes the resulting Address.
+                </p>
+              </div>
+            )}
+            {(preview.error || saveError) && (
+              <p className="text-xs text-destructive" role="alert">
+                {saveError ?? preview.error}
+              </p>
+            )}
+            {preview.intent && (
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">Intent Address</p>
+                <p
+                  className="mt-1 font-mono text-sm"
+                  title={preview.intent.address}
+                >
+                  {shortAddress(preview.intent.address, 9)}
+                </p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Virtual address · Preview
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {account ? (
               <Button
                 disabled={!preview.intent || isSaving}
                 onClick={() => void createAddress()}
               >
                 {isSaving ? "Creating…" : "Create address"}
               </Button>
-            </DialogFooter>
-          </>
-        )}
+            ) : (
+              <div className="flex w-full items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Sign in to create and save this Address.
+                </p>
+                <BaseAccountButton compact={false} />
+              </div>
+            )}
+          </DialogFooter>
+        </>
       </DialogContent>
     </Dialog>
   )

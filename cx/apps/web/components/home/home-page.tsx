@@ -138,7 +138,7 @@ export function HomePage() {
   return (
     <main className="min-h-svh px-5 sm:px-8">
       <header className="mx-auto flex h-18 max-w-6xl items-center justify-between border-b sm:h-20">
-        <Brand compact href={account ? "/dashboard" : "/"} />
+        <Brand href={account ? "/dashboard" : "/"} />
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
           {navigation.map((item) => (
             <Link

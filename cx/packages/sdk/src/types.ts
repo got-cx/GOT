@@ -106,7 +106,7 @@ export const TransferStatus = {
 export type TransferStatus =
   (typeof TransferStatus)[keyof typeof TransferStatus]
 
-/** Canonical incoming configured-token Transfer indexed from Base logs. */
+/** Canonical GOT TransferProcessed event indexed from Base logs. */
 export type Transfer = {
   id: string
   addressId: string
@@ -117,10 +117,16 @@ export type Transfer = {
   /** JSON-safe uint64 representation. */
   blockNumber: string
   blockHash: Hash
-  blockTimestamp: string | null
-  from: Address
-  to: Address
-  amount: string
+  blockTimestamp: string
+  executor: Address
+  effectiveOwner: Address
+  partner: Address
+  processedAmount: string
+  ownerAmount: string
+  treasuryFee: string
+  partnerReward: string
+  executionReward: string
+  totalProcessed: string
   createdAt: string
   ref: string
   intentAddress: Address
@@ -165,6 +171,7 @@ export type Subscription = {
 
 export type DashboardOverview = {
   received: Money
+  processed: Money
   addressCount: number
   transferCount: number
   subscriptionCount: number

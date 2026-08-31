@@ -140,7 +140,7 @@ export function Receipt({ transactionHash }: { transactionHash: string }) {
         <Button
           variant="link"
           className="mt-5 text-muted-foreground"
-          render={<Link href={`/${receipt.intentAddress}`} />}
+          render={<a href={`/${receipt.intentAddress}`} />}
           nativeButton={false}
         >
           Return to transfer

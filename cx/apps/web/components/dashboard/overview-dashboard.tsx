@@ -1,6 +1,7 @@
 "use client"
 
 import { LayoutDashboard } from "lucide-react"
+import Link from "next/link"
 
 import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
@@ -90,11 +91,19 @@ export function OverviewDashboard() {
             </article>
           </section>
           <section>
-            <div className="mb-3">
-              <h2 className="text-sm font-medium">Recent transfers</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Incoming Base USDC received by your Intent Addresses
-              </p>
+            <div className="mb-3 flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-medium">Recent transfers</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Processed transfers for your addresses.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/transfers"
+                className="shrink-0 text-xs font-medium hover:underline"
+              >
+                View all transfers
+              </Link>
             </div>
             <TransferTable transfers={data.recentTransfers} />
           </section>

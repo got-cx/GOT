@@ -39,6 +39,7 @@ describe("GOTAPIClient authentication transport", () => {
         request = { input, init }
         return jsonResponse({
           received: { amount: "0", decimals: 6, symbol: "USDC" },
+          processed: { amount: "0", decimals: 6, symbol: "USDC" },
           addressCount: 0,
           transferCount: 0,
           subscriptionCount: 0,

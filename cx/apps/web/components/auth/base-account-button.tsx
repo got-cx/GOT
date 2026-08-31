@@ -83,13 +83,6 @@ export function BaseAccountButton({
           </DropdownMenuItem>
           <DropdownMenuItem
             className="px-2 py-2"
-            render={<Link href="/dashboard/settings" />}
-          >
-            <Settings />
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="px-2 py-2"
             onClick={() => {
               void navigator.clipboard.writeText(account)
               setCopied(true)
@@ -111,6 +104,14 @@ export function BaseAccountButton({
           >
             <CircleEllipsis />
             Onchain details
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="px-2 py-2"
+            render={<Link href="/dashboard/settings" />}
+          >
+            <Settings />
+            Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

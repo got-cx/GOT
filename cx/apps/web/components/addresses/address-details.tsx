@@ -96,18 +96,24 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
     return <div className="h-72 animate-pulse rounded-xl border bg-muted" />
   }
   const address = addressQuery.data
+  const expectedAmount = chainQuery.data?.config.amount
   const amount =
-    address.amount === "0"
-      ? "Any"
-      : `${formatUnits(BigInt(address.amount), 6)} USDC`
+    expectedAmount === undefined
+      ? "—"
+      : expectedAmount === 0n
+        ? "Any"
+        : `${formatUnits(expectedAmount, 6)} USDC`
   const connectedAccountIsOwner =
-    account?.toLowerCase() === address.ownerSource.toLowerCase()
+    account?.toLowerCase() === chainQuery.data?.effectiveOwner?.toLowerCase()
   const ownerLabel = connectedAccountIsOwner
     ? humanIdentity(account)
     : address.ownerSource
   const shareUrl = `${appConfig.siteUrl}/${address.intentAddress}`
   const shareLabel = `${appConfig.siteUrl.replace(/^https?:\/\//, "")}/${shortAddress(address.intentAddress)}`
-  const basescanTransfersUrl = `https://basescan.org/advanced-filter?tkn=${address.token}&tadd=${address.intentAddress}`
+  const basescanAddressUrl = `https://basescan.org/address/${address.intentAddress}#tokentxns`
+  const readyToResolve = Boolean(
+    chainQuery.data?.balance && chainQuery.data.effectiveOwner
+  )
 
   async function copyShareUrl() {
     await navigator.clipboard.writeText(shareUrl)
@@ -247,8 +253,9 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
                   <AlertDialogTitle>Remove this Address?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This removes the Address from your got.cx workspace and
-                    disables its hosted share page. The onchain Intent Address,
-                    its funds, and its history continue to exist.
+                    deletes its indexed history from got.cx. The onchain Intent
+                    Address, its funds and its blockchain history continue to
+                    exist.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 {removeError && (
@@ -305,19 +312,17 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
                 />
               </dd>
             </div>
-            <div className="grid grid-cols-2 gap-4 px-5 py-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 px-5 py-4 sm:grid-cols-3">
               <div>
-                <dt className="text-xs text-muted-foreground">Amount</dt>
+                <dt className="text-xs text-muted-foreground">
+                  Expected amount
+                </dt>
                 <dd className="mt-1 font-medium">{amount}</dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Received</dt>
-                <dd className="mt-1 font-medium">
-                  {formatUnits(BigInt(address.receivedAmount), 6)} USDC
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Balance</dt>
+                <dt className="text-xs text-muted-foreground">
+                  Current balance
+                </dt>
                 <dd className="mt-1 font-medium">
                   {chainQuery.data
                     ? `${formatUnits(chainQuery.data.balance, 6)} USDC`
@@ -336,11 +341,23 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
               </div>
             </div>
             <div className="px-5 py-4">
-              <dt className="text-xs text-muted-foreground">Owner</dt>
+              <dt className="text-xs text-muted-foreground">Effective owner</dt>
               <dd
                 className={`mt-1 ${connectedAccountIsOwner ? "font-medium" : "font-mono text-xs"}`}
               >
-                {ownerLabel}
+                {chainQuery.data?.effectiveOwner
+                  ? connectedAccountIsOwner
+                    ? ownerLabel
+                    : chainQuery.data.effectiveOwner
+                  : "—"}
+              </dd>
+            </div>
+            <div className="px-5 py-4">
+              <dt className="text-xs text-muted-foreground">
+                Ready to resolve
+              </dt>
+              <dd className="mt-1 font-medium">
+                {chainQuery.data ? (readyToResolve ? "Yes" : "No") : "—"}
               </dd>
             </div>
             {address.metadata && (
@@ -362,7 +379,7 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
         </section>
         <aside className="grid h-max place-items-center rounded-xl border bg-card p-5 text-center">
           <QRCodeImage value={shareUrl} size={176} />
-          <p className="mt-3 text-xs text-muted-foreground">{shareLabel}</p>
+          <p className="my-3 text-xs text-muted-foreground">{shareLabel}</p>
           <CopyButton value={shareUrl} label="Copy link" />
         </aside>
       </div>
@@ -371,14 +388,14 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
           <div>
             <h2 className="text-sm font-medium">Transfers</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Incoming Base USDC received by this Intent Address.
+              Processed transfers for this Intent Address.
             </p>
           </div>
           <Button
             variant="outline"
             nativeButton={false}
             render={
-              <a href={basescanTransfersUrl} target="_blank" rel="noreferrer" />
+              <a href={basescanAddressUrl} target="_blank" rel="noreferrer" />
             }
           >
             View on Basescan

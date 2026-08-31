@@ -75,7 +75,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:hidden">
-        <Brand compact />
+        <Brand />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger render={<Button variant="outline" size="icon" />}>
             <Menu />
@@ -83,7 +83,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <SheetContent side="right" className="w-72 p-5">
             <SheetTitle className="sr-only">Dashboard navigation</SheetTitle>
             <div className="mb-7">
-              <Brand />
+              <Brand compact />
             </div>
             <nav className="flex flex-col gap-1">
               {navigation.map((item) => {

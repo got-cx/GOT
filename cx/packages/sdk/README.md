@@ -78,8 +78,9 @@ without recreating the client.
 
 ### Create an Address and read its Transfers
 
-Address creation stores the managed Intent Address only. Incoming Base USDC
-Transfers appear after the hosted indexer observes their canonical logs.
+Address creation stores the managed Intent Address only. Transfers appear after
+the hosted indexer observes canonical GOT `TransferProcessed` logs. Funding
+alone does not create an indexed Transfer.
 
 ```ts
 import { GOTAPIClient } from "@got-cx/sdk"
@@ -209,9 +210,9 @@ The `GOTAPIClient` currently provides:
 
 - `auth`: nonce, token, session, and logout operations.
 - `overview`: workspace dashboard totals and recent transfers.
-- `addresses`: create, list, get, find by Intent Address, archive, and list
+- `addresses`: create, list, get, find by Intent Address, remove, and list
   associated Transfers.
-- `transfers`: list and get indexed incoming Base USDC events.
+- `transfers`: list and get indexed GOT `TransferProcessed` events.
 - `names`: list and claim GOT identities, including X verification startup.
 - `subscriptions`: list workspace subscriptions.
 
@@ -237,7 +238,7 @@ Importing from `@got-cx/sdk` exposes the complete public API.
   credentials are unavoidable.
 - Do not treat a predicted intent address as deployed; verify its chain state
   before relying on contract behavior.
-- Treat indexed Transfers as immutable event history; current balance still
+- Treat indexed Transfers as immutable processing history; current balance still
   comes from Base.
 
 ## License
