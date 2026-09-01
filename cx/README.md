@@ -9,7 +9,7 @@ Production interface for GOT — address any intent onchain.
 - `packages/sdk` — typed got.cx API client, canonical GOT link parsing, and protocol helpers.
 - `packages/ui` — shared shadcn components and design tokens.
 
-The product SDK delegates normalization, name-key derivation, ABIs, and deployment addresses to the published `@got-cx/protocol@0.3.0` package. Base Account connectivity uses `@base-org/account`; users authenticate with the Base passkey flow and never connect a separate browser wallet.
+The product SDK delegates normalization, name-key derivation, ABIs, and deployment addresses to the published `@got-cx/protocol@0.3.1` package. Base Account connectivity uses `@base-org/account`; users authenticate with the Base passkey flow and never connect a separate browser wallet.
 
 ## Configuration
 
@@ -32,6 +32,7 @@ npm install
 npm run dev
 npm run typecheck
 npm run lint
+npm test
 npm run build
 ```
 
@@ -41,9 +42,16 @@ npm run build
 - `/x:{@handle}` — reusable X identity.
 - `/tg:{@handle}` — reusable Telegram identity.
 - `/#email:{address}` and `/#phone:{number}` — fragment-based identity routes.
-- `/0x…` — deterministic intent request.
+- `/0x…` — public managed Intent Address transfer route.
+- `/dashboard` — workspace overview.
 - `/dashboard/addresses` — Intent Addresses and local creation preview.
+- `/dashboard/addresses/{address}` — live state, manual resolution, and processed history.
 - `/dashboard/addresses/names` — GOT and social Names.
-- `/transfers/new/send` and `/transfers/new/request` — authenticated creation flows.
-- `/transfers/requests/{id}` — created request summary.
-- `/receipt/{transferId}` — indexed transfer receipt.
+- `/dashboard/transfers` — global canonical `TransferProcessed` history.
+- `/dashboard/subscriptions` — managed subscriptions.
+- `/dashboard/developers` — SDK, Protocol, and API integration resources.
+- `/receipt/{transactionHash}` — onchain confirmation of a Base USDC funding transaction.
+
+The funding receipt is payer-facing confirmation that USDC reached an Intent
+Address. It is not a managed Transfer row. Managed Transfers are created only
+after resolution emits a canonical `TransferProcessed` event.

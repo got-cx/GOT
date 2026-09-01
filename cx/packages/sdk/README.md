@@ -34,7 +34,7 @@ const intent = createIntent({
 })
 ```
 
-Metadata is canonically serialized and hashed into the immutable protocol
+Committed metadata is canonically serialized and hashed into the immutable protocol
 configuration. Object key order does not matter; changing metadata, amount, or
 any other protocol field changes the Intent Address.
 
@@ -44,7 +44,7 @@ The package also includes:
 - Authentication helpers for bearer tokens and browser sessions.
 - GOT link parsing, normalization, and formatting.
 - Base network helpers for creating, previewing, and reading payment intents.
-- Shared transfer, request, subscription, and authentication types.
+- Shared processed-transfer, subscription, and authentication types.
 
 The package ships as precompiled ESM and defines no install lifecycle script.
 Node.js 22 or newer is required.
@@ -170,31 +170,29 @@ is invalid.
 
 ## Base protocol helpers
 
-The protocol helpers target Base (`chainId` 8453) and use USDC with six decimal
-places. They can build deterministic intent configuration, preview its address,
-prepare contract calls, and read live intent state.
+The protocol helpers target Base (`chainId` 8453) and canonical USDC with six
+decimal places. `createIntent()` is the canonical local configuration builder;
+address derivation delegates to `@got-cx/protocol`. The RPC client reads live
+state and prepares canonical contract calls.
 
 ```ts
-import {
-  buildRequestIntent,
-  createGOTProtocolClient,
-  serializeIntentConfig,
-} from "@got-cx/sdk/protocol"
+import { createIntent, createGOTProtocolClient } from "@got-cx/sdk"
 
-const config = buildRequestIntent({
-  recipient: "@alice",
+const intent = createIntent({
+  owner: "0x...",
+  ref: "invoice:1042",
   amount: "25.00",
-  metadata: "invoice-1042",
 })
 
 const protocol = createGOTProtocolClient(
   process.env.BASE_RPC_URL,
   process.env.BASE_RPC_FALLBACK
 )
-const intentAddress = await protocol.previewIntent(config)
+const snapshots = await protocol.readIntentSnapshots([
+  { intentAddress: intent.address, config: intent.config },
+])
 
-console.log(intentAddress)
-console.log(serializeIntentConfig(config))
+console.log(intent.address, snapshots[0]?.balance)
 ```
 
 `simulateDeployAndExecute`, `simulateResolve`, and `simulateSettle` return viem
@@ -210,7 +208,7 @@ The `GOTAPIClient` currently provides:
 
 - `auth`: nonce, token, session, and logout operations.
 - `overview`: workspace dashboard totals and recent transfers.
-- `addresses`: create, list, get, find by Intent Address, remove, and list
+- `addresses`: create, list, get, find by Intent Address, archive, and list
   associated Transfers.
 - `transfers`: list and get indexed GOT `TransferProcessed` events.
 - `names`: list and claim GOT identities, including X verification startup.
@@ -230,6 +228,14 @@ import type { Transfer } from "@got-cx/sdk/types"
 ```
 
 Importing from `@got-cx/sdk` exposes the complete public API.
+
+`addresses.archive(id)` removes an Address from active got.cx management without
+changing its permanent onchain address or deleting processed history. The
+deprecated `addresses.remove(id)` alias has identical archival semantics.
+
+`readUSDCTransferReceipt(transactionHash)` verifies a confirmed funding transfer
+directly on Base. This funding receipt is distinct from a managed `Transfer`,
+which represents one indexed canonical `TransferProcessed` event.
 
 ## Security
 

@@ -52,9 +52,9 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
       createGOTProtocolClient(appConfig.baseRpcUrl, appConfig.baseRpcFallback),
     []
   )
-  const [isRemoveOpen, setIsRemoveOpen] = useState(false)
-  const [isRemoving, setIsRemoving] = useState(false)
-  const [removeError, setRemoveError] = useState<string | null>(null)
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [archiveError, setArchiveError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isResolving, setIsResolving] = useState(false)
   const [resolveError, setResolveError] = useState<string | null>(null)
@@ -171,11 +171,11 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
     }
   }
 
-  async function removeAddress() {
-    setIsRemoving(true)
-    setRemoveError(null)
+  async function archiveAddress() {
+    setIsArchiving(true)
+    setArchiveError(null)
     try {
-      await client.addresses.remove(address.id)
+      await client.addresses.archive(address.id)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["got-api", "addresses"] }),
         queryClient.invalidateQueries({ queryKey: ["got-api", "overview"] }),
@@ -183,14 +183,16 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
       queryClient.removeQueries({
         queryKey: ["got-api", "address", intentAddress],
       })
-      setIsRemoveOpen(false)
+      setIsArchiveOpen(false)
       router.replace("/dashboard/addresses")
     } catch (error) {
-      setRemoveError(
-        error instanceof Error ? error.message : "Unable to remove the Address."
+      setArchiveError(
+        error instanceof Error
+          ? error.message
+          : "Unable to archive the Address."
       )
     } finally {
-      setIsRemoving(false)
+      setIsArchiving(false)
     }
   }
   return (
@@ -234,45 +236,44 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
-                  onClick={() => setIsRemoveOpen(true)}
+                  onClick={() => setIsArchiveOpen(true)}
                 >
                   <Trash2 />
-                  Remove Address
+                  Archive Address
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <AlertDialog
-              open={isRemoveOpen}
+              open={isArchiveOpen}
               onOpenChange={(open) => {
-                setIsRemoveOpen(open)
-                if (!open) setRemoveError(null)
+                setIsArchiveOpen(open)
+                if (!open) setArchiveError(null)
               }}
             >
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Remove this Address?</AlertDialogTitle>
+                  <AlertDialogTitle>Archive this Address?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This removes the Address from your got.cx workspace and
-                    deletes its indexed history from got.cx. The onchain Intent
-                    Address, its funds and its blockchain history continue to
-                    exist.
+                    This removes the Address from your active got.cx workspace.
+                    Its onchain Intent Address, funds, and processed transfer
+                    history remain unchanged.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                {removeError && (
+                {archiveError && (
                   <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                    {removeError}
+                    {archiveError}
                   </p>
                 )}
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isRemoving}>
+                  <AlertDialogCancel disabled={isArchiving}>
                     Cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
-                    disabled={isRemoving}
-                    onClick={() => void removeAddress()}
+                    disabled={isArchiving}
+                    onClick={() => void archiveAddress()}
                   >
-                    {isRemoving ? "Removing…" : "Remove Address"}
+                    {isArchiving ? "Archiving…" : "Archive Address"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -362,7 +363,9 @@ export function AddressDetails({ intentAddress }: { intentAddress: string }) {
             </div>
             {address.metadata && (
               <div className="px-5 py-4">
-                <dt className="text-xs text-muted-foreground">Metadata</dt>
+                <dt className="text-xs text-muted-foreground">
+                  Committed metadata
+                </dt>
                 <dd className="mt-2">
                   <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs">
                     {JSON.stringify(address.metadata, null, 2)}

@@ -1,33 +1,18 @@
-import {
-  TransferStatus,
-  type SubscriptionStatus,
-  type TransferStatus as TransferStatusValue,
-} from "@got-cx/sdk"
+import type { SubscriptionStatus } from "@got-cx/sdk"
 import { titleCase } from "@/lib/format"
 
 type NameStatus = "pending" | "verified"
-export type StatusBadgeStatus =
-  TransferStatusValue | SubscriptionStatus | NameStatus
+export type StatusBadgeStatus = SubscriptionStatus | NameStatus
 
 const statusLabels: Partial<Record<StatusBadgeStatus, string>> = {
-  [TransferStatus.AddressReady]: "Awaiting",
-  [TransferStatus.FundingDetected]: "Funds received",
-  [TransferStatus.Partial]: "Partial",
-  [TransferStatus.Settled]: "Completed",
-  [TransferStatus.Overpaid]: "Completed",
-  [TransferStatus.Unresolved]: "Ready to receive",
+  verified: "Verified",
+  pending: "Pending",
+  active: "Active",
 }
 
 export function StatusBadge({ status }: { status: StatusBadgeStatus }) {
-  const positiveStatuses: readonly StatusBadgeStatus[] = [
-    TransferStatus.FundingDetected,
-    TransferStatus.Overpaid,
-    TransferStatus.Settled,
-  ]
-  const negativeStatuses: readonly StatusBadgeStatus[] = [
-    TransferStatus.Failed,
-    TransferStatus.Reorged,
-  ]
+  const positiveStatuses: readonly StatusBadgeStatus[] = ["verified", "active"]
+  const negativeStatuses: readonly StatusBadgeStatus[] = ["failed", "revoked"]
   const positive = positiveStatuses.includes(status)
   const negative = negativeStatuses.includes(status)
   return (

@@ -2,4 +2,8 @@
 .idea
 .vscode
 .DS_Store
+.env
+.env.local
+node_modules
+infra/**/dist/
 *.code-workspace

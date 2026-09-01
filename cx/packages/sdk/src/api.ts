@@ -159,6 +159,12 @@ export class GOTAPIClient {
         `/addresses/${encodeURIComponent(id)}/transfers${suffix}`
       )
     },
+    archive: (id: string) =>
+      this.#request<void>(`/addresses/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        body: JSON.stringify({}),
+      }),
+    /** @deprecated Use archive(). Address removal is always non-destructive. */
     remove: (id: string) =>
       this.#request<void>(`/addresses/${encodeURIComponent(id)}`, {
         method: "DELETE",

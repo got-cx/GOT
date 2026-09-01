@@ -23,6 +23,7 @@ type ChainKey = "base";
 type ChainConfigTemplate = {
   key: ChainKey;
   chainId: number;
+  protocolVersion: string;
   treasury: Address | undefined;
   gotNameClaimVerifier: Address | undefined;
   usdc: Address;
@@ -57,6 +58,7 @@ const CHAIN_CONFIGS: Record<ChainKey, ChainConfigTemplate> = {
   base: {
     key: "base",
     chainId: 8_453,
+    protocolVersion: "GOT_PROTOCOL_V0_3",
     treasury: "0xca87066dA08fF49efF7C19244ADD4036991ba811",
     gotNameClaimVerifier: "0x979deB2d30978686eE2b2e3494472D740d5a3117",
     usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
@@ -106,6 +108,9 @@ function completeConfigAddresses(
   }
   if (config.confirmations < 0) {
     missingFields.push("confirmations");
+  }
+  if (config.protocolVersion.trim() === "") {
+    missingFields.push("protocolVersion");
   }
 
   for (const [name, value] of [

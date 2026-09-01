@@ -41,13 +41,13 @@ show its QR code, and let GOT handle the onchain details underneath.
 ### What developers can build
 
 - Transfer links and QR transfer experiences
-- Transfer requests with IDs, references, notes, and due dates
+- Deterministic Intent Addresses with business references and committed metadata
 - Transfer flows for apps, fintech products, games, and services
 - Reusable human-readable transfer destinations
 - User deposit destinations
 - Recurring transfers using protocol subscriptions
 - Automated and agent-initiated transfers through the API and SDK
-- Transfer history, status, reporting, and reconciliation workflows
+- Processed transfer history, reporting, and reconciliation workflows
 
 The product and protocol can be used together or independently. Integrators can
 use got.cx for its hosted API and product workflows, or integrate directly with
@@ -63,8 +63,8 @@ Transfer USDC
 Funds resolve onchain
 ```
 
-GOT keeps the default experience focused on recipients, amounts, context, and
-transfer status. Technical details such as the Base network, intent addresses,
+GOT keeps the default experience focused on recipients, amounts, and references.
+Technical details such as the Base network, intent addresses,
 contract execution, and transaction hashes remain available when they are
 needed.
 
@@ -74,7 +74,7 @@ needed.
 
 | Resource                                                   | Use it for                                                                                    |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [got.cx SDK](./cx/packages/sdk/README.md)                  | Typed product API access, transfer creation, GOT links, and protocol helpers                  |
+| [got.cx SDK](./cx/packages/sdk/README.md)                  | Local Intent creation, typed managed API access, GOT links, and live protocol reads           |
 | [GOT protocol SDK](./protocol/README.md)                   | Direct protocol reads, writes, deployment metadata, ABIs, and name-key utilities              |
 | [GOT protocol CLI](./protocol/README.md)                   | Inspect deployments and ABIs, derive name keys, read contracts, and prepare unsigned calldata |
 | [API client guide](./cx/packages/sdk/README.md#api-client) | Server or browser integration with the got.cx API                                             |
@@ -91,16 +91,14 @@ npm install @got-cx/sdk
 ```
 
 ```ts
-import { GOTClient } from "@got-cx/sdk";
+import { createIntent } from "@got-cx/sdk";
 
-const got = new GOTClient({
-  baseUrl: "https://api.got.cx",
-  getAccessToken: () => process.env.GOT_API_TOKEN ?? null,
+const intent = createIntent({
+  owner: "0x...",
+  ref: "invoice:1042",
 });
 
-const incoming = await got.transfers.list({ direction: "incoming" });
-
-console.log(incoming.items);
+console.log(intent.address);
 ```
 
 Machine API amounts use token base units. See the
@@ -135,6 +133,8 @@ const protocolVersion = await readGOTFactoryProtocolVersion(config, {});
 console.log(factory, protocolVersion);
 ```
 
+For synchronous local derivation, import `deriveIntentAddress(config)` from the
+protocol package. It is byte-for-byte equivalent to `GOTFactory.previewAddress`.
 Continue with the [protocol guide](./protocol/README.md) for deterministic intent
 creation, fee quotes, named routes, recurring transfers, deployment metadata,
 and safety requirements.
@@ -155,6 +155,8 @@ GOT/
 │   ├── apps/api        hosted product API
 │   └── packages/sdk    typed product and integration SDK
 ├── protocol/           contracts, protocol SDK, CLI, tests, and deployments
+├── infra/              public TransferProcessed indexer and resolver workers
+├── .github/workflows   CI and scheduled public infrastructure
 └── docs/SPEC.md        authoritative GOT protocol specification
 ```
 

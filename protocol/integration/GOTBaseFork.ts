@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
+import { BASE_FORK_BLOCK } from "../hardhat.config.js";
+import { baseDeployment, deriveIntentAddress, GOTFactoryAbi } from "../sdk/index.js";
+import { intentAddressGoldenVectors } from "../test/IntentDerivation.js";
 import { deriveNameKeyV1 } from "../sdk/nameKeys.js";
 import {
   concatHex,
@@ -48,7 +51,7 @@ type SpendPermission = {
 type InvoiceStatus = "OPEN" | "PARTIAL" | "SETTLED" | "OVERPAID";
 
 const BASE_CHAIN_ID = 8453;
-const PINNED_BASE_FORK_BLOCK = BigInt(process.env.BASE_FORK_BLOCK ?? "50569060");
+const PINNED_BASE_FORK_BLOCK = BigInt(BASE_FORK_BLOCK);
 const FORK_MODE = process.env.GOT_BASE_FORK_MODE ?? "pinned";
 const USDC = getAddress("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
 const SPEND_PERMISSION_MANAGER = getAddress("0xf85210B21cC50302F477BA56686d2019dC9b67Ad");
@@ -302,6 +305,22 @@ describe("GOT production profile on a Base mainnet fork", async function () {
     assert.equal(getAddress(`0x${fallbackHandlerStorage!.slice(-40)}`), SAFE_FALLBACK_HANDLER);
     return result;
   }
+
+  it("matches pure derivation and golden vectors against the deployed Base v0.3 Factory", async function () {
+    assert.equal(baseDeployment.protocolVersion, "GOT_PROTOCOL_V0_3");
+    const factory = getAddress(baseDeployment.contracts.gotFactory);
+    assert.notEqual(await publicClient.getCode({ address: factory }), undefined);
+    for (const vector of intentAddressGoldenVectors) {
+      const preview = await publicClient.readContract({
+        address: factory,
+        abi: GOTFactoryAbi,
+        functionName: "previewAddress",
+        args: [vector.config],
+      });
+      assert.equal(deriveIntentAddress(vector.config), vector.expected, vector.name);
+      assert.equal(preview, vector.expected, vector.name);
+    }
+  });
 
   it("settles the production checkout, invoice, and threshold-Safe name workflows with USDC", async function () {
     await assertCanonicalBaseContracts();

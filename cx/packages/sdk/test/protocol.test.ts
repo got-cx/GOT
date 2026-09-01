@@ -10,9 +10,7 @@ import {
   encodeSettleIntent,
   GOT_BASE_LENS,
   remainingTransferAmount,
-  transferStatusFromChain,
 } from "../src/protocol"
-import { TransferStatus } from "../src/types"
 
 const account = "0xafE0D4b0C259eb4826e40cD8Bc044759A357CE76"
 
@@ -73,36 +71,6 @@ describe("remaining transfer amount", () => {
   })
 })
 
-describe("live transfer status", () => {
-  it("keeps open-amount Intent Addresses reusable", () => {
-    assert.equal(
-      transferStatusFromChain(0n, 100n, 0n),
-      TransferStatus.AddressReady
-    )
-    assert.equal(
-      transferStatusFromChain(0n, 100n, 50n),
-      TransferStatus.FundingDetected
-    )
-    assert.equal(remainingTransferAmount(0n, 100n, 50n), 0n)
-  })
-
-  it("reports received funding before the intent is resolved", () => {
-    assert.equal(
-      transferStatusFromChain(100n, 0n, 100n),
-      TransferStatus.FundingDetected
-    )
-    assert.equal(transferStatusFromChain(100n, 0n, 40n), TransferStatus.Partial)
-  })
-
-  it("reports processed and overpaid transfers", () => {
-    assert.equal(transferStatusFromChain(100n, 40n, 0n), TransferStatus.Partial)
-    assert.equal(
-      transferStatusFromChain(100n, 100n, 0n),
-      TransferStatus.Settled
-    )
-    assert.equal(
-      transferStatusFromChain(100n, 100n, 1n),
-      TransferStatus.Overpaid
-    )
-  })
+it("keeps open-amount Intent Addresses reusable", () => {
+  assert.equal(remainingTransferAmount(0n, 100n, 50n), 0n)
 })

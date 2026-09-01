@@ -216,7 +216,9 @@ export function CreateAddressMenu({
             </button>
             {advanced && (
               <div className="grid gap-2">
-                <Label htmlFor="intent-metadata">Metadata (JSON)</Label>
+                <Label htmlFor="intent-metadata">
+                  Committed metadata (JSON)
+                </Label>
                 <Textarea
                   id="intent-metadata"
                   value={metadataText}
@@ -224,7 +226,8 @@ export function CreateAddressMenu({
                   onChange={(event) => setMetadataText(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Metadata is immutable and changes the resulting Address.
+                  Committed metadata is immutable and participates in the Intent
+                  Address derivation.
                 </p>
               </div>
             )}
