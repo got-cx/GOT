@@ -1,0 +1,37 @@
+name: Transfer Indexer
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: got-transfer-indexer
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/indexer/transfers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/indexer/transfers/package-lock.json
+      - run: npm ci
+      - run: npm run start -- --loop-to-safe-head
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          BASE_RPC_FALLBACK: ${{ secrets.BASE_RPC_FALLBACK }}
+          INDEXER_MAX_BLOCKS_PER_RUN: ${{ vars.INDEXER_MAX_BLOCKS_PER_RUN }}
+          INDEXER_START_BLOCK: ${{ vars.INDEXER_START_BLOCK }}

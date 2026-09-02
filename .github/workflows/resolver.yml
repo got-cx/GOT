@@ -1,0 +1,42 @@
+name: Resolver
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: got-resolver
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: infra/resolver
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/resolver/package-lock.json
+      - run: npm ci
+      - run: npm run start
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          BASE_RPC_FALLBACK: ${{ secrets.BASE_RPC_FALLBACK }}
+          GOT_RESOLVER_PRIVATE_KEY: ${{ secrets.GOT_RESOLVER_PRIVATE_KEY }}
+          RESOLVER_MIN_BALANCE_BASE_UNITS: ${{ vars.RESOLVER_MIN_BALANCE_BASE_UNITS }}
+          RESOLVER_MAX_TXS_PER_RUN: ${{ vars.RESOLVER_MAX_TXS_PER_RUN }}
+          RESOLVER_MAX_GAS_COST_WEI: ${{ vars.RESOLVER_MAX_GAS_COST_WEI }}
+          RESOLVER_CONFIRMATIONS: ${{ vars.RESOLVER_CONFIRMATIONS }}
+          RESOLVER_LENS_BATCH_SIZE: ${{ vars.RESOLVER_LENS_BATCH_SIZE }}
+          RESOLVER_CANDIDATE_PAGE_SIZE: ${{ vars.RESOLVER_CANDIDATE_PAGE_SIZE }}

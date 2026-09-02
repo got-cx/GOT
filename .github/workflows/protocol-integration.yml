@@ -1,0 +1,35 @@
+name: Protocol Base Fork Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "protocol/**"
+      - ".github/workflows/protocol-integration.yml"
+  push:
+    branches: [main]
+    paths:
+      - "protocol/**"
+      - ".github/workflows/protocol-integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  base-fork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: protocol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: protocol/package-lock.json
+      - run: npm ci
+      - run: npm run test:integration
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}

@@ -1,21 +1,11 @@
+import { deriveIntentAddress } from "@got-cx/protocol/intent"
 import {
-  baseDeployment,
-  GOTIntentImplementationAddressByChainId,
-} from "@got-cx/protocol"
-import {
-  concatHex,
-  encodeAbiParameters,
-  encodePacked,
   getAddress,
-  getCreate2Address,
-  isAddress,
   keccak256,
   parseUnits,
   stringToHex,
-  toHex,
   zeroAddress,
   zeroHash,
-  type Address,
   type Hex,
 } from "viem"
 
@@ -28,14 +18,7 @@ import type {
   IntentMetadataValue,
 } from "./types"
 
-const PROTOCOL_VERSION = keccak256(stringToHex("GOT_PROTOCOL_V0_3"))
-const FACTORY = getAddress(baseDeployment.contracts.gotFactory)
-const IMPLEMENTATION = getAddress(
-  GOTIntentImplementationAddressByChainId[GOT_BASE_CHAIN_ID]!
-)
 const MAX_REF_LENGTH = 120
-const MAX_UINT128 = (1n << 128n) - 1n
-const MAX_UINT64 = (1n << 64n) - 1n
 const MAX_UINT32 = 2 ** 32 - 1
 const MAX_UINT16 = 2 ** 16 - 1
 
@@ -110,138 +93,9 @@ export function hashIntentMetadata(metadata?: IntentMetadata): Hex {
     : keccak256(stringToHex(canonicalizeIntentMetadata(metadata)))
 }
 
-export function hashIntentConfig(config: IntentConfig): Hex {
-  return keccak256(
-    encodeAbiParameters(
-      [
-        { type: "bytes32" },
-        { type: "address" },
-        { type: "bytes32" },
-        { type: "address" },
-        { type: "address" },
-        { type: "address" },
-        { type: "uint128" },
-        { type: "uint64" },
-        { type: "uint32" },
-        { type: "uint16" },
-        { type: "bytes32" },
-      ],
-      [
-        config.intentId,
-        config.ownerSource,
-        config.ownerKey,
-        config.token,
-        config.partner,
-        config.authorizedResolver,
-        config.amount,
-        config.initialDeadline,
-        config.period,
-        config.feeBps,
-        config.metadataHash,
-      ]
-    )
-  )
-}
-
-function cloneCreationCode(config: IntentConfig): Hex {
-  const immutableArgs = encodePacked(
-    [
-      "bytes32",
-      "address",
-      "bytes32",
-      "address",
-      "address",
-      "address",
-      "uint128",
-      "uint64",
-      "uint32",
-      "uint16",
-      "bytes32",
-      "address",
-    ],
-    [
-      config.intentId,
-      config.ownerSource,
-      config.ownerKey,
-      config.token,
-      config.partner,
-      config.authorizedResolver,
-      config.amount,
-      config.initialDeadline,
-      config.period,
-      config.feeBps,
-      config.metadataHash,
-      FACTORY,
-    ]
-  )
-  const argsLength = (immutableArgs.length - 2) / 2
-  const extraLength = argsLength + 2
-  const runtimeLength = 55 + extraLength
-  return concatHex([
-    "0x61",
-    toHex(runtimeLength, { size: 2 }),
-    "0x3d81600a3d39f3",
-    "0x3d3d3d3d363d3d37",
-    "0x61",
-    toHex(extraLength, { size: 2 }),
-    "0x6037363936",
-    "0x61",
-    toHex(extraLength, { size: 2 }),
-    "0x013d73",
-    IMPLEMENTATION,
-    "0x5af43d3d93803e603557fd5bf3",
-    immutableArgs,
-    toHex(argsLength, { size: 2 }),
-  ])
-}
-
-/** Pure local equivalent of GOTFactory.previewAddress for Protocol v0.3. */
-export function deriveIntentAddress(config: IntentConfig): Address {
-  validateIntentConfig(config)
-  const salt = keccak256(
-    encodeAbiParameters(
-      [{ type: "bytes32" }, { type: "bytes32" }],
-      [PROTOCOL_VERSION, hashIntentConfig(config)]
-    )
-  )
-  return getAddress(
-    getCreate2Address({
-      from: FACTORY,
-      salt,
-      bytecodeHash: keccak256(cloneCreationCode(config)),
-    })
-  )
-}
-
 function validateInteger(value: number, field: string, maximum: number): void {
   if (!Number.isSafeInteger(value) || value < 0 || value > maximum) {
     throw new Error(`${field} is outside the supported range.`)
-  }
-}
-
-function validateIntentConfig(config: IntentConfig): void {
-  if (
-    !isAddress(config.ownerSource) ||
-    getAddress(config.ownerSource) === zeroAddress
-  ) {
-    throw new Error("A valid owner is required.")
-  }
-  if (!isAddress(config.token) || getAddress(config.token) === zeroAddress) {
-    throw new Error("A valid token is required.")
-  }
-  if (config.amount < 0n || config.amount > MAX_UINT128) {
-    throw new Error("Amount is outside the protocol uint128 range.")
-  }
-  if (config.initialDeadline < 0n || config.initialDeadline > MAX_UINT64) {
-    throw new Error("Deadline is outside the protocol uint64 range.")
-  }
-  validateInteger(config.period, "Period", MAX_UINT32)
-  validateInteger(config.feeBps, "Fee", MAX_UINT16)
-  if (config.feeBps > baseDeployment.constructorArguments.maxFeeBps) {
-    throw new Error("Fee exceeds the canonical factory maximum.")
-  }
-  if (config.period !== 0 && config.initialDeadline === 0n) {
-    throw new Error("A recurring Intent requires an initial deadline.")
   }
 }
 
@@ -302,3 +156,4 @@ export function createIntent(input: CreateIntentInput): CreatedIntent {
 }
 
 export type { IntentMetadataValue }
+export { deriveIntentAddress }

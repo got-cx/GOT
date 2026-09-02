@@ -1,11 +1,12 @@
 import type { Address } from "viem";
 
-import baseDeploymentJson from "@got-cx/protocol/deployments/base.json" with { type: "json" };
+import baseDeploymentJson from "../deployments/base.json" with { type: "json" };
 
 export type GOTDeploymentConfig = {
   chainId: number;
   chainKey: string;
   network: string;
+  protocolVersion: string;
   deployer: string;
   create2Salt: string;
   create2GuardedSalt: string;

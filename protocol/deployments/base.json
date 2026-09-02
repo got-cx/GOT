@@ -2,6 +2,7 @@
   "chainId": 8453,
   "chainKey": "base",
   "network": "base",
+  "protocolVersion": "GOT_PROTOCOL_V0_3",
   "deployer": "0x238450b3ba48903b0e03b7a0d635cffc15f15bef",
   "create2Salt": "0x39cfdf60ac246b9725c5b456d8377887f5fe30fc8acffe08a760669c13bd5a55",
   "create2GuardedSalt": "0xa3a0f0174bb693e4b735f6189dd425234ccae89f7cd1c4487ffbd792e2ae385e",

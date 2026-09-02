@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
+import { getAddress, isAddress, keccak256, stringToHex, type Address, type Hex } from "viem";
 import { getDeployConfig } from "./config.js";
 import { deployCreate2Contract, ensureCreateXFactory, resolveGOTSalt } from "./create2.js";
 
@@ -21,6 +21,7 @@ type DeploymentResult = {
   chainId: number;
   chainKey: string;
   network: string;
+  protocolVersion: string;
   deployer: Address;
   create2Salt: Hex;
   create2GuardedSalt: Hex;
@@ -330,6 +331,9 @@ async function main() {
     assertNumber("GOTFactory execution share", await gotFactory.read.EXECUTION_SHARE_BPS(), config.executionShareBps);
     assertNumber("GOTFactory partner share", await gotFactory.read.PARTNER_SHARE_BPS(), config.partnerShareBps);
     assertNumber("GOTFactory max fee", await gotFactory.read.MAX_FEE_BPS(), config.maxFeeBps);
+    if ((await gotFactory.read.PROTOCOL_VERSION()) !== keccak256(stringToHex(config.protocolVersion))) {
+      throw new Error(`GOTFactory protocol version does not match ${config.protocolVersion}`);
+    }
 
     const gotLens = await viem.getContractAt("GOTLens", gotLensAddress);
     assertAddress("GOTLens factory", await gotLens.read.GOT_FACTORY(), gotFactoryAddress);
@@ -357,6 +361,7 @@ async function main() {
       chainId,
       chainKey: config.key,
       network: networkName,
+      protocolVersion: config.protocolVersion,
       deployer: deployer.account.address,
       create2Salt: create2.rawSalt,
       create2GuardedSalt: create2.guardedSalt,

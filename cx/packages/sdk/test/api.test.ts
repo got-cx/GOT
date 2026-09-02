@@ -144,6 +144,26 @@ describe("GOTAPIClient API errors", () => {
     )
   })
 
+  it("archives Addresses and keeps remove as a non-destructive alias", async () => {
+    const requests: FetchCall[] = []
+    const client = new GOTAPIClient({
+      baseUrl: "https://api.got.cx",
+      fetch: async (input, init) => {
+        requests.push({ input, init })
+        return new Response(null, { status: 204 })
+      },
+    })
+    await client.addresses.archive("address_1")
+    await client.addresses.remove("address_2")
+    assert.deepEqual(
+      requests.map((request) => [request.input, request.init?.method]),
+      [
+        ["https://api.got.cx/addresses/address_1", "DELETE"],
+        ["https://api.got.cx/addresses/address_2", "DELETE"],
+      ]
+    )
+  })
+
   it("preserves a user-safe API reason and error code", async () => {
     const client = new GOTAPIClient({
       baseUrl: "https://api.got.cx",

@@ -1,6 +1,6 @@
 {
   "name": "@got-cx/protocol",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "GOT Protocol SDK",
   "keywords": [
     "fintech",
@@ -40,6 +40,11 @@
       "import": "./dist/deployments.js",
       "default": "./dist/deployments.js"
     },
+    "./intent": {
+      "types": "./dist/intent.d.ts",
+      "import": "./dist/intent.js",
+      "default": "./dist/intent.js"
+    },
     "./wagmi": {
       "types": "./dist/wagmi.d.ts",
       "import": "./dist/wagmi.js",
@@ -78,7 +83,7 @@
     "deploy:base": "hardhat --build-profile production --network base run scripts/deploy.ts",
     "verify:base": "hardhat --build-profile production --network base run scripts/verify.ts",
     "coverage": "hardhat test --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "hardhat build && tsc --noEmit",
     "format": "prettier --write \"**/*.{sol,ts,js,json,md,yml,yaml}\"",
     "prepack": "npm run build:package"
   },

@@ -14,19 +14,15 @@ import {
   http,
   keccak256,
   parseAbi,
-  parseUnits,
   stringToHex,
   zeroAddress,
-  zeroHash,
   type Address,
   type Hash,
   type Hex,
 } from "viem"
 import { base } from "viem/chains"
 
-import { parseGOTLink } from "./links"
 import {
-  TransferStatus,
   type ChainId,
   type IntentConfig,
   type SerializedIntentConfig,
@@ -57,26 +53,6 @@ export type GOTUSDCTransferReceipt = {
   intentAddress: Address
   amount: bigint
   confirmedAt: string
-}
-
-export type BuildRequestIntentInput = {
-  recipient?: string
-  ownerAddress?: Address
-  amount: string
-  metadata?: string
-  intentId?: Hex
-  authorizedResolver?: Address
-  dueAt?: string
-}
-
-function randomHex32(): Hex {
-  const bytes = new Uint8Array(32)
-  globalThis.crypto.getRandomValues(bytes)
-  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`
-}
-
-export function createIntentId(): Hex {
-  return randomHex32()
 }
 
 const intentIdNamespace = keccak256(stringToHex("GOT_APPLICATION_INTENT_V2"))
@@ -124,58 +100,6 @@ export function remainingTransferAmount(
   if (target === 0n) return 0n
   const committed = processed + pendingBalance
   return committed >= target ? 0n : target - committed
-}
-
-export function transferStatusFromChain(
-  target: bigint,
-  processed: bigint,
-  pendingBalance: bigint
-): TransferStatus {
-  if (target < 0n || processed < 0n || pendingBalance < 0n) {
-    throw new Error("Transfer amounts cannot be negative.")
-  }
-  if (target === 0n) {
-    return pendingBalance > 0n
-      ? TransferStatus.FundingDetected
-      : TransferStatus.AddressReady
-  }
-  const funded = processed + pendingBalance
-  if (funded > target) return TransferStatus.Overpaid
-  if (processed >= target && target > 0n) return TransferStatus.Settled
-  if (funded === target && pendingBalance > 0n)
-    return TransferStatus.FundingDetected
-  if (funded > 0n) return TransferStatus.Partial
-  return TransferStatus.AddressReady
-}
-
-export function buildRequestIntent(
-  input: BuildRequestIntentInput
-): IntentConfig {
-  if (Boolean(input.recipient) === Boolean(input.ownerAddress))
-    throw new Error("Provide one recipient identity or owner address.")
-  const recipient = input.recipient ? parseGOTLink(input.recipient) : null
-  if (recipient?.kind === "intent")
-    throw new Error(
-      "A request recipient must be a verified GOT identity, not an intent address."
-    )
-
-  return {
-    intentId: input.intentId ?? randomHex32(),
-    ownerSource: input.ownerAddress ?? GOT_BASE_NAME,
-    ownerKey: recipient?.nameKey ?? zeroHash,
-    token: GOT_BASE_USDC,
-    partner: zeroAddress,
-    authorizedResolver: input.authorizedResolver ?? zeroAddress,
-    amount: parseUnits(input.amount, 6),
-    initialDeadline: input.dueAt
-      ? BigInt(Math.floor(new Date(input.dueAt).getTime() / 1000))
-      : 0n,
-    period: 0,
-    feeBps: 0,
-    metadataHash: input.metadata
-      ? keccak256(stringToHex(input.metadata))
-      : zeroHash,
-  }
 }
 
 export function serializeIntentConfig(

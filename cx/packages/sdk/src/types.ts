@@ -1,3 +1,4 @@
+import type { IntentConfig as ProtocolIntentConfig } from "@got-cx/protocol/intent"
 import type { Address, Hash, Hex } from "viem"
 
 export type ChainId = 8453
@@ -87,24 +88,6 @@ export type Money = {
   decimals: number
   symbol: string
 }
-
-export const TransferStatus = {
-  Created: "created",
-  AddressReady: "address_ready",
-  FundingDetected: "funding_detected",
-  Unresolved: "unresolved",
-  Processing: "processing",
-  Settled: "settled",
-  Partial: "partial",
-  Overpaid: "overpaid",
-  Failed: "failed",
-  Reorged: "reorged",
-  Expired: "expired",
-  Canceled: "canceled",
-} as const
-
-export type TransferStatus =
-  (typeof TransferStatus)[keyof typeof TransferStatus]
 
 /** Canonical GOT TransferProcessed event indexed from Base logs. */
 export type Transfer = {
@@ -199,19 +182,7 @@ export type APIAuthToken = APIAuth & {
   token: string
 }
 
-export type IntentConfig = {
-  intentId: Hex
-  ownerSource: Address
-  ownerKey: Hex
-  token: Address
-  partner: Address
-  authorizedResolver: Address
-  amount: bigint
-  initialDeadline: bigint
-  period: number
-  feeBps: number
-  metadataHash: Hex
-}
+export type IntentConfig = ProtocolIntentConfig
 
 export type SerializedIntentConfig = {
   intentId: Hex

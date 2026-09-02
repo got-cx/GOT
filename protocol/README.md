@@ -4,6 +4,14 @@ GOT - Global Onchain Transfers - provides deterministic intent addresses that ca
 
 `@got-cx/protocol` provides type-safe wagmi Core actions, ABIs, Base Mainnet deployment metadata, and name-key utilities for GOT protocol version `0.3`. See the [GOT protocol specification](https://github.com/got-cx/GOT/blob/main/docs/SPEC.md) for the full design.
 
+It also provides the pure helpers `hashIntentConfig`, `validateIntentConfig`,
+and `deriveIntentAddress`. The latter is synchronous, requires no RPC, and is
+guaranteed by golden and Base-fork tests to satisfy:
+
+```text
+deriveIntentAddress(config) == GOTFactory.previewAddress(config)
+```
+
 ## Install
 
 ```sh
@@ -41,6 +49,14 @@ export const wagmiConfig = createConfig({
 const factory = GOTFactoryAddressByChainId[base.id];
 const nameResolver = GOTNameAddressByChainId[base.id];
 const protocolVersion = await readGOTFactoryProtocolVersion(wagmiConfig, {});
+```
+
+Derive a canonical address locally:
+
+```ts
+import { deriveIntentAddress } from "@got-cx/protocol";
+
+const intentAddress = deriveIntentAddress(config); // Base defaults to chainId 8453
 ```
 
 The SDK currently supports Base Mainnet (`chainId` `8453`). Calls to deployed protocol contracts select their Base address automatically. Intent clones require an explicit address.
@@ -95,7 +111,11 @@ Use `normalizeGOTIdentity` and `deriveNameKeyV1` instead of implementing identit
 
 ## Deployment metadata and raw artifacts
 
-Import typed addresses from `@got-cx/protocol/deployments`. Raw ABIs are available through `@got-cx/protocol/abi/<Contract>.json`, and [`deployments/base.json`](./deployments/base.json) contains the Base deployment details.
+Import typed addresses from `@got-cx/protocol/deployments`. Raw ABIs are
+available through `@got-cx/protocol/abi/<Contract>.json`, and
+[`deployments/base.json`](./deployments/base.json) contains the Base deployment
+details and protocol version. The deployment script writes `protocolVersion`
+into generated manifests and verifies it against the deployed Factory.
 
 ## Examples and tests
 

@@ -41,12 +41,6 @@ const developerTabs = {
     subtext:
       "Preview the intent address before funding and verify it against the canonical deployment.",
   },
-  Webhooks: {
-    description: "React to finalized transfer lifecycle events.",
-    example: `transfer.created\ntransfer.funding_detected\ntransfer.processing\ntransfer.settled\nsubscription.revoked`,
-    subtext:
-      "Handle events idempotently and account for retries or out-of-order delivery.",
-  },
   API: {
     description:
       "Persist Addresses and use managed indexing, history, and reconciliation.",

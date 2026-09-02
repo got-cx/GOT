@@ -40,6 +40,7 @@ import {
   USDCAddressByChainId,
   writeGOTFactoryDeployAndExecute,
 } from "../sdk/index.js";
+import { listSupportedChains } from "../scripts/config.js";
 import * as wagmiExports from "../sdk/wagmi.js";
 
 /** Base configuration used by the SDK examples. Add a connector/account before sending writes. */
@@ -113,6 +114,7 @@ describe("GOT wagmi SDK", function () {
     const { gotLens } = contracts;
 
     assert.equal(baseDeployment.chainId, chainId);
+    assert.equal(baseDeployment.protocolVersion, "GOT_PROTOCOL_V0_3");
     assert.equal(protocolDeployments[chainId], baseDeployment);
     assert.equal(GOTFactoryAddress[chainId], getAddress(contracts.gotFactory));
     assert.equal(GOTFactoryAddressByChainId[chainId], contracts.gotFactory);
@@ -123,6 +125,11 @@ describe("GOT wagmi SDK", function () {
     assert.equal(GOTSubscriptionAddressByChainId[chainId], contracts.gotSubscription);
     assert.equal(ISpendPermissionManagerAddress[chainId], getAddress(dependencies.spendPermissionManager));
     assert.equal(spendPermissionManagerAddressByChainId[chainId], dependencies.spendPermissionManager);
+  });
+
+  it("keeps protocolVersion in deployment-script output configuration", function () {
+    const baseConfig = listSupportedChains().find((config) => config.chainId === 8453);
+    assert.equal(baseConfig?.protocolVersion, baseDeployment.protocolVersion);
   });
 
   it("builds a type-safe direct USDC intent", function () {
