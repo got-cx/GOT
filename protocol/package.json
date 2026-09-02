@@ -83,7 +83,7 @@
     "deploy:base": "hardhat --build-profile production --network base run scripts/deploy.ts",
     "verify:base": "hardhat --build-profile production --network base run scripts/verify.ts",
     "coverage": "hardhat test --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "hardhat build && tsc --noEmit",
     "format": "prettier --write \"**/*.{sol,ts,js,json,md,yml,yaml}\"",
     "prepack": "npm run build:package"
   },
