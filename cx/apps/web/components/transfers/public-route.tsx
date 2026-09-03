@@ -1,10 +1,9 @@
 "use client"
 
-import { ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { parseUnits, type Address } from "viem"
+import { formatUnits, isHash, parseUnits } from "viem"
 
 import {
   createGOTProtocolClient,
@@ -14,26 +13,18 @@ import {
   remainingTransferAmount,
   type AddressRecord,
 } from "@got-cx/sdk"
-import { useAuth } from "@/components/auth/auth-provider"
 import { APIMessage } from "@/components/shared/api-message"
+import { BasePayLogoWhite } from "@/components/transfers/base-pay-logo"
 import { Brand } from "@/components/shared/brand"
 import { CopyButton } from "@/components/shared/copy-button"
 import { QRCodeImage } from "@/components/shared/qr-code"
 import { useAPIResource } from "@/hooks/use-api-resource"
 import { appConfig } from "@/lib/app-config"
-import { transferUSDC } from "@/lib/base-transactions"
 import { formatMoney } from "@/lib/format"
 import { getGOTClient } from "@/lib/got-client"
-import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
-function PublicIntentAddress({
-  address,
-  account,
-}: {
-  address: AddressRecord
-  account: Address | null
-}) {
+function PublicIntentAddress({ address }: { address: AddressRecord }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const protocol = useMemo(
@@ -99,11 +90,15 @@ function PublicIntentAddress({
       if (liveTransferAmount <= 0n) {
         throw new Error("This Address has already received its target.")
       }
-      const hash = await transferUSDC(
-        address.intentAddress,
-        liveTransferAmount.toString(),
-        account
-      )
+      const { pay } = await import("@base-org/account/payment/browser")
+      const payment = await pay({
+        amount: formatUnits(liveTransferAmount, 6),
+        to: address.intentAddress,
+      })
+      if (!isHash(payment.id)) {
+        throw new Error("Base Pay did not return a transaction hash.")
+      }
+      const hash = payment.id
       const receipt = await protocol.waitForTransaction(hash)
       if (receipt.status !== "success") {
         throw new Error("The transfer wasn’t completed. Please try again.")
@@ -133,6 +128,21 @@ function PublicIntentAddress({
           symbol: "USDC",
         }).replace(" USDC", "")
       : "—"
+  const paymentDisabled =
+    !chainQuery.data ||
+    Boolean(chainQuery.error) ||
+    transferAmount <= 0n ||
+    isTransferring
+  const paymentStatus = chainQuery.isLoading
+    ? "Checking state…"
+    : chainQuery.error
+      ? "State unavailable"
+      : !reusable && remaining === 0n
+        ? "Target received"
+        : isTransferring
+          ? "Completing payment…"
+          : null
+
   return (
     <div className="flex min-h-svh flex-col bg-[#0b0b0b] text-white">
       <header className="mx-auto flex h-18 w-full max-w-5xl items-center px-5 sm:px-8">
@@ -183,29 +193,24 @@ function PublicIntentAddress({
               again.
             </p>
           )}
-          <Button
-            className="mt-4 h-12 w-full bg-[#111] text-white hover:bg-neutral-800"
-            disabled={
-              !chainQuery.data ||
-              Boolean(chainQuery.error) ||
-              transferAmount <= 0n ||
-              isTransferring
-            }
+          <button
+            type="button"
+            className="mt-4 flex h-14 w-full items-center justify-center rounded-lg bg-black transition-colors hover:bg-neutral-800 focus-visible:ring-3 focus-visible:ring-neutral-400/50 disabled:pointer-events-none disabled:opacity-50"
+            disabled={paymentDisabled}
+            aria-busy={isTransferring}
+            aria-label="Base Pay"
             onClick={() => void transfer()}
           >
-            {chainQuery.isLoading
-              ? "Checking state…"
-              : chainQuery.error
-                ? "State unavailable"
-                : !reusable && remaining === 0n
-                  ? "Target received"
-                  : isTransferring
-                    ? "Transferring…"
-                    : "Transfer"}
-            {chainQuery.data && transferAmount > 0n && (
-              <ArrowRight data-icon="inline-end" />
-            )}
-          </Button>
+            <BasePayLogoWhite />
+          </button>
+          {paymentStatus && (
+            <p
+              className="mt-2 text-center text-xs text-neutral-500"
+              aria-live="polite"
+            >
+              {paymentStatus}
+            </p>
+          )}
           <div className="mt-4 grid place-items-center border-t">
             <QRCodeImage value={address.intentAddress} size={196} />
             <p className="mt-3 font-mono text-xs text-neutral-500">
@@ -223,7 +228,6 @@ function PublicIntentAddress({
 }
 
 export function PublicRoute({ route }: { route: string }) {
-  const { account } = useAuth()
   const api = getGOTClient()
   const parsed = useMemo(() => {
     try {
@@ -272,5 +276,5 @@ export function PublicRoute({ route }: { route: string }) {
   if (isLoading || !data) {
     return <main className="min-h-svh animate-pulse bg-neutral-950" />
   }
-  return <PublicIntentAddress address={data} account={account} />
+  return <PublicIntentAddress address={data} />
 }
