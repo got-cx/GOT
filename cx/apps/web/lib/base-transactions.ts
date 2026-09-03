@@ -6,14 +6,7 @@ import {
   GOT_BASE_FACTORY,
   type IntentConfig,
 } from "@got-cx/sdk"
-import { GOT_BASE_USDC } from "@got-cx/sdk/protocol"
-import {
-  encodeFunctionData,
-  getAddress,
-  parseAbi,
-  type Address,
-  type Hash,
-} from "viem"
+import { getAddress, type Address, type Hash } from "viem"
 
 import { appConfig } from "@/lib/app-config"
 import { getBaseAccount } from "@/lib/base-account"
@@ -32,31 +25,6 @@ function requireTransactionHash(value: unknown): Hash {
     throw new Error("Base Account did not return a transaction hash.")
   }
   return value as Hash
-}
-
-export async function transferUSDC(
-  to: Address,
-  amount: string,
-  expectedAccount?: Address | null
-): Promise<Hash> {
-  const { provider, account } = await getConnectedAccount(
-    "Authenticate with your Base Account to continue."
-  )
-  if (expectedAccount && account !== expectedAccount) {
-    throw new Error("Use the Base Account that is signed in to got.cx.")
-  }
-  const data = encodeFunctionData({
-    abi: parseAbi([
-      "function transfer(address to, uint256 amount) returns (bool)",
-    ]),
-    functionName: "transfer",
-    args: [to, BigInt(amount)],
-  })
-  const hash = await provider.request({
-    method: "eth_sendTransaction",
-    params: [{ from: account, to: GOT_BASE_USDC, data }],
-  })
-  return requireTransactionHash(hash)
 }
 
 export async function deployAndResolveIntent(

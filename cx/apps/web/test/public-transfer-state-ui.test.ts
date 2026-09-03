@@ -21,4 +21,13 @@ describe("public transfer onchain state", () => {
     assert.match(publicRoute, /refreshed\.data\.totalProcessed/)
     assert.match(publicRoute, /refreshed\.data\.balance/)
   })
+
+  it("uses native Base Pay with a decimal USDC amount", () => {
+    assert.match(publicRoute, /BasePayLogoWhite/)
+    assert.match(publicRoute, /@base-org\/account\/payment\/browser/)
+    assert.match(publicRoute, /await pay\(/)
+    assert.match(publicRoute, /formatUnits\(liveTransferAmount, 6\)/)
+    assert.match(publicRoute, /bg-black/)
+    assert.doesNotMatch(publicRoute, /transferUSDC/)
+  })
 })
