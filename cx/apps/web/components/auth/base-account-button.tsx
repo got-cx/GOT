@@ -75,11 +75,15 @@ export function BaseAccountButton({
           <DropdownMenuItem
             className="px-2 py-2"
             render={
-              <a href="https://base.app" target="_blank" rel="noreferrer" />
+              <a
+                href="https://keys.coinbase.com/settings"
+                target="_blank"
+                rel="noreferrer"
+              />
             }
           >
             <ExternalLink />
-            Open in Base App
+            View Account
           </DropdownMenuItem>
           <DropdownMenuItem
             className="px-2 py-2"
